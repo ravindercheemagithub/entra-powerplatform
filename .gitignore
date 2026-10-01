@@ -1,0 +1,6 @@
+.DS_Store
+entra/certs/
+*.pfx
+*.key
+*.pem
+__pycache__/

@@ -1,0 +1,3 @@
+{
+  "groupIds": ["@{if(empty(body('Filter_team_tag')), '00000000-0000-0000-0000-000000000000', substring(first(body('Filter_team_tag')), 5))}"]
+}

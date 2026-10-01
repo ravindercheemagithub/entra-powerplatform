@@ -1,0 +1,356 @@
+# Home: operation cards + recent requests
+# Paste into screen scrHome: copy all, select the screen in the Tree view, Ctrl+V.
+- cntRoot_Home:
+    Control: GroupContainer
+    Variant: ManualLayout
+    Properties:
+      X: =0
+      Y: =0
+      Width: =Parent.Width
+      Height: =Parent.Height
+      Fill: =gTheme.Bg
+      BorderThickness: =0
+      DropShadow: =DropShadow.None
+    Children:
+      - recTopBar_Home:
+          Control: Rectangle
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =48
+            Fill: =gTheme.TopBar
+            BorderColor: =gTheme.Border
+            BorderThickness: =0
+      - lblBrand_Home:
+          Control: Label
+          Properties:
+            Text: ="Entra Self-Service"
+            X: =20
+            Y: =0
+            Width: =300
+            Height: =48
+            Size: =13
+            Font: =Font.'Segoe UI'
+            Color: =RGBA(255, 255, 255, 1)
+            FontWeight: =FontWeight.Semibold
+            PaddingLeft: =0
+            PaddingRight: =0
+            OnSelect: =Navigate(scrHome, ScreenTransition.Fade)
+      - lblUser_Home:
+          Control: Label
+          Properties:
+            Text: =gMe.Name
+            X: =Parent.Width - 340
+            Y: =0
+            Width: =320
+            Height: =48
+            Size: =10
+            Font: =Font.'Segoe UI'
+            Color: =RGBA(255, 255, 255, 1)
+            FontWeight: =FontWeight.Normal
+            PaddingLeft: =0
+            PaddingRight: =0
+            Align: =Align.Right
+      - lblCrumb_Home:
+          Control: Label
+          Properties:
+            Text: ="Home"
+            X: =24
+            Y: =58
+            Width: =Parent.Width - 48
+            Height: =22
+            Size: =9
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Primary
+            FontWeight: =FontWeight.Normal
+            PaddingLeft: =0
+            PaddingRight: =0
+            OnSelect: =Navigate(scrHome, ScreenTransition.Fade)
+      - lblTitle_Home:
+          Control: Label
+          Properties:
+            Text: ="What do you want to do?"
+            X: =24
+            Y: =80
+            Width: =Parent.Width - 48
+            Height: =34
+            Size: =18
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Text
+            FontWeight: =FontWeight.Semibold
+            PaddingLeft: =0
+            PaddingRight: =0
+      - lblSubtitle_Home:
+          Control: Label
+          Properties:
+            Text: ="Every request is approved by your manager and by the Entra ID team, then applied automatically — stamped with your appCatID."
+            X: =24
+            Y: =112
+            Width: =Parent.Width - 48
+            Height: =22
+            Size: =10
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Muted
+            FontWeight: =FontWeight.Normal
+            PaddingLeft: =0
+            PaddingRight: =0
+      - galOps_Home:
+          Control: Gallery
+          Variant: Vertical
+          Properties:
+            Items: =gOperations
+            X: =16
+            Y: =146
+            Width: =Parent.Width - 16 - 400
+            Height: =Parent.Height - 160
+            TemplateSize: =160
+            TemplatePadding: =0
+            WrapCount: =3
+            ShowScrollbar: =true
+            BorderThickness: =0
+            OnSelect: |-
+              =Switch(ThisItem.Key,
+                  "newApp", Set(varResetNewApp, true); Navigate(scrNewApp, ScreenTransition.Fade),
+                  "group", Set(varGroupMode, "standalone"); Set(varGroupSuggest, "grp-"); Navigate(scrNewGroup, ScreenTransition.Fade),
+                  "myRequests", Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade),
+                  Set(varOp, ThisItem.Key); Set(varResetChange, true); Navigate(scrAppChange, ScreenTransition.Fade)
+              )
+          Children:
+            - recCard_Home:
+                Control: Rectangle
+                Properties:
+                  X: =8
+                  Y: =8
+                  Width: =Parent.TemplateWidth - 16
+                  Height: =Parent.TemplateHeight - 16
+                  Fill: =gTheme.Card
+                  BorderColor: =If(ThisItem.IsSelected, gTheme.Primary, gTheme.Border)
+                  BorderThickness: =1
+                  OnSelect: =Select(Parent)
+            - recCardAccent_Home:
+                Control: Rectangle
+                Properties:
+                  X: =8
+                  Y: =8
+                  Width: =4
+                  Height: =Parent.TemplateHeight - 16
+                  Fill: =gTheme.Primary
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =0
+                  OnSelect: =Select(Parent)
+            - icoCard_Home:
+                Control: Classic/Icon
+                Properties:
+                  Icon: =Switch(ThisItem.Key, "newApp", Icon.AddDocument, "exposeApi", Icon.Settings, "addAppRoles", Icon.Lock, "assignGroups", Icon.People, "createSP", Icon.Waffle, "group", Icon.AddUser, Icon.DetailList)
+                  X: =28
+                  Y: =28
+                  Width: =44
+                  Height: =44
+                  Color: =gTheme.Primary
+                  PaddingTop: =10
+                  PaddingBottom: =10
+                  PaddingLeft: =10
+                  PaddingRight: =10
+                  OnSelect: =Select(Parent)
+                  Fill: =gTheme.PrimaryLight
+            - lblCardTitle_Home:
+                Control: Label
+                Properties:
+                  Text: =ThisItem.Title
+                  X: =84
+                  Y: =26
+                  Width: =Parent.TemplateWidth - 140
+                  Height: =26
+                  Size: =13
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  OnSelect: =Select(Parent)
+            - lblCardBadge_Home:
+                Control: Label
+                Properties:
+                  Text: =ThisItem.Badge
+                  X: =84
+                  Y: =52
+                  Width: =90
+                  Height: =20
+                  Size: =8
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Primary
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  Fill: =gTheme.PrimaryLight
+                  Align: =Align.Center
+                  Visible: =ThisItem.Badge <> ""
+                  OnSelect: =Select(Parent)
+            - icoCardGo_Home:
+                Control: Classic/Icon
+                Properties:
+                  Icon: =Icon.ChevronRight
+                  X: =Parent.TemplateWidth - 52
+                  Y: =34
+                  Width: =24
+                  Height: =24
+                  Color: =gTheme.Muted
+                  PaddingTop: =2
+                  PaddingBottom: =2
+                  PaddingLeft: =2
+                  PaddingRight: =2
+                  OnSelect: =Select(Parent)
+            - lblCardSub_Home:
+                Control: Label
+                Properties:
+                  Text: =ThisItem.Subtitle
+                  X: =28
+                  Y: =82
+                  Width: =Parent.TemplateWidth - 64
+                  Height: =56
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  VerticalAlign: =VerticalAlign.Top
+                  Wrap: =true
+                  OnSelect: =Select(Parent)
+      - recRecent_Home:
+          Control: Rectangle
+          Properties:
+            X: =Parent.Width - 384
+            Y: =154
+            Width: =360
+            Height: =Parent.Height - 178
+            Fill: =gTheme.Card
+            BorderColor: =gTheme.Border
+            BorderThickness: =1
+      - lblRecentTitle_Home:
+          Control: Label
+          Properties:
+            Text: ="Your recent requests"
+            X: =Parent.Width - 364
+            Y: =164
+            Width: =320
+            Height: =28
+            Size: =12
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Text
+            FontWeight: =FontWeight.Semibold
+            PaddingLeft: =0
+            PaddingRight: =0
+      - galRecent_Home:
+          Control: Gallery
+          Variant: Vertical
+          Properties:
+            Items: =FirstN(Sort(EntraRequests, ID, SortOrder.Descending), 7)
+            X: =Parent.Width - 368
+            Y: =196
+            Width: =336
+            Height: =Parent.Height - 300
+            TemplateSize: =66
+            TemplatePadding: =0
+            WrapCount: =1
+            ShowScrollbar: =true
+            BorderThickness: =0
+            OnSelect: =Set(varSelectedReqId, ThisItem.ID); Navigate(scrMyRequests, ScreenTransition.Fade)
+          Children:
+            - lblRName_Home:
+                Control: Label
+                Properties:
+                  Text: =ThisItem.TargetDisplayName
+                  X: =12
+                  Y: =8
+                  Width: =Parent.TemplateWidth - 150
+                  Height: =22
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  OnSelect: =Select(Parent)
+            - lblRMeta_Home:
+                Control: Label
+                Properties:
+                  Text: =ThisItem.Title & "  ·  " & ThisItem.RequestType.Value
+                  X: =12
+                  Y: =32
+                  Width: =Parent.TemplateWidth - 24
+                  Height: =20
+                  Size: =9
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  OnSelect: =Select(Parent)
+            - lblRStatus_Home:
+                Control: Label
+                Properties:
+                  Text: =Switch(ThisItem.Status.Value, "PendingManagerApproval", "Awaiting manager", "PendingEntraApproval", "Awaiting Entra team", "InProgress", "In progress", ThisItem.Status.Value)
+                  X: =Parent.TemplateWidth - 136
+                  Y: =8
+                  Width: =124
+                  Height: =22
+                  Size: =9
+                  Font: =Font.'Segoe UI'
+                  Color: =Switch(ThisItem.Status.Value, "Completed", gTheme.Success, "Failed", gTheme.Danger, "Rejected", gTheme.Danger, "InProgress", gTheme.Primary, "Approved", gTheme.Primary, gTheme.Warning)
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =6
+                  PaddingRight: =6
+                  Fill: =Switch(ThisItem.Status.Value, "Completed", gTheme.SuccessLight, "Failed", gTheme.DangerLight, "Rejected", gTheme.DangerLight, "InProgress", gTheme.PrimaryLight, "Approved", gTheme.PrimaryLight, gTheme.WarningLight)
+                  Align: =Align.Center
+            - recRSep_Home:
+                Control: Rectangle
+                Properties:
+                  X: =12
+                  Y: =Parent.TemplateHeight - 1
+                  Width: =Parent.TemplateWidth - 24
+                  Height: =1
+                  Fill: =gTheme.Border
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =0
+      - lblRecentEmpty_Home:
+          Control: Label
+          Properties:
+            Text: ="Nothing yet. Pick an operation on the left to raise your first request."
+            X: =Parent.Width - 364
+            Y: =200
+            Width: =320
+            Height: =60
+            Size: =10
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Muted
+            FontWeight: =FontWeight.Normal
+            PaddingLeft: =0
+            PaddingRight: =0
+            Wrap: =true
+            Visible: =CountRows(galRecent_Home.AllItems) = 0
+      - btnAllRequests_Home:
+          Control: Classic/Button
+          Properties:
+            Text: ="View all my requests"
+            OnSelect: =Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade)
+            X: =Parent.Width - 364
+            Y: =Parent.Height - 76
+            Width: =320
+            Height: =36
+            Size: =11
+            Font: =Font.'Segoe UI'
+            FontWeight: =FontWeight.Semibold
+            RadiusTopLeft: =4
+            RadiusTopRight: =4
+            RadiusBottomLeft: =4
+            RadiusBottomRight: =4
+            Fill: =gTheme.Card
+            Color: =gTheme.Primary
+            HoverFill: =gTheme.PrimaryLight
+            PressedFill: =gTheme.PrimaryLight
+            BorderColor: =gTheme.Primary
+            BorderThickness: =1
+            HoverColor: =gTheme.PrimaryHover
+            HoverBorderColor: =gTheme.PrimaryHover

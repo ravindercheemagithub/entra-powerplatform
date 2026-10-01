@@ -1,0 +1,10 @@
+{
+  "displayName": "@{outputs('Payload')?['displayName']}",
+  "description": "@{concat(coalesce(outputs('Payload')?['description'], 'Security group'), outputs('Group_meta'))}",
+  "mailEnabled": false,
+  "mailNickname": "@{concat('erg-', substring(replace(guid(), '-', ''), 0, 12))}",
+  "securityEnabled": true,
+  "groupTypes": [],
+  "owners@odata.bind": @{body('Select_group_owner_binds')},
+  "members@odata.bind": @{body('Select_group_member_binds')}
+}

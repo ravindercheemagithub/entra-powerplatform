@@ -1,0 +1,8 @@
+{
+  "identifierUris": @{union(coalesce(body('HTTP_Get_target_app')?['identifierUris'], createArray()), createArray(replace(outputs('Payload')?['identifierUriTemplate'], '{appId}', body('HTTP_Get_target_app')?['appId'])))},
+  "api": {
+    "requestedAccessTokenVersion": 2,
+    "oauth2PermissionScopes": @{union(coalesce(body('HTTP_Get_target_app')?['api']?['oauth2PermissionScopes'], createArray()), body('Select_new_scopes'))}
+  },
+  "tags": @{outputs('Updated_tags')}
+}

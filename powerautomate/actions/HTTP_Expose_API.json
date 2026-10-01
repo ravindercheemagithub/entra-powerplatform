@@ -1,0 +1,7 @@
+{
+  "identifierUris": ["@{replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId'])}"],
+  "api": {
+    "requestedAccessTokenVersion": 2,
+    "oauth2PermissionScopes": @{body('Select_scopes')}
+  }
+}

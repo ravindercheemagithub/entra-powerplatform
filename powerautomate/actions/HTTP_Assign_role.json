@@ -1,0 +1,5 @@
+{
+  "principalId": "@{variables('varGroupId')}",
+  "resourceId": "@{variables('varSpId')}",
+  "appRoleId": "@{items('Apply_to_each_assignment')?['roleId']}"
+}

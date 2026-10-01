@@ -1,0 +1,6 @@
+{
+  "appId": "@{body('HTTP_Create_application')?['appId']}",
+  "appRoleAssignmentRequired": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},
+  "notes": "@{concat('appCatID=', triggerOutputs()?['body/AppCatId'], '; requestId=', triggerOutputs()?['body/Title'], '; createdBy=', outputs('Requester'), '; managedBy=', body('Get_settings')?['ManagedByTag'])}",
+  "tags": @{union(outputs('App_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}
+}

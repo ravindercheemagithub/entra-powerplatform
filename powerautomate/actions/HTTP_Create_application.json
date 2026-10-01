@@ -1,0 +1,17 @@
+{
+  "displayName": "@{outputs('Payload')?['displayName']}",
+  "description": "@{outputs('Payload')?['description']}",
+  "signInAudience": "@{outputs('Payload')?['signInAudience']}",
+  "notes": "@{concat('appCatID=', triggerOutputs()?['body/AppCatId'], '; requestId=', triggerOutputs()?['body/Title'], '; createdBy=', outputs('Requester'), '; managedBy=', body('Get_settings')?['ManagedByTag'])}",
+  "tags": @{outputs('App_tags')},
+  "appRoles": @{body('Select_app_roles')},
+  "api": { "requestedAccessTokenVersion": 2 },
+  "web": { "redirectUris": @{if(empty(outputs('Payload')?['redirectUrisWeb']), createArray(), split(outputs('Payload')?['redirectUrisWeb'], ';'))} },
+  "spa": { "redirectUris": @{if(empty(outputs('Payload')?['redirectUrisSpa']), createArray(), split(outputs('Payload')?['redirectUrisSpa'], ';'))} },
+  "groupMembershipClaims": "@{outputs('Payload')?['groupMembershipClaims']}",
+  "optionalClaims": {
+    "idToken": @{body('Select_id_token_claims')},
+    "accessToken": @{body('Select_access_token_claims')},
+    "saml2Token": []
+  }
+}

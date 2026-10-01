@@ -1,0 +1,5 @@
+{
+  "principalId": "@{variables('varTeamGroupId')}",
+  "resourceId": "@{variables('varSpId')}",
+  "appRoleId": "00000000-0000-0000-0000-000000000000"
+}

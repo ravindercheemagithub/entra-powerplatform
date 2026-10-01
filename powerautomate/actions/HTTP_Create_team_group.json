@@ -1,0 +1,10 @@
+{
+  "displayName": "@{outputs('Payload')?['owningGroup']?['displayName']}",
+  "description": "@{concat(coalesce(outputs('Payload')?['owningGroup']?['description'], 'Owning team'), outputs('Group_meta'))}",
+  "mailEnabled": false,
+  "mailNickname": "@{concat('erg-', substring(replace(guid(), '-', ''), 0, 12))}",
+  "securityEnabled": true,
+  "groupTypes": [],
+  "owners@odata.bind": @{body('Select_team_owner_binds')},
+  "members@odata.bind": ["https://graph.microsoft.com/v1.0/directoryObjects/@{body('HTTP_Get_requester')?['id']}"]
+}

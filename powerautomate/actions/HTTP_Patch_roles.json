@@ -1,0 +1,4 @@
+{
+  "appRoles": @{union(coalesce(body('HTTP_Get_target_app')?['appRoles'], createArray()), body('Select_new_roles'))},
+  "tags": @{outputs('Updated_tags')}
+}
