@@ -50,7 +50,7 @@ Trigger **Settings → Trigger conditions**: `@equals(triggerOutputs()?['body/St
 | 3 | `Get owner group` | Send an HTTP request to SharePoint | `GET` `_api/web/associatedownergroup?$select=Id`, header `Accept: application/json;odata=nometadata` |
 | 4 | `Break inheritance` | Send an HTTP request to SharePoint | `POST` `_api/web/lists/getbytitle('EntraRequests')/items(@{triggerOutputs()?['body/ID']})/breakroleinheritance(copyRoleAssignments=false,clearSubscopes=true)` |
 | 5 | `Grant owners` | Send an HTTP request to SharePoint | `POST` `_api/web/lists/getbytitle('EntraRequests')/items(@{triggerOutputs()?['body/ID']})/roleassignments/addroleassignment(principalid=@{body('Get_owner_group')?['Id']},roledefid=1073741829)` (Full Control) |
-| 6 | `Grant requester read` | Send an HTTP request to SharePoint | `POST` `…/items(@{triggerOutputs()?['body/ID']})/roleassignments/addroleassignment(principalid=@{body('Ensure_requester')?['Id']},roledefid=1073741826)` (Read) |
+| 6 | `Grant requester read` | Send an HTTP request to SharePoint | `POST` `_api/web/lists/getbytitle('EntraRequests')/items(@{triggerOutputs()?['body/ID']})/roleassignments/addroleassignment(principalid=@{body('Ensure_requester')?['Id']},roledefid=1073741826)` (Read) |
 | 7 | `Get locked item` | SharePoint – Get item | List `EntraRequests`, Id = `ID`. Re-reads the item **after** locking; this is the version that gets approved. |
 | 8 | `Payload` | Compose | Expr: `json(body('Get_locked_item')?['PayloadJson'])` |
 | 9 | `Get manager` | Office 365 Users – Get manager (V2) | User (UPN) = `triggerOutputs()?['body/Author/Email']` |
