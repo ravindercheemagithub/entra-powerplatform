@@ -74,6 +74,64 @@ With PowerShell 7.4+ and a browser on your machine, drop `-Tenant` and `-DeviceL
 ./provision.ps1 -SiteUrl https://<tenant>.sharepoint.com/teams/m365automationqa -ClientId <PnP app id> -ServiceAccountUpn <flow account UPN>
 ```
 
+## 2.2b No scripts allowed: create the lists with a one-time flow
+
+If your organisation blocks PowerShell scripts, a small **instant flow** can create the lists instead. It reads [`sharepoint/lists-schema.json`](../sharepoint/lists-schema.json), which defines all 4 lists and 51 columns with their exact internal names, types, choices, defaults and indexes. It then calls SharePoint's REST API through the standard **SharePoint** connector.
+
+- **No PowerShell, no app registration, no admin.** It runs as you, so you must be a **site owner**.
+- **Lists that already exist are skipped.** It never changes an existing list.
+
+### Why not "New list → From CSV / From Excel"?
+
+SharePoint can create a list from a CSV or Excel file, but the result doesn't fit these lists:
+
+- column types are guessed from sample data;
+- choice options come only from values in the file;
+- multi-line columns and date-and-time columns need fixing by hand;
+- every data row is imported as an item;
+- Microsoft's documentation doesn't say how the import treats the built-in **Title** column, which the app and flows rely on.
+
+You'd end up fixing most columns by hand, so the flow below (or creating the lists by hand, 2.3) is quicker and exact.
+
+### Build the flow (about 10 minutes)
+
+**+ Create → Instant cloud flow** → name `SP-00 Create lists` → trigger **Manually trigger a flow** → Create. Every **Send an HTTP request to SharePoint** action uses **Site Address** = your site.
+
+Headers used below:
+- **verbose:** `Accept`: `application/json;odata=verbose` and `Content-Type`: `application/json;odata=verbose`
+- **merge:** the two verbose headers plus `IF-MATCH`: `*` and `X-HTTP-Method`: `MERGE`
+
+| # | Action (name) | Type | Configuration |
+|---|---|---|---|
+| 1 | `Schema` | Data Operation – Compose | Inputs: open `sharepoint/lists-schema.json` on GitHub → **Copy raw file** → paste the whole JSON |
+| 2 | `Apply to each list` | Control – Apply to each | From `outputs('Schema')?['lists']`. Settings → Concurrency **On, 1**. Inside: 2.1–2.2 |
+| 2.1 | `Get list` | SharePoint – Send an HTTP request to SharePoint | Method `GET`; Uri `_api/web/lists/getbytitle('@{items('Apply_to_each_list')?['title']}')?$select=Id`; Headers `Accept`: `application/json;odata=nometadata`. It fails with 404 when the list doesn't exist; that's expected. |
+| 2.2 | `List missing?` | Control – Condition | Left `outputs('Get_list')?['statusCode']`; is equal to; right *plain text* `404`. **Run after** `Get list`: **is successful** + **has failed**. **If no:** leave empty (the list exists and is skipped). **If yes:** 2.3–2.6 |
+| 2.3 | `Create list` | Send an HTTP request to SharePoint | Method `POST`; Uri `_api/web/lists`; Headers *verbose*; Body `{"__metadata":{"type":"SP.List"},"BaseTemplate":100,"Title":"@{items('Apply_to_each_list')?['title']}","Description":"@{items('Apply_to_each_list')?['description']}","EnableVersioning":true}` |
+| 2.4 | `Set version limit` | Send an HTTP request to SharePoint | Method `POST`; Uri `_api/web/lists/getbytitle('@{items('Apply_to_each_list')?['title']}')`; Headers *merge*; Body `{"__metadata":{"type":"SP.List"},"MajorVersionLimit":500}` |
+| 2.5 | `Rename Title` | Send an HTTP request to SharePoint | Method `POST`; Uri `_api/web/lists/getbytitle('@{items('Apply_to_each_list')?['title']}')/fields/getbyinternalnameortitle('Title')`; Headers *merge*; Body `{"__metadata":{"type":"SP.Field"},"Title":"@{items('Apply_to_each_list')?['titleDisplayName']}","Indexed":@{items('Apply_to_each_list')?['titleIndexed']}}` |
+| 2.6 | `Apply to each field` | Apply to each | From `items('Apply_to_each_list')?['fields']`. Settings → Concurrency **On, 1**. Inside: `Add field` (Send an HTTP request to SharePoint: Method `POST`; Uri `_api/web/lists/getbytitle('@{items('Apply_to_each_list')?['title']}')/fields/createfieldasxml`; Headers *verbose*; Body `{"parameters":{"__metadata":{"type":"SP.XmlSchemaFieldCreationInformation"},"SchemaXml":"@{items('Apply_to_each_field')}","Options":24}}`) |
+| 3 | `Get settings item` | Send an HTTP request to SharePoint | After the loop (not inside it). Method `GET`; Uri `_api/web/lists/getbytitle('EntraSettings')/items?$top=1&$select=Id`; Headers `Accept`: `application/json;odata=nometadata` |
+| 4 | `No settings item?` | Condition | `empty(body('Get_settings_item')?['value'])` is equal to `true` (left **fx**, right **fx** `true`). **If yes:** `Create settings item` (Send an HTTP request to SharePoint: Method `POST`; Uri `_api/web/lists/getbytitle('EntraSettings')/items`; Headers *verbose*; Body `{"__metadata":{"type":"SP.Data.EntraSettingsListItem"},"Title":"settings","ManagedByTag":"entra-pp","PfxSecretName":"entra-pp-graph-pfx","PfxPasswordSecretName":"entra-pp-graph-pfx-password"}`) |
+
+`Options: 24` tells SharePoint to keep each field's `Name` as its internal name and to add the column to the default view.
+
+**Run it:** **Save** → **Test** → **Manually** → **Run flow**. Afterwards it does nothing more and can be deleted, or kept to recreate the lists on another site.
+
+In the run, `Get list` shows **red (404)** for each list that didn't exist yet. That is the expected path, and the run still ends as **Succeeded**. A list that already existed shows a green `Get list` and the **If no** branch.
+
+### Finish by hand (about 5 minutes)
+
+The flow doesn't change permissions. Set them in each list's **Settings → List settings**:
+
+1. **EntraRequests** → *Advanced settings* → Item-level permissions:
+   - Read access: **Read items that were created by the user**
+   - Create and Edit access: **Create items and edit items that were created by the user**
+2. **EntraCatalogApps** and **EntraCatalogGroups** → *Permissions for this list* → **Stop Inheriting Permissions** → tick the **Members** group → **Edit User Permissions** → only **Read**.
+3. **EntraSettings** → *Permissions for this list* → **Stop Inheriting Permissions** → tick **Members** and **Visitors** → **Remove User Permissions** (only Owners remain).
+4. **EntraSettings** → open the item (ID 1) and fill in: TenantId, GraphClientId, ServiceAccountUpn (lower case), EntraApproverEmails, FallbackApproverEmail and PowerAppUrl (see 2.3).
+5. Check: *List settings → Indexed columns* on EntraRequests shows Title, RequestType, Status and AppCatId. If one is missing, add it there.
+
 ## 2.3 Lists: by hand
 
 **Internal names matter.** The app and flows use internal names. Create each column with exactly the name shown (no spaces), then change the display name if you like. *Multiple lines of text* columns must be **Plain text**, with *Append changes to existing text* = **No**.
