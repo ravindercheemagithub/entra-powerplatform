@@ -81,7 +81,7 @@
           },
           "conditions": [
             {
-              "expression": "@equals(triggerBody()?['Status']?['Value'], 'Submitted')"
+              "expression": "@and(equals(triggerBody()?['Status']?['Value'], 'Submitted'), not(equals(triggerBody()?['RequestType']?['Value'], 'onboardGroup')))"
             }
           ]
         }

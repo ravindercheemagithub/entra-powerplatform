@@ -8,6 +8,7 @@ Five screens, built by pasting YAML into Power Apps Studio. Every control is a c
 | `scrNewApp` | **Register an application**: 5 sections, Submit / Next / Cancel at the bottom |
 | `scrNewGroup` | new security group, as a request on its own or inline for the wizard ("Create new group") |
 | `scrAppChange` | changes to an existing app your groups own: Expose an API, App roles, Role assignments, Enterprise app |
+| `scrAddGroup` | **Add existing group**: enter a group's Object ID to make it selectable (flow ER-04 checks you are a member or owner; no approval) |
 | `scrMyRequests` | history with approval stages, created IDs and errors |
 
 ## 3.0 Fastest: import the packed app (.msapp)
@@ -54,7 +55,7 @@ In the Tree view select **App**:
 
 ## 3.3 Screens
 
-For each screen, in this order: **scrHome, scrMyRequests, scrNewGroup, scrNewApp, scrAppChange**. The order avoids "screen not found" errors while you paste, since formulas navigate between screens; any order works once all exist.
+For each screen, in this order: **scrHome, scrMyRequests, scrNewGroup, scrAddGroup, scrNewApp, scrAppChange**. The order avoids "screen not found" errors while you paste, since formulas navigate between screens; any order works once all exist.
 
 1. **New screen → Blank**, rename it exactly (e.g. `scrHome`). Delete `Screen1` at the end; `scrHome` must be first in the Tree view, which makes it the start screen.
 2. Select the screen. Set **Fill** = `gTheme.Bg`, and **OnVisible** = its formula from [`powerapps/Screens.OnVisible.fx`](../powerapps/Screens.OnVisible.fx).
@@ -93,12 +94,17 @@ Left: a step list (`galSteps_NewApp`). You can click back to any step you've vis
 - **You onboard an existing group:** add a row with **Title** and **GroupId** (the group's Object ID) and run **ER-03**, which fills in MemberUpns, OwnerUpns and the appCatID.
 - **ER-03** keeps all rows current every hour, and adds the team group of every app the platform manages.
 
-So a group that already exists in Entra appears only after it has been onboarded, and only for its members. To use it as the owning team you must be a member, because ER-02 checks membership.
+So a group that already exists in Entra appears only after it has been onboarded, and only for its members. Users onboard groups themselves: **Group not listed? Add an existing group** next to the picker, or the **Add existing group** card on Home, opens `scrAddGroup`. To use it as the owning team you must be a member, because ER-02 checks membership.
 
 ### scrNewGroup
 - **Standalone** (from Home): name, appCatID, description, additional owners, initial members, justification → **Submit request** (`createGroup`).
 - **Inline** (`varGroupMode` = `inline-team` / `inline-role` / `inline-assign`, opened from **＋ Create new group** in a request): name, description, additional owners → **Add to request** → back. The appCatID is shown read-only: an inline group always gets the appCatID of the request it belongs to (ER-02 stamps it from the request). *Initial members* is disabled: groups created with a request start with owners only, and the owners add members once the group exists.
 - **Owners / members pickers** search the directory through Office 365 Users: type part of a name and pick from the list (nothing to type in a special format). They stay empty until the **Office 365 Users** data source is added. The requester is always an owner, so *Additional owners* is optional.
+
+### scrAddGroup: Add an existing group
+- One field, **Group Object ID** (`txtGroupId_AddGroup`). **Add group** checks it looks like a GUID and isn't already in your groups, then Patches `EntraRequests` with `RequestType = onboardGroup`, `Status = Submitted`, `TargetObjectId` = the ID.
+- **ER-04** (not ER-01) picks it up: it checks in Entra that you are a member or owner and that the group is security-enabled, then creates or updates the `EntraCatalogGroups` row. No approval; nothing changes in Entra.
+- The list at the bottom shows your recent additions with their status and any error (e.g. *You are neither a member nor an owner of this group*). **↻ Refresh** reloads it; the Owning team picker refreshes each time you open the New app screen.
 
 ### scrAppChange
 - Left: **your applications** (`gMyApps`: catalog rows where you're in the team group or an owner), with search.

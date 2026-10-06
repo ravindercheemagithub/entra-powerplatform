@@ -143,7 +143,7 @@ def screen(name: str, state: dict) -> str:
 def main() -> None:
     parts = [screen("scrHome", {})]
     parts += [screen("scrNewApp", {"step": n}) for n in range(1, 6)]
-    parts += [screen("scrNewGroup", {})]
+    parts += [screen("scrNewGroup", {}), screen("scrAddGroup", {})]
     parts += [screen("scrAppChange", {"op": op, "app": True}) for op in ("exposeApi", "addAppRoles", "assignGroups", "createSP")]
     parts += [screen("scrMyRequests", {})]
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Layout preview</title><style>

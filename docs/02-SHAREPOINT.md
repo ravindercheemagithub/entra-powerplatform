@@ -141,7 +141,7 @@ The flow doesn't change permissions. Set them in each list's **Settings → List
 | Column | Type | Notes |
 |---|---|---|
 | Title | (built-in) | rename display name to *RequestId*; `REQ-2610-K7M4X2`; **index** it |
-| RequestType | Choice | `createAppRegistration`, `exposeApi`, `addAppRoles`, `assignGroupsToAppRoles`, `createServicePrincipal`, `createGroup`; **index** |
+| RequestType | Choice | `createAppRegistration`, `exposeApi`, `addAppRoles`, `assignGroupsToAppRoles`, `createServicePrincipal`, `createGroup`, `onboardGroup`; **index**. Lists created before `onboardGroup` existed: *List settings → RequestType → add the choice `onboardGroup`*. |
 | Status | Choice | `Submitted` (default), `PendingManagerApproval`, `PendingEntraApproval`, `Approved`, `InProgress`, `Completed`, `Failed`, `Rejected`; **index** |
 | AppCatId | Single line | **index** |
 | TargetDisplayName | Single line | the app / group name |

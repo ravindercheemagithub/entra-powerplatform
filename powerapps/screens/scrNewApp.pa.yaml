@@ -481,6 +481,21 @@
                   PaddingLeft: =0
                   PaddingRight: =0
                   OnSelect: =Set(varGroupMode, "inline-team"); Set(varGroupSuggest, "team-" & Lower(Substitute(Trim(txtAppName_NewApp.Text), " ", "-"))); Navigate(scrNewGroup, ScreenTransition.Fade)
+            - lnkAddExisting_NewApp:
+                Control: Label
+                Properties:
+                  Text: ="Group not listed? Add an existing group"
+                  X: =(Parent.Width + 24) / 2 + 262
+                  Y: =214
+                  Width: =(Parent.Width - 24) / 2 - 262
+                  Height: =24
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Primary
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  OnSelect: =Navigate(scrAddGroup, ScreenTransition.Fade)
             - lblJust_NewApp:
                 Control: Label
                 Properties:

@@ -36,7 +36,7 @@ SRC = PA / "src"
 DIST = PA / "dist"
 APP_NAME = "Entra Self-Service"
 FILE_STEM = "EntraSelfService"
-SCREENS = ["scrHome", "scrNewApp", "scrNewGroup", "scrAppChange", "scrMyRequests"]
+SCREENS = ["scrHome", "scrNewApp", "scrNewGroup", "scrAddGroup", "scrAppChange", "scrMyRequests"]
 APP_ID = "6f0c3a1e-2b7d-4e55-9a10-5c3e0e1d0a01"   # stable, so re-opening keeps the same app identity
 
 # Control versions as used by current Studio builds (doc version 1.349 sample apps).

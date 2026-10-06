@@ -55,6 +55,7 @@ gOperations = Table(
     { Key: "assignGroups", Title: "Role assignments", Subtitle: "Grant Entra groups an app role so the group owners manage who has access.", Badge: "" },
     { Key: "createSP", Title: "Enterprise application", Subtitle: "Create the service principal for an existing app registration.", Badge: "" },
     { Key: "group", Title: "Security group", Subtitle: "Create a security group you own, stamped with your appCatID.", Badge: "" },
+    { Key: "onboardGroup", Title: "Add existing group", Subtitle: "Make a group you already belong to selectable here. No approval needed.", Badge: "" },
     { Key: "myRequests", Title: "My requests", Subtitle: "Track approvals and see exactly what was created.", Badge: "" }
 );
 

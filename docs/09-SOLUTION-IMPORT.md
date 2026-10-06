@@ -1,6 +1,6 @@
 # 9. Import the flows as a solution
 
-Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_0_0_0.zip`](../solution/dist/EntraSelfService_1_0_0_0.zip) is an **unmanaged** solution containing:
+Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_1_0_0.zip`](../solution/dist/EntraSelfService_1_1_0_0.zip) (version 1.1) is an **unmanaged** solution containing:
 
 | Component | What it is |
 |---|---|
@@ -8,6 +8,7 @@ Instead of building the flows by hand from doc 04, import them. [`solution/dist/
 | **ER-01 Approvals** | lock, manager approval, Entra team approval |
 | **ER-02 Execute** | applies approved requests in Entra through Microsoft Graph |
 | **ER-03 Catalog sync** | hourly refresh of the catalog lists |
+| **ER-04 Onboard group** | adds an existing group to the catalog when the requester is a member or owner (no approval) |
 | 5 connection references | SharePoint, Office 365 Users, Approvals, Office 365 Outlook, HTTP with Microsoft Entra ID |
 | Environment variable **SharePoint site URL** (`esp_SiteUrl`) | the site that holds the lists |
 
@@ -34,7 +35,7 @@ Import **as the account that should own the flows** (your account while testing,
 
 ## 9.2 Download the zip
 
-On GitHub open [`solution/dist/EntraSelfService_1_0_0_0.zip`](../solution/dist/EntraSelfService_1_0_0_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
+On GitHub open [`solution/dist/EntraSelfService_1_1_0_0.zip`](../solution/dist/EntraSelfService_1_1_0_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
 
 ## 9.3 Import
 
@@ -69,6 +70,7 @@ On GitHub open [`solution/dist/EntraSelfService_1_0_0_0.zip`](../solution/dist/E
 4. **Import the app**: [doc 03 §3.0](03-POWER-APPS.md#30-fastest-import-the-packed-app-msapp) (Apps → Import app → From file (.msapp), then add the three lists and Office 365 Users as data sources).
 5. **Turn on ER-01** and test it with [doc 06](06-TEST-ER01.md).
 6. **Turn on ER-03** and test it with [doc 08](08-TEST-ER03.md). It's read-only in Entra.
+   Turn on **ER-04** too, and test it with [doc 10](10-TEST-ER04.md). It's read-only in Entra and needs no approval.
 7. **Turn on ER-02** when you are ready for it to create objects in Entra, and test it with [doc 07](07-TEST-ER02.md).
 
 Open each flow once in the designer and check it has no errors before turning it on. If the designer warns that a list can't be found, check the **SharePoint site URL** environment variable (Solutions → Entra Self-Service → **Environment variables** → SharePoint site URL → *Current value*).
@@ -84,6 +86,8 @@ Open each flow once in the designer and check it has no errors before turning it
 | SharePoint actions fail with *List not found* | The site URL variable is wrong, or SP-00 hasn't created the lists yet |
 
 ## 9.6 Updating
+
+**From 1.0 to 1.1** (adds ER-04 and changes ER-01's trigger to skip `onboardGroup` requests): add the choice `onboardGroup` to the RequestType column of EntraRequests (List settings → RequestType), then import the 1.1 zip over 1.0. Turn on **ER-04** afterwards; ER-01 keeps its state.
 
 A newer zip has a higher version number and the same flow IDs, so importing it **upgrades the flows in place**. Because the solution is unmanaged, an import overwrites changes you made to these four flows. Note or export your own changes first (**Solutions → Entra Self-Service → Export**).
 

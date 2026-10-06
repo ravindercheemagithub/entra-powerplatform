@@ -406,7 +406,7 @@ Screens:
                   Y: =70
                   Width: =(Parent.Width - 36) / 4
                   Height: =72
-                  Fill: =Switch(galReq_My.Selected.ManagerDecision.Value, "Approved", gTheme.SuccessLight, "Rejected", gTheme.DangerLight, gTheme.Card)
+                  Fill: =If(galReq_My.Selected.RequestType.Value = "onboardGroup", gTheme.Bg, Switch(galReq_My.Selected.ManagerDecision.Value, "Approved", gTheme.SuccessLight, "Rejected", gTheme.DangerLight, gTheme.Card))
                   BorderColor: =gTheme.Border
                   BorderThickness: =1
             - lblStage1T_My:
@@ -426,7 +426,7 @@ Screens:
             - lblStage1S_My:
                 Control: Label@2.5.1
                 Properties:
-                  Text: =galReq_My.Selected.ManagerDecision.Value & If(!IsBlank(galReq_My.Selected.ManagerName), " · " & galReq_My.Selected.ManagerName, "")
+                  Text: =If(galReq_My.Selected.RequestType.Value = "onboardGroup", "Not needed", galReq_My.Selected.ManagerDecision.Value & If(!IsBlank(galReq_My.Selected.ManagerName), " · " & galReq_My.Selected.ManagerName, ""))
                   X: =1 * ((Parent.Width - 36) / 4 + 12) + 12
                   Y: =102
                   Width: =(Parent.Width - 36) / 4 - 24
@@ -446,7 +446,7 @@ Screens:
                   Y: =70
                   Width: =(Parent.Width - 36) / 4
                   Height: =72
-                  Fill: =Switch(galReq_My.Selected.EntraDecision.Value, "Approved", gTheme.SuccessLight, "Rejected", gTheme.DangerLight, gTheme.Card)
+                  Fill: =If(galReq_My.Selected.RequestType.Value = "onboardGroup", gTheme.Bg, Switch(galReq_My.Selected.EntraDecision.Value, "Approved", gTheme.SuccessLight, "Rejected", gTheme.DangerLight, gTheme.Card))
                   BorderColor: =gTheme.Border
                   BorderThickness: =1
             - lblStage2T_My:
@@ -466,7 +466,7 @@ Screens:
             - lblStage2S_My:
                 Control: Label@2.5.1
                 Properties:
-                  Text: =galReq_My.Selected.EntraDecision.Value & If(!IsBlank(galReq_My.Selected.EntraDecisionBy), " · " & galReq_My.Selected.EntraDecisionBy, "")
+                  Text: =If(galReq_My.Selected.RequestType.Value = "onboardGroup", "Not needed", galReq_My.Selected.EntraDecision.Value & If(!IsBlank(galReq_My.Selected.EntraDecisionBy), " · " & galReq_My.Selected.EntraDecisionBy, ""))
                   X: =2 * ((Parent.Width - 36) / 4 + 12) + 12
                   Y: =102
                   Width: =(Parent.Width - 36) / 4 - 24

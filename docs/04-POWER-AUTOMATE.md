@@ -5,6 +5,7 @@
 | **ER-01 Approvals** | SharePoint: item created in EntraRequests | SharePoint, Office 365 Users, Approvals, Office 365 Outlook, Teams (optional) | Standard |
 | **ER-02 Execute** | SharePoint: item created or modified, `Status = Approved` | SharePoint, Outlook, plus a Graph connection: **HTTP with Microsoft Entra ID (preauthorized)** (option A) or **HTTP** + **Azure Key Vault** (option B) | Premium (owner's licence) |
 | **ER-03 Catalog sync** | Recurrence, hourly (+ run manually) | SharePoint, plus the same Graph connection | Premium (owner's licence) |
+| **ER-04 Onboard group** | SharePoint: item created, `RequestType = onboardGroup` | SharePoint, plus the same Graph connection | Premium (owner's licence) |
 
 **Shortcut:** instead of building the flows by hand, import them as a solution: [doc 09](09-SOLUTION-IMPORT.md). This page remains the reference for what each action does.
 
@@ -92,7 +93,7 @@ Either way, build the first Graph action completely, then copy it (classic: *…
 ## ER-01 Approvals (standard connectors only)
 
 **+ Create → Automated cloud flow** → name `ER-01 Approvals` → trigger **SharePoint – When an item is created** → Site Address = your site, List Name = `EntraRequests`.
-Trigger **Settings → Trigger conditions** → **+ Add**: `@equals(triggerOutputs()?['body/Status/Value'], 'Submitted')`
+Trigger **Settings → Trigger conditions** → **+ Add**: `@and(equals(triggerOutputs()?['body/Status/Value'], 'Submitted'), not(equals(triggerOutputs()?['body/RequestType/Value'], 'onboardGroup')))` (onboardGroup requests need no approval; ER-04 handles them)
 
 | # | Action (name) | Type | Configuration |
 |---|---|---|---|
@@ -434,6 +435,48 @@ After `Apply to each app` (not inside it). This also completes rows added by han
 | 7.6 | `Update group row` | SharePoint – Update item | List `EntraCatalogGroups`; Id `items('Apply_to_each_catalog_group')?['ID']`; Title `body('HTTP_Group')?['displayName']`; Description `body('HTTP_Group')?['description']`; AppCatId `if(contains(coalesce(body('HTTP_Group')?['description'], ''), '[appCatID='), first(split(last(split(body('HTTP_Group')?['description'], '[appCatID=')), ';')), '')`; MemberUpns `concat(';', join(body('Select_group_member_upns'), ';'), ';')`; OwnerUpns `concat(';', join(body('Select_group_owner_upns'), ';'), ';')`; LastSynced `utcNow()` |
 
 A deleted group makes `HTTP Group` fail with 404, which fails that iteration and marks the run as failed. To flag or remove such rows, add an action after `HTTP Group` with **Run after → has failed** (for example an Update item that sets LastSynced and a note in Description, or a Delete item).
+
+---
+
+## ER-04 Onboard group (Premium)
+
+Adds an **existing** group to `EntraCatalogGroups` so it appears in the app's pickers for its members and owners. The requester must be a **member or owner** of the group and the group must be **security-enabled**. No approval is needed and nothing changes in Entra.
+
+**+ Create → Automated cloud flow** → name `ER-04 Onboard group` → trigger **SharePoint – When an item is created** → Site Address = your site, List Name = `EntraRequests`.
+Trigger **Settings → Trigger conditions** → **+ Add**: `@and(equals(triggerOutputs()?['body/Status/Value'], 'Submitted'), equals(triggerOutputs()?['body/RequestType/Value'], 'onboardGroup'))`
+
+| # | Action (name) | Type | Configuration |
+|---|---|---|---|
+| 1 | `Get settings` | SharePoint – Get item | List Name `EntraSettings`; Id *plain text* `1` |
+| 2 | `Mark in progress` | SharePoint – Update item | List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `InProgress` |
+| 3 | `Requester` | Compose | Inputs `toLower(last(split(triggerOutputs()?['body/Author/Claims'], '\|')))` |
+| 4 | `Group id` | Compose | Inputs `toLower(trim(coalesce(triggerOutputs()?['body/TargetObjectId'], '')))` |
+| 5 | `Try` | Control – Scope | Contains 5.1–5.12 |
+| 5.1 | `HTTP Get requester` | Graph | `GET` `https://graph.microsoft.com/v1.0/users/@{outputs('Requester')}?$select=id` |
+| 5.2 | `HTTP Get group` | Graph | `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Group_id')}?$select=id,displayName,description,securityEnabled` |
+| 5.3 | `HTTP Check membership` | Graph | `POST` `https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups`; Body `{"groupIds": ["@{outputs('Group_id')}"]}` (transitive: nested membership counts) |
+| 5.4 | `HTTP Group owners` | Graph | `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Group_id')}/owners/microsoft.graph.user?$select=id,userPrincipalName` |
+| 5.5 | `Member or owner?` | Condition | `or(not(empty(body('HTTP_Check_membership')?['value'])), contains(string(body('HTTP_Group_owners')?['value']), body('HTTP_Get_requester')?['id']))` is equal to `true`. **If no:** `Fail not member` (Update item: List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `Failed`; ErrorMessage *plain text* `You are neither a member nor an owner of this group.`) → `Stop not member` (Terminate: **Failed**, Code `NotMemberOrOwner`) |
+| 5.6 | `Security enabled?` | Condition | Left `body('HTTP_Get_group')?['securityEnabled']`; is equal to; right **fx** `true`. **If no:** `Fail not security` (Update item as above with ErrorMessage *plain text* `Only security-enabled groups can be used for owning teams and app roles.`) → `Stop not security` (Terminate: **Failed**, Code `NotSecurityGroup`) |
+| 5.7 | `HTTP Group members` | Graph | `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Group_id')}/transitiveMembers/microsoft.graph.user?$select=userPrincipalName&$top=999` |
+| 5.8 | `Select member upns` | Select | From `body('HTTP_Group_members')?['value']`; Map in text mode `toLower(item()?['userPrincipalName'])` |
+| 5.9 | `Select owner upns` | Select | From `body('HTTP_Group_owners')?['value']`; Map in text mode `toLower(item()?['userPrincipalName'])` |
+| 5.10 | `Get catalog row` | SharePoint – Get items | List `EntraCatalogGroups`; Filter Query `GroupId eq '@{outputs('Group_id')}'`; Top Count `1` |
+| 5.11 | `Row missing?` | Condition | `empty(body('Get_catalog_row')?['value'])` is equal to `true`. **If yes:** `Create catalog row` (Create item, List `EntraCatalogGroups`, fields below). **If no:** `Update catalog row` (Update item, List `EntraCatalogGroups`, Id `first(body('Get_catalog_row')?['value'])?['ID']`, fields below) |
+| 5.12 | `Mark completed` | Update item | List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `Completed`; CompletedAt `utcNow()`; TargetDisplayName `body('HTTP_Get_group')?['displayName']`; ResultJson `string(setProperty(setProperty(json('{}'), 'groupId', body('HTTP_Get_group')?['id']), 'groupDisplayName', body('HTTP_Get_group')?['displayName']))` |
+| 6 | `Catch` | Scope, **Run after** `Try`: has failed + has timed out | `Failed actions` (Filter array: From `result('Try')`; `item()?['status']` is equal to `Failed`) → `Error text` (Compose: `if(equals(outputs('HTTP_Get_group')?['statusCode'], 404), 'Group not found: check the Object ID (Entra admin center > Groups > the group > Object ID).', concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-04 run history')))`) → `Mark failed` (Update item: Id, Title, **Status Value** `Failed`, ErrorMessage `outputs('Error_text')`) |
+
+Catalog row fields (5.11):
+
+| Column | Value (fx) |
+|---|---|
+| Title | `body('HTTP_Get_group')?['displayName']` |
+| GroupId | `body('HTTP_Get_group')?['id']` |
+| Description | `body('HTTP_Get_group')?['description']` |
+| AppCatId | `if(contains(coalesce(body('HTTP_Get_group')?['description'], ''), '[appCatID='), first(split(last(split(body('HTTP_Get_group')?['description'], '[appCatID=')), ';')), '')` |
+| MemberUpns | `concat(';', join(body('Select_member_upns'), ';'), ';')` |
+| OwnerUpns | `concat(';', join(body('Select_owner_upns'), ';'), ';')` |
+| LastSynced | `utcNow()` |
 
 ---
 

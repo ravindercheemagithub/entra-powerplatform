@@ -49,6 +49,7 @@ def home() -> None:
         on_select="""Switch(ThisItem.Key,
     "newApp", Set(varResetNewApp, true); Navigate(scrNewApp, ScreenTransition.Fade),
     "group", Set(varGroupMode, "standalone"); Set(varGroupSuggest, "grp-"); Navigate(scrNewGroup, ScreenTransition.Fade),
+    "onboardGroup", Navigate(scrAddGroup, ScreenTransition.Fade),
     "myRequests", Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade),
     Set(varOp, ThisItem.Key); Set(varResetChange, true); Navigate(scrAppChange, ScreenTransition.Fade)
 )""",
@@ -58,7 +59,7 @@ def home() -> None:
             rect("recCardAccent_Home", 8, 8, 4, "Parent.TemplateHeight - 16", fill="gTheme.Primary", thickness=0, OnSelect="Select(Parent)"),
             icon("icoCard_Home",
                  'Switch(ThisItem.Key, "newApp", Icon.AddDocument, "exposeApi", Icon.Settings, "addAppRoles", Icon.Lock, '
-                 '"assignGroups", Icon.People, "createSP", Icon.Waffle, "group", Icon.AddUser, Icon.DetailList)',
+                 '"assignGroups", Icon.People, "createSP", Icon.Waffle, "group", Icon.AddUser, "onboardGroup", Icon.Search, Icon.DetailList)',
                  28, 28, 44, 44, color="gTheme.Primary", on_select="Select(Parent)", Fill="gTheme.PrimaryLight",
                  PaddingTop=10, PaddingBottom=10, PaddingLeft=10, PaddingRight=10),
             label("lblCardTitle_Home", "ThisItem.Title", 84, 26, "Parent.TemplateWidth - 140", 26, size=13, bold=True, OnSelect="Select(Parent)"),
@@ -231,6 +232,8 @@ def new_app() -> None:
         link(f"lnkNewTeam_{s}", q("＋ Create new team group"),
              f'Set(varGroupMode, "inline-team"); Set(varGroupSuggest, "team-" & Lower(Substitute(Trim(txtAppName_{s}.Text), " ", "-"))); '
              "Navigate(scrNewGroup, ScreenTransition.Fade)", COL2_X, 214, 260),
+        link(f"lnkAddExisting_{s}", q("Group not listed? Add an existing group"), "Navigate(scrAddGroup, ScreenTransition.Fade)",
+             f"{COL2_X} + 262", 214, f"{COL_W} - 262"),
 
         field_label(f"lblJust_{s}", "Business justification", COL1_X, 248, COL_W, required=True),
         text_input(f"txtJustification_{s}", '""', q("Why is this needed, and for which service? Your manager and the Entra ID team read this."),
@@ -517,6 +520,72 @@ def new_group() -> None:
     write("scrNewGroup", root(s, children), "New security group: standalone request, or inline group for the wizard / change screen")
 
 
+# ============================================================================ scrAddGroup
+def add_group() -> None:
+    s = "AddGroup"
+    gid = f"Lower(Trim(txtGroupId_{s}.Text))"
+    submit = f"""If(
+    !IsMatch({gid}, "^[0-9a-f]{{8}}-([0-9a-f]{{4}}-){{3}}[0-9a-f]{{12}}$"),
+        Notify("Enter the group's Object ID: 32 hex digits in the form 00000000-0000-0000-0000-000000000000.", NotificationType.Warning),
+    !IsBlank(LookUp(gMyGroups, GroupId = {gid})),
+        Notify("This group is already available to you in the pickers.", NotificationType.Information),
+    {NEW_REQ_ID};
+    IfError(
+        Patch(EntraRequests, Defaults(EntraRequests), {{
+            Title: varReqId,
+            RequestType: {{Value: "onboardGroup"}},
+            Status: {{Value: "Submitted"}},
+            TargetObjectId: {gid},
+            TargetDisplayName: {gid},
+            Justification: "Add an existing group to the self-service catalog",
+            PayloadJson: JSON({{groupId: {gid}}}, JSONFormat.Compact)
+        }}),
+        Notify("The request could not be submitted: " & FirstError.Message, NotificationType.Error),
+        Notify("Request " & varReqId & " submitted. The group appears in about a minute if you are a member or owner.", NotificationType.Success);
+        Reset(txtGroupId_{s}); Refresh(EntraRequests)
+    )
+)"""
+    history = gallery(
+        f"galOnboard_{s}", 'FirstN(Sort(Filter(EntraRequests, RequestType.Value = "onboardGroup"), ID, SortOrder.Descending), 6)',
+        0, 300, "Parent.Width", "Parent.Height - 300", 64,
+        children=[
+            label(f"lblOName_{s}", "ThisItem.TargetDisplayName", 12, 6, "Parent.TemplateWidth - 190", 22, bold=True),
+            label(f"lblOMeta_{s}", 'ThisItem.Title & "  ·  " & Text(ThisItem.Created, "dd mmm yyyy hh:mm")', 12, 28, "Parent.TemplateWidth - 190", 18,
+                  size=9, color="gTheme.Muted"),
+            label(f"lblOError_{s}", "ThisItem.ErrorMessage", 12, 44, "Parent.TemplateWidth - 24", 18, size=9, color="gTheme.Danger",
+                  Visible="!IsBlank(ThisItem.ErrorMessage)"),
+            status_badge(f"lblOStatus_{s}", "ThisItem.Status.Value", "Parent.TemplateWidth - 166", 8, 150, 22),
+            rect(f"recOSep_{s}", 12, "Parent.TemplateHeight - 1", "Parent.TemplateWidth - 24", 1, fill="gTheme.Border", thickness=0),
+        ],
+    )
+    form = container(f"cntAddGroup_{s}", 48, 170, "Parent.Width - 96", "Parent.Height - 170 - 92", [
+        field_label(f"lblGroupId_{s}", "Group Object ID", COL1_X, 0, COL_W, required=True),
+        text_input(f"txtGroupId_{s}", '""', q("00000000-0000-0000-0000-000000000000"), COL1_X, 22, COL_W),
+        hint(f"hntGroupId_{s}", q("Entra admin center → Groups → the group → Overview → Object ID."), COL1_X, 60, COL_W),
+        rect(f"recInfo_{s}", COL2_X, 0, COL_W, 132, fill="gTheme.PrimaryLight", border="gTheme.PrimaryLight"),
+        label(f"lblInfo_{s}",
+              q("No approval is needed: nothing changes in Entra. A flow checks that you are a member or owner of the group and that it is a "
+                "security group, then makes it selectable here. It appears for all its members and owners, usually within a minute, "
+                "and is kept up to date every hour."),
+              f"{COL2_X} + 14", 8, f"{COL_W} - 28", 116, size=10, Wrap="true", VerticalAlign="VerticalAlign.Top"),
+        label(f"lblHistory_{s}", q("Your recent additions"), COL1_X, 264, COL_W, 28, size=12, bold=True),
+        link(f"lnkRefresh_{s}", q("↻ Refresh"), "Refresh(EntraRequests); Refresh(EntraCatalogGroups)", f"Parent.Width - 120", 266, 120),
+        history,
+        label(f"lblHistoryEmpty_{s}", q("Nothing added yet."), COL1_X, 304, COL_W, 24, size=10, color="gTheme.Muted",
+              Visible=f"CountRows(galOnboard_{s}.AllItems) = 0"),
+    ])
+    children = frame(s, q("Add an existing group"),
+                     q("If a group you belong to isn't offered in the Owning team or group pickers, add it here."),
+                     q("Home  ›  Groups  ›  Add existing group")) + [
+        rect(f"recCard_{s}", 24, 146, "Parent.Width - 48", "Parent.Height - 146 - 80"),
+        form,
+        rect(f"recCmd_{s}", 0, "Parent.Height - 64", "Parent.Width", 64),
+        button(f"btnSubmit_{s}", q("Add group"), submit, 24, "Parent.Height - 50", 170, 36),
+        button(f"btnBack_{s}", q("Back"), "Back()", 204, "Parent.Height - 50", 120, 36, kind="subtle"),
+    ]
+    write("scrAddGroup", root(s, children), "Add an existing group to the catalog (request type onboardGroup, processed by flow ER-04)")
+
+
 # ============================================================================ scrAppChange
 def app_change() -> None:
     s = "Change"
@@ -676,6 +745,8 @@ def my_requests() -> None:
                   VerticalAlign="VerticalAlign.Top"),
         ]
 
+    onboard = f'{sel}.RequestType.Value = "onboardGroup"'
+
     def decision_fill(col: str) -> str:
         return f'Switch({sel}.{col}.Value, "Approved", gTheme.SuccessLight, "Rejected", gTheme.DangerLight, gTheme.Card)'
 
@@ -704,8 +775,10 @@ If(!IsBlank({sel}.RequestSummary), "<p style='margin-top:10px; color:#605e5c'><b
         hint(f"lblDMeta_{s}", f'{sel}.Title & "   ·   " & {sel}.RequestType.Value & "   ·   appCatID " & {sel}.AppCatId & "   ·   " & Text({sel}.Created, "dd mmm yyyy hh:mm")',
              0, 34, "Parent.Width"),
         *stage(0, "1  Submitted", f'Text({sel}.Created, "dd mmm yyyy hh:mm")', "gTheme.SuccessLight"),
-        *stage(1, "2  Manager approval", f'{sel}.ManagerDecision.Value & If(!IsBlank({sel}.ManagerName), " · " & {sel}.ManagerName, "")', decision_fill("ManagerDecision")),
-        *stage(2, "3  Entra ID team", f'{sel}.EntraDecision.Value & If(!IsBlank({sel}.EntraDecisionBy), " · " & {sel}.EntraDecisionBy, "")', decision_fill("EntraDecision")),
+        *stage(1, "2  Manager approval", f'If({onboard}, "Not needed", {sel}.ManagerDecision.Value & If(!IsBlank({sel}.ManagerName), " · " & {sel}.ManagerName, ""))',
+               f'If({onboard}, gTheme.Bg, {decision_fill("ManagerDecision")})'),
+        *stage(2, "3  Entra ID team", f'If({onboard}, "Not needed", {sel}.EntraDecision.Value & If(!IsBlank({sel}.EntraDecisionBy), " · " & {sel}.EntraDecisionBy, ""))',
+               f'If({onboard}, gTheme.Bg, {decision_fill("EntraDecision")})'),
         *stage(3, "4  Applied in Entra ID",
                f'Switch({sel}.Status.Value, "Completed", "Done · " & Text({sel}.CompletedAt, "dd mmm hh:mm"), "Failed", "Failed — see error", "InProgress", "Running…", "Not started")',
                f'Switch({sel}.Status.Value, "Completed", gTheme.SuccessLight, "Failed", gTheme.DangerLight, "InProgress", gTheme.PrimaryLight, gTheme.Card)'),
@@ -745,6 +818,7 @@ if __name__ == "__main__":
     home()
     new_app()
     new_group()
+    add_group()
     app_change()
     my_requests()
     print("generated:", ", ".join(sorted(p.name for p in OUT.glob("*.pa.yaml"))))

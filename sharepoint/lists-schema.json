@@ -7,7 +7,7 @@
       "titleDisplayName": "RequestId",
       "titleIndexed": "true",
       "fields": [
-        "<Field Type='Choice' Name='RequestType' StaticName='RequestType' DisplayName='RequestType' Indexed='TRUE' Format='Dropdown' FillInChoice='FALSE'><CHOICES><CHOICE>createAppRegistration</CHOICE><CHOICE>exposeApi</CHOICE><CHOICE>addAppRoles</CHOICE><CHOICE>assignGroupsToAppRoles</CHOICE><CHOICE>createServicePrincipal</CHOICE><CHOICE>createGroup</CHOICE></CHOICES></Field>",
+        "<Field Type='Choice' Name='RequestType' StaticName='RequestType' DisplayName='RequestType' Indexed='TRUE' Format='Dropdown' FillInChoice='FALSE'><CHOICES><CHOICE>createAppRegistration</CHOICE><CHOICE>exposeApi</CHOICE><CHOICE>addAppRoles</CHOICE><CHOICE>assignGroupsToAppRoles</CHOICE><CHOICE>createServicePrincipal</CHOICE><CHOICE>createGroup</CHOICE><CHOICE>onboardGroup</CHOICE></CHOICES></Field>",
         "<Field Type='Choice' Name='Status' StaticName='Status' DisplayName='Status' Indexed='TRUE' Format='Dropdown' FillInChoice='FALSE'><Default>Submitted</Default><CHOICES><CHOICE>Submitted</CHOICE><CHOICE>PendingManagerApproval</CHOICE><CHOICE>PendingEntraApproval</CHOICE><CHOICE>Approved</CHOICE><CHOICE>InProgress</CHOICE><CHOICE>Completed</CHOICE><CHOICE>Failed</CHOICE><CHOICE>Rejected</CHOICE></CHOICES></Field>",
         "<Field Type='Text' Name='AppCatId' StaticName='AppCatId' DisplayName='AppCatId' Indexed='TRUE' />",
         "<Field Type='Text' Name='TargetDisplayName' StaticName='TargetDisplayName' DisplayName='TargetDisplayName' />",

@@ -6,6 +6,7 @@ Builds an importable, UNMANAGED Power Platform solution with the four cloud flow
     ER-01 Approvals        (automated) lock, manager approval, Entra team approval
     ER-02 Execute          (automated) Microsoft Graph calls through HTTP with Microsoft Entra ID
     ER-03 Catalog sync     (scheduled) refreshes the catalog lists
+    ER-04 Onboard group    (automated) adds an existing group to the catalog for its members/owners
 
 plus five connection references and one environment variable (the SharePoint site URL).
 
@@ -30,7 +31,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.0.0.0"
+VERSION = "1.1.0.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -52,6 +53,7 @@ FLOW_IDS = {
     "ER-01 Approvals": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0002",
     "ER-02 Execute": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0003",
     "ER-03 Catalog sync": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0004",
+    "ER-04 Onboard group": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0005",
 }
 
 ID = "@int(triggerOutputs()?['body/ID'])"
@@ -378,7 +380,7 @@ def er01() -> dict:
     s.cond("Manager approved?", eq("@outputs('Manager_outcome')", "Approve"), yes=approved, no=rejected)
 
     trig = {"When_an_item_is_created": sp_trigger("GetOnNewItems", "EntraRequests",
-                                                  "@equals(triggerBody()?['Status']?['Value'], 'Submitted')")}
+                                                  "@and(equals(triggerBody()?['Status']?['Value'], 'Submitted'), not(equals(triggerBody()?['RequestType']?['Value'], 'onboardGroup')))")}
     return flow(trig, s, ["shared_sharepointonline", "shared_office365users", "shared_approvals", "shared_office365"])
 
 
@@ -701,6 +703,58 @@ def er03() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# ER-04 Onboard group
+# ---------------------------------------------------------------------------
+def er04() -> dict:
+    s = Seq()
+    s.sp_get_item("Get settings", "EntraSettings", 1)
+    s.sp_patch("Mark in progress", "EntraRequests", ID, {"Title": TITLE, "Status/Value": "InProgress"})
+    s.compose("Requester", f"@toLower({REQ_UPN})")
+    s.compose("Group id", "@toLower(trim(coalesce(triggerOutputs()?['body/TargetObjectId'], '')))")
+
+    t = Seq()
+    t.graph("HTTP Get requester", "GET", f"{GRAPH}/users/@{{outputs('Requester')}}?$select=id")
+    t.graph("HTTP Get group", "GET", f"{GRAPH}/groups/@{{outputs('Group_id')}}?$select=id,displayName,description,securityEnabled")
+    t.graph("HTTP Check membership", "POST", f"{GRAPH}/users/@{{body('HTTP_Get_requester')?['id']}}/checkMemberGroups",
+            "{\"groupIds\": [\"@{outputs('Group_id')}\"]}")
+    t.graph("HTTP Group owners", "GET", f"{GRAPH}/groups/@{{outputs('Group_id')}}/owners/microsoft.graph.user?$select=id,userPrincipalName")
+    t.cond("Member or owner?", is_true("@or(not(empty(body('HTTP_Check_membership')?['value'])), contains(string(body('HTTP_Group_owners')?['value']), body('HTTP_Get_requester')?['id']))"),
+           no=fail_item(Seq(), "Fail not member", "Stop not member", "You are neither a member nor an owner of this group.", "NotMemberOrOwner"))
+    t.cond("Security enabled?", eq("@body('HTTP_Get_group')?['securityEnabled']", True),
+           no=fail_item(Seq(), "Fail not security", "Stop not security", "Only security-enabled groups can be used for owning teams and app roles.", "NotSecurityGroup"))
+    t.graph("HTTP Group members", "GET", f"{GRAPH}/groups/@{{outputs('Group_id')}}/transitiveMembers/microsoft.graph.user?$select=userPrincipalName&$top=999")
+    t.select("Select member upns", "@body('HTTP_Group_members')?['value']", "@toLower(item()?['userPrincipalName'])")
+    t.select("Select owner upns", "@body('HTTP_Group_owners')?['value']", "@toLower(item()?['userPrincipalName'])")
+    row = {
+        "Title": "@body('HTTP_Get_group')?['displayName']", "GroupId": "@body('HTTP_Get_group')?['id']",
+        "Description": "@body('HTTP_Get_group')?['description']",
+        "AppCatId": "@if(contains(coalesce(body('HTTP_Get_group')?['description'], ''), '[appCatID='), first(split(last(split(body('HTTP_Get_group')?['description'], '[appCatID=')), ';')), '')",
+        "MemberUpns": "@concat(';', join(body('Select_member_upns'), ';'), ';')",
+        "OwnerUpns": "@concat(';', join(body('Select_owner_upns'), ';'), ';')",
+        "LastSynced": "@utcNow()"}
+    t.sp_get_items("Get catalog row", "EntraCatalogGroups", "GroupId eq '@{outputs('Group_id')}'", 1)
+    t.cond("Row missing?", is_true("@empty(body('Get_catalog_row')?['value'])"),
+           yes=Seq().sp_post("Create catalog row", "EntraCatalogGroups", row),
+           no=Seq().sp_patch("Update catalog row", "EntraCatalogGroups", "@first(body('Get_catalog_row')?['value'])?['ID']", row))
+    t.sp_patch("Mark completed", "EntraRequests", ID, {
+        "Title": TITLE, "Status/Value": "Completed", "CompletedAt": "@utcNow()",
+        "TargetDisplayName": "@body('HTTP_Get_group')?['displayName']",
+        "ResultJson": "@string(setProperty(setProperty(json('{}'), 'groupId', body('HTTP_Get_group')?['id']), 'groupDisplayName', body('HTTP_Get_group')?['displayName']))"})
+    s.scope("Try", t)
+
+    c = Seq()
+    c.filter("Failed actions", "@result('Try')", "@equals(item()?['status'], 'Failed')")
+    c.compose("Error text", "@if(equals(outputs('HTTP_Get_group')?['statusCode'], 404), 'Group not found: check the Object ID (Entra admin center > Groups > the group > Object ID).', concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-04 run history')))")
+    c.sp_patch("Mark failed", "EntraRequests", ID, {"Title": TITLE, "Status/Value": "Failed", "ErrorMessage": "@outputs('Error_text')"})
+    s.scope("Catch", c, run_after={"Try": ["Failed", "TimedOut"]})
+
+    trig = {"When_an_item_is_created": sp_trigger(
+        "GetOnNewItems", "EntraRequests",
+        "@and(equals(triggerBody()?['Status']?['Value'], 'Submitted'), equals(triggerBody()?['RequestType']?['Value'], 'onboardGroup'))")}
+    return flow(trig, s, ["shared_sharepointonline", "shared_webcontents"])
+
+
+# ---------------------------------------------------------------------------
 # Solution files
 # ---------------------------------------------------------------------------
 def xml_escape(s: str) -> str:
@@ -712,6 +766,7 @@ DESCRIPTIONS = {
     "ER-01 Approvals": "Locks a new request, then collects manager and Entra ID team approvals. Sets Status = Approved for ER-02.",
     "ER-02 Execute": "Applies an approved request in Entra ID through Microsoft Graph (HTTP with Microsoft Entra ID, client certificate).",
     "ER-03 Catalog sync": "Hourly: refreshes EntraCatalogApps and EntraCatalogGroups from Entra ID. Read-only in Entra.",
+    "ER-04 Onboard group": "Adds an existing group to EntraCatalogGroups when the requester is a member or owner. Read-only in Entra; no approval.",
 }
 
 
@@ -841,7 +896,8 @@ def build():
     env_dir = SRC / "environmentvariabledefinitions" / f"{PREFIX}_SiteUrl"
     env_dir.mkdir(parents=True)
 
-    flows = {"SP-00 Create lists": sp00(), "ER-01 Approvals": er01(), "ER-02 Execute": er02(), "ER-03 Catalog sync": er03()}
+    flows = {"SP-00 Create lists": sp00(), "ER-01 Approvals": er01(), "ER-02 Execute": er02(), "ER-03 Catalog sync": er03(),
+             "ER-04 Onboard group": er04()}
     for name, definition in flows.items():
         wid = FLOW_IDS[name]
         file = f"{name.replace(' ', '').replace('-', '')}-{wid.upper()}.json"

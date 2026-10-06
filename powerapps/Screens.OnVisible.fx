@@ -11,6 +11,7 @@ Refresh(EntraRequests)
 // ===== scrNewApp.OnVisible
 // Resets only when arriving from Home / after submit -- returning from the
 // "Create new group" screen keeps everything that was typed.
+Refresh(EntraCatalogGroups);
 If(varResetNewApp,
     Set(varResetNewApp, false);
     Set(varStep, 1);
@@ -28,6 +29,9 @@ If(varResetNewApp,
 // ===== scrNewGroup.OnVisible
 Reset(txtGroupName_Group); Reset(txtGroupDesc_Group); Reset(txtGroupAppCat_Group);
 Reset(cmbGroupOwners_Group); Reset(cmbGroupMembers_Group); Reset(txtGroupJust_Group)
+
+// ===== scrAddGroup.OnVisible
+Refresh(EntraRequests); Refresh(EntraCatalogGroups)
 
 // ===== scrAppChange.OnVisible
 If(varResetChange,
