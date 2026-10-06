@@ -55,6 +55,8 @@ For comparison, the Azure Function / App Service variants need no Power Platform
 | 5 | Flows ER-01 Approvals, ER-02 Execute, ER-03 Catalog sync | Power Automate | [docs/04-POWER-AUTOMATE.md](docs/04-POWER-AUTOMATE.md) · `powerautomate/actions/` |
 | 6 | End-to-end test | Your tenant | [docs/05-TESTING.md](docs/05-TESTING.md) |
 | 6a | Test ER-01 on its own, with copy-paste payloads | Your tenant | [docs/06-TEST-ER01.md](docs/06-TEST-ER01.md) |
+| 6b | Test ER-02 (creates objects in Entra) | Your tenant | [docs/07-TEST-ER02.md](docs/07-TEST-ER02.md) |
+| 6c | Test ER-03 (read-only sync) | Your tenant | [docs/08-TEST-ER03.md](docs/08-TEST-ER03.md) |
 
 ## What can be imported, and how
 

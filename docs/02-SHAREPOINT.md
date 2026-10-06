@@ -12,15 +12,67 @@ Create a **team site** (Microsoft 365 group) or a communication site, e.g. `http
 
 ## 2.2 Lists: script
 
-```powershell
-Install-Module PnP.PowerShell -Scope CurrentUser
-./sharepoint/provision.ps1 -SiteUrl https://contoso.sharepoint.com/sites/entra-selfservice -ClientId <PnP app id> `
-  -TenantId <tenant guid> -GraphClientId <entra-pp-graph appId> -ServiceAccountUpn svc-entra-flows@contoso.com `
-  -EntraApproverEmails "alice@contoso.com;bob@contoso.com" -FallbackApproverEmail "entra-lead@contoso.com" `
-  -KeyVaultName <vault> -PowerAppUrl "<app play link, fill in later>"
-```
+`sharepoint/provision.ps1` (PnP PowerShell) creates all four lists with their columns, indexes, versioning, permissions and the EntraSettings item. It is safe to re-run:
 
-It creates everything below, sets the indexes and item-level security, makes the catalog lists read-only for members, and creates the one EntraSettings item.
+| The list... | What the script does |
+|---|---|
+| doesn't exist | creates it with all columns, settings and permissions |
+| already exists | **skips it** and changes nothing; reports any expected columns it cannot find. `-AddMissingColumns` adds only those columns. |
+| EntraSettings has no item | creates the settings item; an existing item is never changed |
+
+`-CheckOnly` reports what exists and what is missing, and changes nothing.
+
+### Before you run it: a PnP app registration
+
+PnP PowerShell signs in through an Entra app registration of your own. An Entra admin creates it once (you need it only for this script):
+
+- **Option 1, PowerShell (admin):** `Register-PnPEntraIDAppForInteractiveLogin -ApplicationName "PnP PowerShell" -Tenant <tenant>.onmicrosoft.com -DeviceLogin`
+- **Option 2, Entra admin center (admin):**
+  1. App registrations → New registration, name `PnP PowerShell`, single tenant. Under Redirect URI choose **Public client/native (mobile & desktop)** with `http://localhost`.
+  2. **Authentication** → *Allow public client flows* = **Yes**. Cloud Shell's device-code sign-in needs this.
+  3. **API permissions** → Add → **SharePoint** → Delegated → `AllSites.FullControl` → **Grant admin consent**.
+
+The admin sends you the **Application (client) ID**. The script still acts with **your** SharePoint rights, so you must be a **site owner**. Without this app registration, create the lists by hand (2.3).
+
+### Run it in Azure Cloud Shell (no storage needed)
+
+1. Open https://shell.azure.com, or the Cloud Shell icon in the Azure portal, and choose **PowerShell**.
+2. If asked about storage, choose **No storage account required** (an *ephemeral session*), and pick any subscription if one is required. Files and installed modules last only for the session, which is fine here.
+3. Get the script into the session. Either:
+   - **Upload:** toolbar **Manage files → Upload** → pick `sharepoint/provision.ps1` (download it from GitHub first: open the file → **Download raw file**). It lands in your home folder.
+   - **Or download it directly**, using a GitHub personal access token (the repo is private):
+     ```bash
+     curl -H "Authorization: token <your PAT>" -o provision.ps1 https://raw.githubusercontent.com/ravindercheemagithub/entra-powerplatform/main/sharepoint/provision.ps1
+     ```
+4. Install PnP PowerShell (each new session):
+   ```powershell
+   Install-Module PnP.PowerShell -Scope CurrentUser -Force
+   ```
+5. Check first, without changing anything:
+   ```powershell
+   ./provision.ps1 -SiteUrl https://<tenant>.sharepoint.com/teams/m365automationqa -ClientId <PnP app id> -Tenant <tenant>.onmicrosoft.com -DeviceLogin -CheckOnly
+   ```
+   It prints a code. Open https://microsoft.com/devicelogin in your browser, enter the code, and sign in as yourself (a site owner).
+6. Run it for real. Values you don't have yet can stay empty and be typed into the EntraSettings item later:
+   ```powershell
+   ./provision.ps1 -SiteUrl https://<tenant>.sharepoint.com/teams/m365automationqa `
+     -ClientId <PnP app id> -Tenant <tenant>.onmicrosoft.com -DeviceLogin `
+     -TenantId <directory tenant GUID> -GraphClientId <platform app client ID> `
+     -ServiceAccountUpn <flow account UPN> `
+     -EntraApproverEmails "alice@contoso.com;bob@contoso.com" -FallbackApproverEmail "lead@contoso.com" `
+     -PowerAppUrl "https://<tenant>.sharepoint.com/teams/m365automationqa/Lists/EntraRequests"
+   ```
+7. Read the summary: *created*, *already existed (skipped)*, and any missing columns. If it reports missing columns on an existing list, re-run with `-AddMissingColumns`.
+
+Each line of output starts with a marker: `+` created, `=` already there and left unchanged, `-` would be created (check only), `!` needs your attention (e.g. EntraSettings item is not ID 1).
+
+### Run it locally instead
+
+With PowerShell 7.4+ and a browser on your machine, drop `-Tenant` and `-DeviceLogin`, and a browser sign-in window opens:
+
+```powershell
+./provision.ps1 -SiteUrl https://<tenant>.sharepoint.com/teams/m365automationqa -ClientId <PnP app id> -ServiceAccountUpn <flow account UPN>
+```
 
 ## 2.3 Lists: by hand
 

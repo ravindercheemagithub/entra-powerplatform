@@ -65,7 +65,7 @@ Copy the whole line. Each one is valid JSON.
 | Step 20 | The Entra approvers' inbox / Approvals | Card *Entra team approval – REQ-TEST-0001: pp-test-app* |
 | Entra team approves | The item, and the requester's inbox | EntraDecision **Approved**; **Status Approved**; *Modified By* = the flow account; the requester gets *… is approved and being applied* |
 
-Follow the run in **My flows → ER-01 Approvals → 28-day run history**. While it waits for an approval the run shows **Running**, which is normal. The first approval in a new environment can take a few minutes while Power Automate sets up Approvals (Dataverse).
+Follow the run as described in [6.6](#66-checking-a-run). While it waits for an approval the run shows **Running**, which is normal. The first approval in a new environment can take a few minutes while Power Automate sets up Approvals (Dataverse).
 
 *Modified By* on the final update must be the account in `EntraSettings.ServiceAccountUpn`, or ER-02 will refuse to run later.
 
@@ -80,7 +80,40 @@ Use a new Title for each test.
 | Self-approval | Put the test requester in `FallbackApproverEmail` (and use a requester without a manager) or in `EntraApproverEmails`, then approve their own request | Treated as **Reject**; the manager rejection email adds *a request cannot be approved by the person who raised it* |
 | No manager | Submit as a user with no Manager in Entra | `Get manager` fails (red) but the run continues; the approval goes to `FallbackApproverEmail` |
 
-## 6.6 Troubleshooting
+## 6.6 Checking a run
+
+The same applies to ER-02 and ER-03.
+
+1. Go to make.powerautomate.com → **My flows** (or **Solutions** → your solution → the flow) → click the flow's name.
+2. The flow's details page lists **28-day run history**: start time, duration and status for each run.
+
+| Status | Meaning |
+|---|---|
+| **Running** | Still going; for ER-01 usually waiting for an approval |
+| **Succeeded** | Every step that ran finished without error |
+| **Failed** | A step failed and nothing handled it |
+| **Cancelled** | Stopped by a Terminate (Cancelled) action, e.g. ER-02's guard, or cancelled by hand |
+
+3. Click a run's **start time** to open it. Every action shows its result:
+   - green tick: succeeded
+   - red exclamation: **failed**; the error is shown when you expand it, and the run summary at the top names the failing action
+   - grey: skipped (a branch that didn't run, or a step after a failure)
+4. Click any action to expand it and see its **Inputs** and **Outputs** (**Show raw inputs / outputs** for the full JSON). For example:
+   - `Manager email` → Outputs: the address the approval went to
+   - `Payload` → Outputs: the parsed request
+   - a SharePoint HTTP step → Outputs: status code and SharePoint's error message
+   - a **Condition** shows which branch ran (*true* / *false*) and the values it compared
+   - an **Apply to each** has **< Previous / Next >** to step through iterations; failed iterations are marked
+   - actions with **Secure inputs/outputs** on show *Content not shown due to security configuration*
+5. Buttons at the top of a run: **Resubmit** reruns the flow with the same trigger data (after you fix the flow); **Cancel run** stops a running one.
+
+Elsewhere:
+- **All runs**, at the bottom right of the run history, shows more than the latest runs, with a status filter.
+- **Monitor → Cloud flow activity**, in the left menu, lists failed runs across all your flows.
+- **Approvals → Sent / Received / History** shows each approval, who it was assigned to and the response.
+- Before saving, the **Flow checker** (stethoscope icon in the designer) lists errors and warnings in expressions.
+
+## 6.7 Troubleshooting
 
 | Symptom | Likely cause |
 |---|---|
@@ -94,6 +127,6 @@ Use a new Title for each test.
 | No approval email | Power Automate → **Approvals → Sent**; open `Manager email` → Outputs in the run to see the address used |
 | Run stuck **Running** | It is waiting for an approval; answer it |
 
-## 6.7 Clean up
+## 6.8 Clean up
 
 Delete the test items from `EntraRequests` (as a site owner). Nothing was created in Entra ID.
