@@ -89,7 +89,8 @@ Left: a step list (`galSteps_NewApp`). You can click back to any step you've vis
 
 ### scrNewGroup
 - **Standalone** (from Home): name, appCatID, description, additional owners, initial members, justification → **Submit request** (`createGroup`).
-- **Inline** (`varGroupMode` = `inline-team` / `inline-role` / `inline-assign`): name, description, owners → **Add to request** → back.
+- **Inline** (`varGroupMode` = `inline-team` / `inline-role` / `inline-assign`, opened from **＋ Create new group** in a request): name, description, additional owners → **Add to request** → back. The appCatID is shown read-only: an inline group always gets the appCatID of the request it belongs to (ER-02 stamps it from the request). *Initial members* is disabled: groups created with a request start with owners only, and the owners add members once the group exists.
+- **Owners / members pickers** search the directory through Office 365 Users: type part of a name and pick from the list (nothing to type in a special format). They stay empty until the **Office 365 Users** data source is added. The requester is always an owner, so *Additional owners* is optional.
 
 ### scrAppChange
 - Left: **your applications** (`gMyApps`: catalog rows where you're in the team group or an owner), with search.

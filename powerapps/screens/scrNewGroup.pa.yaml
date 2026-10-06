@@ -185,7 +185,7 @@
             - txtGroupAppCat_Group:
                 Control: Classic/TextInput
                 Properties:
-                  Default: =Coalesce(First(Filter(gMyGroups, !IsBlank(AppCatId))).AppCatId, "")
+                  Default: =If(varGroupMode = "standalone", Coalesce(First(Filter(gMyGroups, !IsBlank(AppCatId))).AppCatId, ""), varGroupMode = "inline-assign", varApp.AppCatId, txtAppCatId_NewApp.Text)
                   HintText: ="APPCAT-001"
                   X: =(Parent.Width + 24) / 2
                   Y: =22
@@ -205,15 +205,15 @@
                   RadiusTopRight: =4
                   RadiusBottomLeft: =4
                   RadiusBottomRight: =4
-                  Visible: =varGroupMode = "standalone"
+                  DisplayMode: =If(varGroupMode = "standalone", DisplayMode.Edit, DisplayMode.View)
             - hntGAppCat_Group:
                 Control: Label
                 Properties:
-                  Text: ="Inline groups use the appCatID of the request they belong to."
+                  Text: ="Taken from the request this group belongs to; it can't differ."
                   X: =(Parent.Width + 24) / 2
-                  Y: =22
+                  Y: =60
                   Width: =(Parent.Width - 24) / 2
-                  Height: =36
+                  Height: =20
                   Size: =9
                   Font: =Font.'Segoe UI'
                   Color: =gTheme.Muted
@@ -282,7 +282,8 @@
                   SearchFields: =["DisplayName"]
                   SelectMultiple: =true
                   IsSearchable: =true
-                  InputTextPlaceholder: ="Search people"
+                  InputTextPlaceholder: |-
+                    ="Optional: type a name to search"
                   X: =0
                   Y: =218
                   Width: =(Parent.Width - 24) / 2
@@ -320,7 +321,8 @@
                   SearchFields: =["DisplayName"]
                   SelectMultiple: =true
                   IsSearchable: =true
-                  InputTextPlaceholder: ="Search people"
+                  InputTextPlaceholder: |-
+                    =If(varGroupMode = "standalone", "Optional: type a name to search", "Added by the owners after creation")
                   X: =(Parent.Width + 24) / 2
                   Y: =218
                   Width: =(Parent.Width - 24) / 2
@@ -336,6 +338,21 @@
                   SelectionFill: =gTheme.Primary
                   HoverFill: =gTheme.PrimaryLight
                   DisplayMode: =If(varGroupMode = "standalone", DisplayMode.Edit, DisplayMode.Disabled)
+            - hntGMembers_Group:
+                Control: Label
+                Properties:
+                  Text: ="Groups created with a request start with owners only. Owners add members once it exists."
+                  X: =(Parent.Width + 24) / 2
+                  Y: =256
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =36
+                  Size: =9
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  Visible: =!(varGroupMode = "standalone")
             - lblGJust_Group:
                 Control: Label
                 Properties:

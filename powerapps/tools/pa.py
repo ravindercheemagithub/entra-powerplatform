@@ -127,7 +127,7 @@ def dropdown(name, items, default, x, y, w, h=36, **extra):
 
 def combobox(name, items, display, search, x, y, w, h=36, multi=False, placeholder="Search", **extra):
     props = {"Items": items, "DisplayFields": display, "SearchFields": search, "SelectMultiple": "true" if multi else "false",
-             "IsSearchable": "true", "InputTextPlaceholder": q(placeholder), "X": x, "Y": y, "Width": w, "Height": h,
+             "IsSearchable": "true", "InputTextPlaceholder": placeholder if placeholder.startswith("If(") else q(placeholder), "X": x, "Y": y, "Width": w, "Height": h,
              "Size": 11, "Font": FONT, "Color": "gTheme.Text", "Fill": "gTheme.Card", "BorderColor": "gTheme.Border",
              "BorderThickness": 1, "ChevronBackground": "gTheme.Card", "ChevronFill": "gTheme.Muted",
              "SelectionFill": "gTheme.Primary", "HoverFill": "gTheme.PrimaryLight"}
