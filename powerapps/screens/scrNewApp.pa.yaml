@@ -410,12 +410,12 @@
             - cmbTeam_NewApp:
                 Control: Classic/ComboBox
                 Properties:
-                  Items: =gMyGroups
+                  Items: =gMyTeams
                   DisplayFields: =["Title"]
                   SearchFields: =["Title"]
                   SelectMultiple: =false
                   IsSearchable: =true
-                  InputTextPlaceholder: ="Choose one of your groups"
+                  InputTextPlaceholder: ="Choose a group you are a member of"
                   X: =(Parent.Width + 24) / 2
                   Y: =176
                   Width: =(Parent.Width - 24) / 2

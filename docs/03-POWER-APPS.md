@@ -87,6 +87,14 @@ Left: a step list (`galSteps_NewApp`). You can click back to any step you've vis
 - **Submit** validates everything, builds `PayloadJson` with `JSON()`, and **Patches** `EntraRequests` with `Status = Submitted`. Then it opens My requests.
 - "＋ Create new group" opens `scrNewGroup` in *inline* mode. **Add to request** returns to the wizard with the group added, marked *(new)*; it is created when the request is approved. Everything typed so far is kept: `scrNewApp.OnVisible` resets only when `varResetNewApp` is true.
 
+#### Where the Owning team list comes from
+`cmbTeam_NewApp` lists rows of the **EntraCatalogGroups** SharePoint list (not Entra directly) where your UPN is in **MemberUpns** (formula `gMyTeams`). Rows get there three ways:
+- **ER-02** adds every group it creates (you, the requester, as owner and member of a new team group).
+- **You onboard an existing group:** add a row with **Title** and **GroupId** (the group's Object ID) and run **ER-03**, which fills in MemberUpns, OwnerUpns and the appCatID.
+- **ER-03** keeps all rows current every hour, and adds the team group of every app the platform manages.
+
+So a group that already exists in Entra appears only after it has been onboarded, and only for its members. To use it as the owning team you must be a member, because ER-02 checks membership.
+
 ### scrNewGroup
 - **Standalone** (from Home): name, appCatID, description, additional owners, initial members, justification → **Submit request** (`createGroup`).
 - **Inline** (`varGroupMode` = `inline-team` / `inline-role` / `inline-assign`, opened from **＋ Create new group** in a request): name, description, additional owners → **Add to request** → back. The appCatID is shown read-only: an inline group always gets the appCatID of the request it belongs to (ER-02 stamps it from the request). *Initial members* is disabled: groups created with a request start with owners only, and the owners add members once the group exists.

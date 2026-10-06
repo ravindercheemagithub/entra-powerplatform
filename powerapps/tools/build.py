@@ -221,7 +221,7 @@ def new_app() -> None:
         radio(f"radAudience_{s}", '["Single tenant", "Multitenant"]', q("Single tenant"), COL1_X, 176, COL_W, 36),
         hint(f"hntAudience_{s}", q("Single tenant: only accounts in this organization (recommended)."), COL1_X, 212, COL_W),
         field_label(f"lblTeam_{s}", "Owning team", COL2_X, 154, COL_W, required=True),
-        combobox(f"cmbTeam_{s}", "gMyGroups", '["Title"]', '["Title"]', COL2_X, 176, COL_W, placeholder="Choose one of your groups",
+        combobox(f"cmbTeam_{s}", "gMyTeams", '["Title"]', '["Title"]', COL2_X, 176, COL_W, placeholder="Choose a group you are a member of",
                  Visible='varNewTeam.Mode <> "new"', OnChange=f"Set(varNewTeam, {NO_TEAM})"),
         label(f"lblNewTeam_{s}", '"New team group: " & varNewTeam.DisplayName & "  (created when approved)"', COL2_X, 176,
               f"{COL_W} - 40", 36, size=10, bold=True, color="gTheme.Primary", Fill="gTheme.PrimaryLight", PaddingLeft="10",

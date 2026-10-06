@@ -25,8 +25,9 @@ gTheme = {
 
 gMe = { Email: Lower(User().Email), Name: User().FullName };
 
-// The catalog lists store members/owners as ";upn1;upn2;" so this is an exact match.
-gMeKey = ";" & Lower(User().Email) & ";";
+// The catalog lists store members/owners as ";upn1;upn2;" (userPrincipalName, lower case),
+// so match on the UPN; User().Email is the mail address, which can differ from the UPN.
+gMeKey = ";" & Lower(Coalesce(Office365Users.MyProfileV2().userPrincipalName, User().Email)) & ";";
 
 gAppCatPattern = "^[A-Z0-9][A-Z0-9-]{2,63}$";
 gValuePattern = "^[A-Za-z][A-Za-z0-9._-]{0,119}$";
@@ -35,6 +36,12 @@ gValuePattern = "^[A-Za-z][A-Za-z0-9._-]{0,119}$";
 // "in" on a multi-line column is not delegable: keep Settings > Data row limit at 2000.
 gMyGroups = ShowColumns(
     Filter(EntraCatalogGroups, gMeKey in MemberUpns || gMeKey in OwnerUpns),
+    GroupId, Title, AppCatId
+);
+
+// Owning-team picker: groups the user is a MEMBER of (ER-02 checks membership of the owning team).
+gMyTeams = ShowColumns(
+    Filter(EntraCatalogGroups, gMeKey in MemberUpns),
     GroupId, Title, AppCatId
 );
 
