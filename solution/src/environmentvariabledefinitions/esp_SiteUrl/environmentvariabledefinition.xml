@@ -1,0 +1,13 @@
+<environmentvariabledefinition schemaname="esp_SiteUrl">
+  <description default="Full URL of the SharePoint site that holds the EntraRequests, EntraCatalogApps, EntraCatalogGroups and EntraSettings lists, e.g. https://contoso.sharepoint.com/teams/m365automationqa (no trailing slash).">
+    <label description="Full URL of the SharePoint site that holds the EntraRequests, EntraCatalogApps, EntraCatalogGroups and EntraSettings lists, e.g. https://contoso.sharepoint.com/teams/m365automationqa (no trailing slash)." languagecode="1033" />
+  </description>
+  <displayname default="SharePoint site URL">
+    <label description="SharePoint site URL" languagecode="1033" />
+  </displayname>
+  <introducedversion>1.0.0.0</introducedversion>
+  <iscustomizable>1</iscustomizable>
+  <isrequired>1</isrequired>
+  <secretstore>0</secretstore>
+  <type>100000000</type>
+</environmentvariabledefinition>

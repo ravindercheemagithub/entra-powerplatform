@@ -1,0 +1,536 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "esp_sharedsharepointonline_entra"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      },
+      "shared_office365users": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "esp_sharedoffice365users_entra"
+        },
+        "api": {
+          "name": "shared_office365users"
+        }
+      },
+      "shared_approvals": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "esp_sharedapprovals_entra"
+        },
+        "api": {
+          "name": "shared_approvals"
+        }
+      },
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "esp_sharedoffice365_entra"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "SharePoint site URL (esp_SiteUrl)": {
+          "defaultValue": "",
+          "type": "String",
+          "metadata": {
+            "schemaName": "esp_SiteUrl",
+            "description": "SharePoint site that holds the Entra self-service lists"
+          }
+        }
+      },
+      "triggers": {
+        "When_an_item_is_created": {
+          "type": "OpenApiConnection",
+          "recurrence": {
+            "interval": 1,
+            "frequency": "Minute"
+          },
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetOnNewItems"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "table": "EntraRequests"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "conditions": [
+            {
+              "expression": "@equals(triggerBody()?['Status']?['Value'], 'Submitted')"
+            }
+          ]
+        }
+      },
+      "actions": {
+        "Get_settings": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItem"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "table": "EntraSettings",
+              "id": 1
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {}
+        },
+        "Ensure_requester": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "HttpRequest"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "parameters/method": "POST",
+              "parameters/uri": "_api/web/ensureuser",
+              "parameters/headers": {
+                "Accept": "application/json;odata=nometadata",
+                "Content-Type": "application/json;odata=nometadata"
+              },
+              "parameters/body": "{\"logonName\": \"@{triggerOutputs()?['body/Author/Claims']}\"}"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Get_settings": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Get_owner_group": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "HttpRequest"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "parameters/method": "GET",
+              "parameters/uri": "_api/web/associatedownergroup?$select=Id",
+              "parameters/headers": {
+                "Accept": "application/json;odata=nometadata"
+              }
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Ensure_requester": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Break_inheritance": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "HttpRequest"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "parameters/method": "POST",
+              "parameters/uri": "_api/web/lists/getbytitle('EntraRequests')/items(@{triggerOutputs()?['body/ID']})/breakroleinheritance(copyRoleAssignments=false,clearSubscopes=true)",
+              "parameters/headers": {
+                "Accept": "application/json;odata=nometadata"
+              }
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Get_owner_group": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Grant_owners": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "HttpRequest"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "parameters/method": "POST",
+              "parameters/uri": "_api/web/lists/getbytitle('EntraRequests')/items(@{triggerOutputs()?['body/ID']})/roleassignments/addroleassignment(principalid=@{body('Get_owner_group')?['Id']},roledefid=1073741829)",
+              "parameters/headers": {
+                "Accept": "application/json;odata=nometadata"
+              }
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Break_inheritance": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Grant_requester_read": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "HttpRequest"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "parameters/method": "POST",
+              "parameters/uri": "_api/web/lists/getbytitle('EntraRequests')/items(@{triggerOutputs()?['body/ID']})/roleassignments/addroleassignment(principalid=@{body('Ensure_requester')?['Id']},roledefid=1073741826)",
+              "parameters/headers": {
+                "Accept": "application/json;odata=nometadata"
+              }
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Grant_owners": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Get_locked_item": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItem"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "table": "EntraRequests",
+              "id": "@int(triggerOutputs()?['body/ID'])"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Grant_requester_read": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Payload": {
+          "type": "Compose",
+          "inputs": "@json(body('Get_locked_item')?['PayloadJson'])",
+          "runAfter": {
+            "Get_locked_item": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Get_manager": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365users",
+              "connectionName": "shared_office365users",
+              "operationId": "Manager_V2"
+            },
+            "parameters": {
+              "id": "@last(split(triggerOutputs()?['body/Author/Claims'], '|'))"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Payload": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Manager_email": {
+          "type": "Compose",
+          "inputs": "@if(equals(actions('Get_manager')?['status'], 'Succeeded'), coalesce(body('Get_manager')?['mail'], body('Get_manager')?['userPrincipalName']), body('Get_settings')?['FallbackApproverEmail'])",
+          "runAfter": {
+            "Get_manager": [
+              "Succeeded",
+              "Failed"
+            ]
+          }
+        },
+        "Manager_name": {
+          "type": "Compose",
+          "inputs": "@if(equals(actions('Get_manager')?['status'], 'Succeeded'), body('Get_manager')?['displayName'], 'Fallback approver')",
+          "runAfter": {
+            "Manager_email": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Select_roles_text": {
+          "type": "Select",
+          "inputs": {
+            "from": "@coalesce(outputs('Payload')?['appRoles'], createArray())",
+            "select": "@concat('- App role ', item()?['value'], ' (', string(length(coalesce(item()?['assignGroups'], createArray()))), ' group(s))')"
+          },
+          "runAfter": {
+            "Manager_name": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Summary": {
+          "type": "Compose",
+          "inputs": "@concat('**', triggerOutputs()?['body/RequestType/Value'], '** – ', triggerOutputs()?['body/TargetDisplayName'], decodeUriComponent('%0A%0A'), 'Request: ', triggerOutputs()?['body/Title'], ' · appCatID: ', triggerOutputs()?['body/AppCatId'], decodeUriComponent('%0A%0A'), 'Requested by: ', triggerOutputs()?['body/Author/DisplayName'], ' (', triggerOutputs()?['body/Author/Email'], ')', decodeUriComponent('%0A%0A'), if(empty(outputs('Payload')?['owningGroup']), '', concat('Owning team: ', outputs('Payload')?['owningGroup']?['displayName'], if(equals(outputs('Payload')?['owningGroup']?['mode'], 'new'), ' (new group)', ''), decodeUriComponent('%0A%0A'))), if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), concat('Expose API: ', outputs('Payload')?['exposeApi']?['identifierUriTemplate'], ', ', string(length(coalesce(outputs('Payload')?['exposeApi']?['scopes'], createArray()))), ' scope(s)', decodeUriComponent('%0A%0A')), ''), if(empty(body('Select_roles_text')), '', concat(join(body('Select_roles_text'), decodeUriComponent('%0A')), decodeUriComponent('%0A%0A'))), 'Justification: ', triggerOutputs()?['body/Justification'])",
+          "runAfter": {
+            "Select_roles_text": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Update_pending_manager": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "PatchItem"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "table": "EntraRequests",
+              "id": "@int(triggerOutputs()?['body/ID'])",
+              "item/Title": "@triggerOutputs()?['body/Title']",
+              "item/Status/Value": "PendingManagerApproval",
+              "item/ManagerEmail": "@outputs('Manager_email')",
+              "item/ManagerName": "@outputs('Manager_name')",
+              "item/ApprovedPayloadJson": "@body('Get_locked_item')?['PayloadJson']",
+              "item/RequestSummary": "@outputs('Summary')"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Summary": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Manager_approval": {
+          "type": "OpenApiConnectionWebhook",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+              "connectionName": "shared_approvals",
+              "operationId": "StartAndWaitForAnApproval"
+            },
+            "parameters": {
+              "approvalType": "Basic",
+              "WebhookApprovalCreationInput/title": "@concat('Entra request ', triggerOutputs()?['body/Title'], ': ', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'])",
+              "WebhookApprovalCreationInput/assignedTo": "@outputs('Manager_email')",
+              "WebhookApprovalCreationInput/details": "@outputs('Summary')",
+              "WebhookApprovalCreationInput/itemLink": "@{body('Get_settings')?['PowerAppUrl']}",
+              "WebhookApprovalCreationInput/itemLinkDescription": "Open Entra Self-Service",
+              "WebhookApprovalCreationInput/requestor": "@triggerOutputs()?['body/Author/Email']",
+              "WebhookApprovalCreationInput/enableNotifications": true,
+              "WebhookApprovalCreationInput/enableReassignment": true
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Update_pending_manager": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Manager_outcome": {
+          "type": "Compose",
+          "inputs": "@if(equals(toLower(coalesce(first(body('Manager_approval')?['responses'])?['responder']?['email'], '')), toLower(triggerOutputs()?['body/Author/Email'])), 'Reject', body('Manager_approval')?['outcome'])",
+          "runAfter": {
+            "Manager_approval": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Update_manager_decision": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "PatchItem"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "table": "EntraRequests",
+              "id": "@int(triggerOutputs()?['body/ID'])",
+              "item/Title": "@triggerOutputs()?['body/Title']",
+              "item/ManagerDecision/Value": "@if(equals(outputs('Manager_outcome'), 'Approve'), 'Approved', 'Rejected')",
+              "item/ManagerDecisionBy": "@first(body('Manager_approval')?['responses'])?['responder']?['email']",
+              "item/ManagerDecisionAt": "@utcNow()",
+              "item/ManagerComment": "@first(body('Manager_approval')?['responses'])?['comments']",
+              "item/Status/Value": "@if(equals(outputs('Manager_outcome'), 'Approve'), 'PendingEntraApproval', 'Rejected')"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Manager_outcome": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Manager_approved?": {
+          "type": "If",
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@outputs('Manager_outcome')",
+                  "Approve"
+                ]
+              }
+            ]
+          },
+          "actions": {
+            "Entra_approval": {
+              "type": "OpenApiConnectionWebhook",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals",
+                  "connectionName": "shared_approvals",
+                  "operationId": "StartAndWaitForAnApproval"
+                },
+                "parameters": {
+                  "approvalType": "Basic",
+                  "WebhookApprovalCreationInput/title": "@concat('Entra team approval – ', triggerOutputs()?['body/Title'], ': ', triggerOutputs()?['body/TargetDisplayName'])",
+                  "WebhookApprovalCreationInput/assignedTo": "@replace(replace(body('Get_settings')?['EntraApproverEmails'], decodeUriComponent('%0D'), ''), decodeUriComponent('%0A'), ';')",
+                  "WebhookApprovalCreationInput/details": "@concat(outputs('Summary'), decodeUriComponent('%0A%0A'), 'Manager approval: ', coalesce(first(body('Manager_approval')?['responses'])?['responder']?['displayName'], ''))",
+                  "WebhookApprovalCreationInput/itemLink": "@{body('Get_settings')?['PowerAppUrl']}",
+                  "WebhookApprovalCreationInput/itemLinkDescription": "Open Entra Self-Service",
+                  "WebhookApprovalCreationInput/requestor": "@triggerOutputs()?['body/Author/Email']",
+                  "WebhookApprovalCreationInput/enableNotifications": true,
+                  "WebhookApprovalCreationInput/enableReassignment": true
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {}
+            },
+            "Entra_outcome": {
+              "type": "Compose",
+              "inputs": "@if(equals(toLower(coalesce(first(body('Entra_approval')?['responses'])?['responder']?['email'], '')), toLower(triggerOutputs()?['body/Author/Email'])), 'Reject', body('Entra_approval')?['outcome'])",
+              "runAfter": {
+                "Entra_approval": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Update_entra_decision": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                  "connectionName": "shared_sharepointonline",
+                  "operationId": "PatchItem"
+                },
+                "parameters": {
+                  "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                  "table": "EntraRequests",
+                  "id": "@int(triggerOutputs()?['body/ID'])",
+                  "item/Title": "@triggerOutputs()?['body/Title']",
+                  "item/EntraDecision/Value": "@if(equals(outputs('Entra_outcome'), 'Approve'), 'Approved', 'Rejected')",
+                  "item/EntraDecisionBy": "@first(body('Entra_approval')?['responses'])?['responder']?['email']",
+                  "item/EntraDecisionAt": "@utcNow()",
+                  "item/EntraComment": "@first(body('Entra_approval')?['responses'])?['comments']",
+                  "item/Status/Value": "@if(equals(outputs('Entra_outcome'), 'Approve'), 'Approved', 'Rejected')"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {
+                "Entra_outcome": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Mail_requester": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "SendEmailV2"
+                },
+                "parameters": {
+                  "emailMessage/To": "@triggerOutputs()?['body/Author/Email']",
+                  "emailMessage/Subject": "@if(equals(outputs('Entra_outcome'), 'Approve'), concat('Your Entra request ', triggerOutputs()?['body/Title'], ' is approved and being applied'), concat('Your Entra request ', triggerOutputs()?['body/Title'], ' was rejected by the Entra ID team'))",
+                  "emailMessage/Body": "@if(equals(outputs('Entra_outcome'), 'Approve'), concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/TargetDisplayName'], ') was approved by your manager and the Entra ID team. It is being applied now; you will get another email when it is complete.<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>'), concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/TargetDisplayName'], ') was rejected by the Entra ID team.<br>Rejected by: ', coalesce(first(body('Entra_approval')?['responses'])?['responder']?['displayName'], ''), '<br>Comment: ', coalesce(first(body('Entra_approval')?['responses'])?['comments'], '(none)'), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>'))",
+                  "emailMessage/Importance": "Normal"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {
+                "Update_entra_decision": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "else": {
+            "actions": {
+              "Mail_manager_rejected": {
+                "type": "OpenApiConnection",
+                "inputs": {
+                  "host": {
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                    "connectionName": "shared_office365",
+                    "operationId": "SendEmailV2"
+                  },
+                  "parameters": {
+                    "emailMessage/To": "@triggerOutputs()?['body/Author/Email']",
+                    "emailMessage/Subject": "@concat('Your Entra request ', triggerOutputs()?['body/Title'], ' was rejected by your manager')",
+                    "emailMessage/Body": "@concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/TargetDisplayName'], ') was rejected by your manager.<br>Rejected by: ', coalesce(first(body('Manager_approval')?['responses'])?['responder']?['displayName'], ''), '<br>Comment: ', coalesce(first(body('Manager_approval')?['responses'])?['comments'], '(none)'), if(equals(body('Manager_approval')?['outcome'], 'Approve'), '<br><br>Note: a request cannot be approved by the person who raised it.', ''), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')",
+                    "emailMessage/Importance": "Normal"
+                  },
+                  "authentication": "@parameters('$authentication')"
+                },
+                "runAfter": {}
+              }
+            }
+          },
+          "runAfter": {
+            "Update_manager_decision": [
+              "Succeeded"
+            ]
+          }
+        }
+      }
+    },
+    "templateName": ""
+  },
+  "schemaVersion": "1.0.0.0"
+}

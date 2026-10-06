@@ -1,0 +1,614 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "esp_sharedsharepointonline_entra"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      },
+      "shared_webcontents": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "esp_sharedwebcontents_entra"
+        },
+        "api": {
+          "name": "shared_webcontents"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "SharePoint site URL (esp_SiteUrl)": {
+          "defaultValue": "",
+          "type": "String",
+          "metadata": {
+            "schemaName": "esp_SiteUrl",
+            "description": "SharePoint site that holds the Entra self-service lists"
+          }
+        }
+      },
+      "triggers": {
+        "Recurrence": {
+          "type": "Recurrence",
+          "recurrence": {
+            "frequency": "Hour",
+            "interval": 1
+          }
+        }
+      },
+      "actions": {
+        "Get_settings": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItem"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "table": "EntraSettings",
+              "id": 1
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {}
+        },
+        "Init_varMembers": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varMembers",
+                "type": "string",
+                "value": ""
+              }
+            ]
+          },
+          "runAfter": {
+            "Get_settings": [
+              "Succeeded"
+            ]
+          }
+        },
+        "HTTP_List_managed_apps": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+              "connectionName": "shared_webcontents",
+              "operationId": "InvokeHttp"
+            },
+            "parameters": {
+              "request/method": "GET",
+              "request/url": "https://graph.microsoft.com/v1.0/applications?$filter=tags/any(t:t eq 'managedBy:@{body('Get_settings')?['ManagedByTag']}')&$select=id,appId,displayName,tags,identifierUris,appRoles,api&$count=true&$top=999",
+              "request/headers": {
+                "ConsistencyLevel": "eventual"
+              }
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Init_varMembers": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Apply_to_each_app": {
+          "type": "Foreach",
+          "foreach": "@body('HTTP_List_managed_apps')?['value']",
+          "actions": {
+            "Filter_app_team": {
+              "type": "Query",
+              "inputs": {
+                "from": "@items('Apply_to_each_app')?['tags']",
+                "where": "@startsWith(item(), 'team:')"
+              },
+              "runAfter": {}
+            },
+            "Filter_app_team_name": {
+              "type": "Query",
+              "inputs": {
+                "from": "@items('Apply_to_each_app')?['tags']",
+                "where": "@startsWith(item(), 'teamName:')"
+              },
+              "runAfter": {
+                "Filter_app_team": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Filter_app_appcat": {
+              "type": "Query",
+              "inputs": {
+                "from": "@items('Apply_to_each_app')?['tags']",
+                "where": "@startsWith(item(), 'appCatID:')"
+              },
+              "runAfter": {
+                "Filter_app_team_name": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Team_id": {
+              "type": "Compose",
+              "inputs": "@if(empty(body('Filter_app_team')), '', substring(first(body('Filter_app_team')), 5))",
+              "runAfter": {
+                "Filter_app_appcat": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Reset_members": {
+              "type": "SetVariable",
+              "inputs": {
+                "name": "varMembers",
+                "value": ""
+              },
+              "runAfter": {
+                "Team_id": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Has_team?": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@empty(outputs('Team_id'))",
+                      false
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "HTTP_Team_members": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                      "connectionName": "shared_webcontents",
+                      "operationId": "InvokeHttp"
+                    },
+                    "parameters": {
+                      "request/method": "GET",
+                      "request/url": "https://graph.microsoft.com/v1.0/groups/@{outputs('Team_id')}/transitiveMembers/microsoft.graph.user?$select=userPrincipalName&$top=999"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "runAfter": {}
+                },
+                "Select_member_upns": {
+                  "type": "Select",
+                  "inputs": {
+                    "from": "@body('HTTP_Team_members')?['value']",
+                    "select": "@toLower(item()?['userPrincipalName'])"
+                  },
+                  "runAfter": {
+                    "HTTP_Team_members": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Set_members": {
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "varMembers",
+                    "value": "@concat(';', join(body('Select_member_upns'), ';'), ';')"
+                  },
+                  "runAfter": {
+                    "Select_member_upns": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Get_team_row": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "connectionName": "shared_sharepointonline",
+                      "operationId": "GetItems"
+                    },
+                    "parameters": {
+                      "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                      "table": "EntraCatalogGroups",
+                      "$filter": "GroupId eq '@{outputs('Team_id')}'",
+                      "$top": 1
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "runAfter": {
+                    "Set_members": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Team_row_missing?": {
+                  "type": "If",
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@empty(body('Get_team_row')?['value'])",
+                          true
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Create_team_row": {
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                          "connectionName": "shared_sharepointonline",
+                          "operationId": "PostItem"
+                        },
+                        "parameters": {
+                          "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                          "table": "EntraCatalogGroups",
+                          "item/Title": "@if(empty(body('Filter_app_team_name')), outputs('Team_id'), substring(first(body('Filter_app_team_name')), 9))",
+                          "item/GroupId": "@outputs('Team_id')",
+                          "item/AppCatId": "@if(empty(body('Filter_app_appcat')), '', substring(first(body('Filter_app_appcat')), 9))",
+                          "item/LastSynced": "@utcNow()"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      },
+                      "runAfter": {}
+                    }
+                  },
+                  "else": {
+                    "actions": {}
+                  },
+                  "runAfter": {
+                    "Get_team_row": [
+                      "Succeeded"
+                    ]
+                  }
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "runAfter": {
+                "Reset_members": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "HTTP_App_owners": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                  "connectionName": "shared_webcontents",
+                  "operationId": "InvokeHttp"
+                },
+                "parameters": {
+                  "request/method": "GET",
+                  "request/url": "https://graph.microsoft.com/v1.0/applications/@{items('Apply_to_each_app')?['id']}/owners/microsoft.graph.user?$select=userPrincipalName"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {
+                "Has_team?": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Select_owner_upns": {
+              "type": "Select",
+              "inputs": {
+                "from": "@body('HTTP_App_owners')?['value']",
+                "select": "@toLower(item()?['userPrincipalName'])"
+              },
+              "runAfter": {
+                "HTTP_App_owners": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "HTTP_App_SP": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                  "connectionName": "shared_webcontents",
+                  "operationId": "InvokeHttp"
+                },
+                "parameters": {
+                  "request/method": "GET",
+                  "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals?$filter=appId eq '@{items('Apply_to_each_app')?['appId']}'&$select=id"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {
+                "Select_owner_upns": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Get_app_row": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                  "connectionName": "shared_sharepointonline",
+                  "operationId": "GetItems"
+                },
+                "parameters": {
+                  "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                  "table": "EntraCatalogApps",
+                  "$filter": "ObjectId eq '@{items('Apply_to_each_app')?['id']}'",
+                  "$top": 1
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {
+                "HTTP_App_SP": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "App_row_missing?": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@empty(body('Get_app_row')?['value'])",
+                      true
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "Create_app_row": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "connectionName": "shared_sharepointonline",
+                      "operationId": "PostItem"
+                    },
+                    "parameters": {
+                      "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                      "table": "EntraCatalogApps",
+                      "item/Title": "@items('Apply_to_each_app')?['displayName']",
+                      "item/ObjectId": "@items('Apply_to_each_app')?['id']",
+                      "item/AppId": "@items('Apply_to_each_app')?['appId']",
+                      "item/AppCatId": "@if(empty(body('Filter_app_appcat')), '', substring(first(body('Filter_app_appcat')), 9))",
+                      "item/TeamGroupId": "@outputs('Team_id')",
+                      "item/TeamGroupName": "@if(empty(body('Filter_app_team_name')), '', substring(first(body('Filter_app_team_name')), 9))",
+                      "item/ServicePrincipalId": "@coalesce(first(body('HTTP_App_SP')?['value'])?['id'], '')",
+                      "item/IdentifierUri": "@coalesce(first(items('Apply_to_each_app')?['identifierUris']), '')",
+                      "item/AppRolesJson": "@string(coalesce(items('Apply_to_each_app')?['appRoles'], createArray()))",
+                      "item/ScopesJson": "@string(coalesce(items('Apply_to_each_app')?['api']?['oauth2PermissionScopes'], createArray()))",
+                      "item/TeamMemberUpns": "@variables('varMembers')",
+                      "item/OwnerUpns": "@concat(';', join(body('Select_owner_upns'), ';'), ';')",
+                      "item/LastSynced": "@utcNow()"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "runAfter": {}
+                }
+              },
+              "else": {
+                "actions": {
+                  "Update_app_row": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                        "connectionName": "shared_sharepointonline",
+                        "operationId": "PatchItem"
+                      },
+                      "parameters": {
+                        "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                        "table": "EntraCatalogApps",
+                        "id": "@first(body('Get_app_row')?['value'])?['ID']",
+                        "item/Title": "@items('Apply_to_each_app')?['displayName']",
+                        "item/ObjectId": "@items('Apply_to_each_app')?['id']",
+                        "item/AppId": "@items('Apply_to_each_app')?['appId']",
+                        "item/AppCatId": "@if(empty(body('Filter_app_appcat')), '', substring(first(body('Filter_app_appcat')), 9))",
+                        "item/TeamGroupId": "@outputs('Team_id')",
+                        "item/TeamGroupName": "@if(empty(body('Filter_app_team_name')), '', substring(first(body('Filter_app_team_name')), 9))",
+                        "item/ServicePrincipalId": "@coalesce(first(body('HTTP_App_SP')?['value'])?['id'], '')",
+                        "item/IdentifierUri": "@coalesce(first(items('Apply_to_each_app')?['identifierUris']), '')",
+                        "item/AppRolesJson": "@string(coalesce(items('Apply_to_each_app')?['appRoles'], createArray()))",
+                        "item/ScopesJson": "@string(coalesce(items('Apply_to_each_app')?['api']?['oauth2PermissionScopes'], createArray()))",
+                        "item/TeamMemberUpns": "@variables('varMembers')",
+                        "item/OwnerUpns": "@concat(';', join(body('Select_owner_upns'), ';'), ';')",
+                        "item/LastSynced": "@utcNow()"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    },
+                    "runAfter": {}
+                  }
+                }
+              },
+              "runAfter": {
+                "Get_app_row": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "runtimeConfiguration": {
+            "concurrency": {
+              "repetitions": 1
+            }
+          },
+          "runAfter": {
+            "HTTP_List_managed_apps": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Get_catalog_groups": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItems"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "table": "EntraCatalogGroups",
+              "$top": 5000
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Apply_to_each_app": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Apply_to_each_catalog_group": {
+          "type": "Foreach",
+          "foreach": "@body('Get_catalog_groups')?['value']",
+          "actions": {
+            "HTTP_Group": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                  "connectionName": "shared_webcontents",
+                  "operationId": "InvokeHttp"
+                },
+                "parameters": {
+                  "request/method": "GET",
+                  "request/url": "https://graph.microsoft.com/v1.0/groups/@{items('Apply_to_each_catalog_group')?['GroupId']}?$select=id,displayName,description"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {}
+            },
+            "HTTP_Group_members": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                  "connectionName": "shared_webcontents",
+                  "operationId": "InvokeHttp"
+                },
+                "parameters": {
+                  "request/method": "GET",
+                  "request/url": "https://graph.microsoft.com/v1.0/groups/@{items('Apply_to_each_catalog_group')?['GroupId']}/transitiveMembers/microsoft.graph.user?$select=userPrincipalName&$top=999"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {
+                "HTTP_Group": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "HTTP_Group_owners": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                  "connectionName": "shared_webcontents",
+                  "operationId": "InvokeHttp"
+                },
+                "parameters": {
+                  "request/method": "GET",
+                  "request/url": "https://graph.microsoft.com/v1.0/groups/@{items('Apply_to_each_catalog_group')?['GroupId']}/owners/microsoft.graph.user?$select=userPrincipalName"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {
+                "HTTP_Group_members": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Select_group_member_upns": {
+              "type": "Select",
+              "inputs": {
+                "from": "@body('HTTP_Group_members')?['value']",
+                "select": "@toLower(item()?['userPrincipalName'])"
+              },
+              "runAfter": {
+                "HTTP_Group_owners": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Select_group_owner_upns": {
+              "type": "Select",
+              "inputs": {
+                "from": "@body('HTTP_Group_owners')?['value']",
+                "select": "@toLower(item()?['userPrincipalName'])"
+              },
+              "runAfter": {
+                "Select_group_member_upns": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Update_group_row": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                  "connectionName": "shared_sharepointonline",
+                  "operationId": "PatchItem"
+                },
+                "parameters": {
+                  "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                  "table": "EntraCatalogGroups",
+                  "id": "@items('Apply_to_each_catalog_group')?['ID']",
+                  "item/Title": "@body('HTTP_Group')?['displayName']",
+                  "item/Description": "@body('HTTP_Group')?['description']",
+                  "item/AppCatId": "@if(contains(coalesce(body('HTTP_Group')?['description'], ''), '[appCatID='), first(split(last(split(body('HTTP_Group')?['description'], '[appCatID=')), ';')), '')",
+                  "item/MemberUpns": "@concat(';', join(body('Select_group_member_upns'), ';'), ';')",
+                  "item/OwnerUpns": "@concat(';', join(body('Select_group_owner_upns'), ';'), ';')",
+                  "item/LastSynced": "@utcNow()"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {
+                "Select_group_owner_upns": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "runtimeConfiguration": {
+            "concurrency": {
+              "repetitions": 5
+            }
+          },
+          "runAfter": {
+            "Get_catalog_groups": [
+              "Succeeded"
+            ]
+          }
+        }
+      }
+    },
+    "templateName": ""
+  },
+  "schemaVersion": "1.0.0.0"
+}

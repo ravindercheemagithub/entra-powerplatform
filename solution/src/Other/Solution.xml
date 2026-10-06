@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ImportExportXml version="9.2.24023.198" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SolutionManifest>
+    <UniqueName>EntraSelfService</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="Entra Self-Service" languagecode="1033" />
+    </LocalizedNames>
+    <Descriptions>
+      <Description description="Entra ID self-service: SharePoint list setup flow, approvals, Graph execution and catalog sync." languagecode="1033" />
+    </Descriptions>
+    <Version>1.0.0.0</Version>
+    <Managed>0</Managed>
+    <Publisher>
+      <UniqueName>EntraSelfService</UniqueName>
+      <LocalizedNames>
+        <LocalizedName description="Entra Self-Service" languagecode="1033" />
+      </LocalizedNames>
+      <Descriptions />
+      <EMailAddress xsi:nil="true"></EMailAddress>
+      <SupportingWebsiteUrl xsi:nil="true"></SupportingWebsiteUrl>
+      <CustomizationPrefix>esp</CustomizationPrefix>
+      <CustomizationOptionValuePrefix>48231</CustomizationOptionValuePrefix>
+      <Addresses />
+    </Publisher>
+    <RootComponents>
+      <RootComponent type="29" id="{4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0001}" behavior="0" />
+      <RootComponent type="29" id="{4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0002}" behavior="0" />
+      <RootComponent type="29" id="{4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0003}" behavior="0" />
+      <RootComponent type="29" id="{4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0004}" behavior="0" />
+    </RootComponents>
+    <MissingDependencies />
+  </SolutionManifest>
+</ImportExportXml>

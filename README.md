@@ -57,6 +57,7 @@ For comparison, the Azure Function / App Service variants need no Power Platform
 | 6a | Test ER-01 on its own, with copy-paste payloads | Your tenant | [docs/06-TEST-ER01.md](docs/06-TEST-ER01.md) |
 | 6b | Test ER-02 (creates objects in Entra) | Your tenant | [docs/07-TEST-ER02.md](docs/07-TEST-ER02.md) |
 | 6c | Test ER-03 (read-only sync) | Your tenant | [docs/08-TEST-ER03.md](docs/08-TEST-ER03.md) |
+| 5a | Or import the flows as a solution zip (instead of building them by hand) | Power Automate | [docs/09-SOLUTION-IMPORT.md](docs/09-SOLUTION-IMPORT.md) · `solution/dist/` |
 
 ## What can be imported, and how
 
