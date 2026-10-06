@@ -16,7 +16,8 @@ The flows are the ones in doc 04, action for action, using **option A** (HTTP wi
 Not included:
 - the optional Teams notification (ER-01 step 19);
 - the Key Vault option B;
-- the Power Apps canvas app (paste its screens as in doc 03).
+- the Power Apps canvas app: import [`powerapps/dist/EntraSelfService.msapp`](../powerapps/dist/EntraSelfService.msapp) as in [doc 03 §3.0](03-POWER-APPS.md#30-fastest-import-the-packed-app-msapp), then optionally add it to this solution.
+- the SharePoint lists themselves: solutions only hold Dataverse components, so **SP-00** creates the lists once you run it.
 
 ## 9.1 Before you import
 
@@ -65,9 +66,10 @@ On GitHub open [`solution/dist/EntraSelfService_1_0_0_0.zip`](../solution/dist/E
    - **ServiceAccountUpn** = the UPN of the account you imported as, in lower case. It owns the SharePoint connection, so its name appears in *Modified By*.
    - EntraApproverEmails, FallbackApproverEmail
    - PowerAppUrl (the list URL until the app exists)
-4. **Turn on ER-01** and test it with [doc 06](06-TEST-ER01.md).
-5. **Turn on ER-03** and test it with [doc 08](08-TEST-ER03.md). It's read-only in Entra.
-6. **Turn on ER-02** when you are ready for it to create objects in Entra, and test it with [doc 07](07-TEST-ER02.md).
+4. **Import the app**: [doc 03 §3.0](03-POWER-APPS.md#30-fastest-import-the-packed-app-msapp) (Apps → Import app → From file (.msapp), then add the three lists and Office 365 Users as data sources).
+5. **Turn on ER-01** and test it with [doc 06](06-TEST-ER01.md).
+6. **Turn on ER-03** and test it with [doc 08](08-TEST-ER03.md). It's read-only in Entra.
+7. **Turn on ER-02** when you are ready for it to create objects in Entra, and test it with [doc 07](07-TEST-ER02.md).
 
 Open each flow once in the designer and check it has no errors before turning it on. If the designer warns that a list can't be found, check the **SharePoint site URL** environment variable (Solutions → Entra Self-Service → **Environment variables** → SharePoint site URL → *Current value*).
 

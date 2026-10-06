@@ -51,7 +51,7 @@ For comparison, the Azure Function / App Service variants need no Power Platform
 | 1 | App registration `entra-pp-graph` (Graph application permissions + certificate) | Entra | [docs/01-ENTRA.md](docs/01-ENTRA.md) · `entra/setup.sh` |
 | 2 | Service account `svc-entra-flows` (Microsoft 365 + Power Automate Premium) | Entra / M365 admin | [docs/01-ENTRA.md](docs/01-ENTRA.md) |
 | 3 | SharePoint site + 4 lists (`EntraRequests`, `EntraCatalogApps`, `EntraCatalogGroups`, `EntraSettings`) | SharePoint | [docs/02-SHAREPOINT.md](docs/02-SHAREPOINT.md) · `sharepoint/provision.ps1` |
-| 4 | Canvas app "Entra Self-Service" (5 screens) | Power Apps | [docs/03-POWER-APPS.md](docs/03-POWER-APPS.md) · `powerapps/` |
+| 4 | Canvas app "Entra Self-Service" (5 screens): import `powerapps/dist/EntraSelfService.msapp`, or paste the screens | Power Apps | [docs/03-POWER-APPS.md](docs/03-POWER-APPS.md) · `powerapps/` |
 | 5 | Flows ER-01 Approvals, ER-02 Execute, ER-03 Catalog sync | Power Automate | [docs/04-POWER-AUTOMATE.md](docs/04-POWER-AUTOMATE.md) · `powerautomate/actions/` |
 | 6 | End-to-end test | Your tenant | [docs/05-TESTING.md](docs/05-TESTING.md) |
 | 6a | Test ER-01 on its own, with copy-paste payloads | Your tenant | [docs/06-TEST-ER01.md](docs/06-TEST-ER01.md) |
