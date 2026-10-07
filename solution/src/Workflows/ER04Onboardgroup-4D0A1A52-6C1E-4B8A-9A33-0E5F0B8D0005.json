@@ -210,7 +210,7 @@
                 ]
               }
             },
-            "Member_or_owner?": {
+            "Member_or_owner": {
               "type": "If",
               "expression": {
                 "and": [
@@ -268,7 +268,7 @@
                 ]
               }
             },
-            "Security_enabled?": {
+            "Security_enabled": {
               "type": "If",
               "expression": {
                 "and": [
@@ -321,7 +321,7 @@
                 }
               },
               "runAfter": {
-                "Member_or_owner?": [
+                "Member_or_owner": [
                   "Succeeded"
                 ]
               }
@@ -341,7 +341,7 @@
                 "authentication": "@parameters('$authentication')"
               },
               "runAfter": {
-                "Security_enabled?": [
+                "Security_enabled": [
                   "Succeeded"
                 ]
               }
@@ -392,7 +392,7 @@
                 ]
               }
             },
-            "Row_missing?": {
+            "Row_missing": {
               "type": "If",
               "expression": {
                 "and": [
@@ -484,7 +484,7 @@
                 "authentication": "@parameters('$authentication')"
               },
               "runAfter": {
-                "Row_missing?": [
+                "Row_missing": [
                   "Succeeded"
                 ]
               }

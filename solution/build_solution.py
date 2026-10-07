@@ -31,7 +31,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.1.0.0"
+VERSION = "1.1.1.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -69,7 +69,12 @@ def body_file(name: str) -> str:
     return (ROOT / "powerautomate" / "actions" / f"{name}.json").read_text().strip()
 
 
+INVALID_NAME_CHARS = set('?<>%&\\/:*#"\'')
+
+
 def key(name: str) -> str:
+    bad = INVALID_NAME_CHARS & set(name)
+    assert not bad, f"action name {name!r} contains characters Power Automate rejects: {''.join(sorted(bad))}"
     return name.replace(" ", "_")
 
 
@@ -286,14 +291,14 @@ def sp00() -> dict:
 
     per_list = Seq()
     per_list.sp_http("Get list", "GET", f"_api/web/lists/getbytitle('@{{{L}?['title']}}')?$select=Id", NOMETA)
-    per_list.cond("List missing?", eq("@outputs('Get_list')?['statusCode']", 404), yes=created,
+    per_list.cond("List missing", eq("@outputs('Get_list')?['statusCode']", 404), yes=created,
                   run_after={"Get_list": ["Succeeded", "Failed"]})
     s.foreach("Apply to each list", "@outputs('Schema')?['lists']", per_list)
 
     s.sp_http("Get settings item", "GET", "_api/web/lists/getbytitle('EntraSettings')/items?$top=1&$select=Id", NOMETA)
     make = Seq().sp_http("Create settings item", "POST", "_api/web/lists/getbytitle('EntraSettings')/items", VERBOSE,
                          "{\"__metadata\":{\"type\":\"SP.Data.EntraSettingsListItem\"},\"Title\":\"settings\",\"ManagedByTag\":\"entra-pp\",\"PfxSecretName\":\"entra-pp-graph-pfx\",\"PfxPasswordSecretName\":\"entra-pp-graph-pfx-password\"}")
-    s.cond("No settings item?", is_true("@empty(body('Get_settings_item')?['value'])"), yes=make)
+    s.cond("No settings item", is_true("@empty(body('Get_settings_item')?['value'])"), yes=make)
 
     trig = {"manual": {"type": "Request", "kind": "Button",
                        "inputs": {"schema": {"type": "object", "properties": {}, "required": []}}}}
@@ -377,7 +382,7 @@ def er01() -> dict:
         "@if(equals(outputs('Entra_outcome'), 'Approve'), concat('Your Entra request ', triggerOutputs()?['body/Title'], ' is approved and being applied'), concat('Your Entra request ', triggerOutputs()?['body/Title'], ' was rejected by the Entra ID team'))",
         "@if(equals(outputs('Entra_outcome'), 'Approve'), concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/TargetDisplayName'], ') was approved by your manager and the Entra ID team. It is being applied now; you will get another email when it is complete.<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>'), concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/TargetDisplayName'], ') was rejected by the Entra ID team.<br>Rejected by: ', coalesce(first(body('Entra_approval')?['responses'])?['responder']?['displayName'], ''), '<br>Comment: ', coalesce(first(body('Entra_approval')?['responses'])?['comments'], '(none)'), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>'))")
 
-    s.cond("Manager approved?", eq("@outputs('Manager_outcome')", "Approve"), yes=approved, no=rejected)
+    s.cond("Manager approved", eq("@outputs('Manager_outcome')", "Approve"), yes=approved, no=rejected)
 
     trig = {"When_an_item_is_created": sp_trigger("GetOnNewItems", "EntraRequests",
                                                   "@and(equals(triggerBody()?['Status']?['Value'], 'Submitted'), not(equals(triggerBody()?['RequestType']?['Value'], 'onboardGroup')))")}
@@ -416,7 +421,7 @@ def er02() -> dict:
     s = Seq()
     s.sp_get_item("Get settings", "EntraSettings", 1)
     stop = Seq().terminate("Stop not approved", "Cancelled")
-    s.cond("Approved by the flow?", {"and": [
+    s.cond("Approved by the flow", {"and": [
         {"equals": ["@toLower(last(split(triggerOutputs()?['body/Editor/Claims'], '|')))", "@toLower(body('Get_settings')?['ServiceAccountUpn'])"]},
         {"equals": ["@triggerOutputs()?['body/ManagerDecision/Value']", "Approved"]},
         {"equals": ["@triggerOutputs()?['body/EntraDecision/Value']", "Approved"]}]}, no=stop)
@@ -443,11 +448,11 @@ def er02() -> dict:
     ta.graph("HTTP Target owners", "GET", f"{GRAPH}/applications/@{{triggerOutputs()?['body/TargetObjectId']}}/owners?$select=id")
     not_owner = fail_item(Seq(), "Fail not owner", "Stop not owner",
                           "The app is not owned by any of your groups, or its appCatID differs.", "NotOwner")
-    ta.cond("Requester may change?", is_true("@and(or(not(empty(body('HTTP_Check_target_team')?['value'])), contains(string(body('HTTP_Target_owners')?['value']), body('HTTP_Get_requester')?['id'])), or(empty(body('Filter_appcat_tag')), equals(first(body('Filter_appcat_tag')), concat('appCatID:', triggerOutputs()?['body/AppCatId']))))"), no=not_owner)
+    ta.cond("Requester may change", is_true("@and(or(not(empty(body('HTTP_Check_target_team')?['value'])), contains(string(body('HTTP_Target_owners')?['value']), body('HTTP_Get_requester')?['id'])), or(empty(body('Filter_appcat_tag')), equals(first(body('Filter_appcat_tag')), concat('appCatID:', triggerOutputs()?['body/AppCatId']))))"), no=not_owner)
     ta.compose("Updated tags", "@union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId']), concat('managedBy:', body('Get_settings')?['ManagedByTag'])), createArray()))")
     ta.graph("HTTP Find target SP", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{body('HTTP_Get_target_app')?['appId']}}'&$select=id")
     ta.set_var("Set target SP", "varSpId", "@coalesce(first(body('HTTP_Find_target_SP')?['value'])?['id'], '')")
-    t.cond("Has target app?", eq("@empty(triggerOutputs()?['body/TargetObjectId'])", False), yes=ta)
+    t.cond("Has target app", eq("@empty(triggerOutputs()?['body/TargetObjectId'])", False), yes=ta)
 
     # -- createAppRegistration
     c1 = Seq()
@@ -466,11 +471,11 @@ def er02() -> dict:
                    "{\"groupIds\": [\"@{outputs('Payload')?['owningGroup']?['id']}\"]}")
     not_member = fail_item(Seq(), "Fail not team member", "Stop not team member",
                            "You are not a member of the owning team.", "NotTeamMember")
-    old_team.cond("Is team member?", {"and": [{"greater": ["@length(body('HTTP_Check_team_membership')?['value'])", 0]}]}, no=not_member)
+    old_team.cond("Is team member", {"and": [{"greater": ["@length(body('HTTP_Check_team_membership')?['value'])", 0]}]}, no=not_member)
     old_team.graph("HTTP Get team group", "GET", f"{GRAPH}/groups/@{{outputs('Payload')?['owningGroup']?['id']}}?$select=id,displayName")
     old_team.set_var("Set team id", "varTeamGroupId", "@body('HTTP_Get_team_group')?['id']")
     old_team.set_var("Set team name", "varTeamGroupName", "@body('HTTP_Get_team_group')?['displayName']")
-    c1.cond("Team is new?", eq("@outputs('Payload')?['owningGroup']?['mode']", "new"), yes=new_team, no=old_team)
+    c1.cond("Team is new", eq("@outputs('Payload')?['owningGroup']?['mode']", "new"), yes=new_team, no=old_team)
     c1.select("Select app roles", "@coalesce(outputs('Payload')?['appRoles'], createArray())", ROLE_MAP)
     c1.select("Select scopes", "@if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), coalesce(outputs('Payload')?['exposeApi']?['scopes'], createArray()), createArray())", SCOPE_MAP)
     c1.select("Select id token claims", "@if(empty(outputs('Payload')?['optionalClaimsIdToken']), createArray(), split(outputs('Payload')?['optionalClaimsIdToken'], ','))", {"name": "@item()", "essential": False})
@@ -480,18 +485,18 @@ def er02() -> dict:
     c1.compose("App tags", "@union(outputs('Base_tags'), createArray(concat('team:', variables('varTeamGroupId')), concat('teamName:', variables('varTeamGroupName'))), body('Select_optional_tags'))")
     c1.graph("HTTP Create application", "POST", f"{GRAPH}/applications", body_file("HTTP_Create_application"))
     expose = Seq().graph("HTTP Expose API", "PATCH", f"{GRAPH}/applications/@{{body('HTTP_Create_application')?['id']}}", body_file("HTTP_Expose_API"))
-    c1.cond("Expose API?", is_true("@equals(outputs('Payload')?['exposeApi']?['enabled'], true)"), yes=expose)
+    c1.cond("Expose API", is_true("@equals(outputs('Payload')?['exposeApi']?['enabled'], true)"), yes=expose)
     owner = Seq().graph("HTTP Add owner", "POST", f"{GRAPH}/applications/@{{body('HTTP_Create_application')?['id']}}/owners/$ref", body_file("HTTP_Add_owner"))
     c1.foreach("Apply to each owner", "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['additionalOwnerIds']), createArray(), split(outputs('Payload')?['additionalOwnerIds'], ';')))", owner)
     sp_try = Seq()
     sp_try.graph("HTTP Create SP", "POST", f"{GRAPH}/servicePrincipals", body_file("HTTP_Create_SP"), retry={"type": "none"})
-    sp_try.cond("SP created?", eq("@outputs('HTTP_Create_SP')?['statusCode']", 201),
+    sp_try.cond("SP created", eq("@outputs('HTTP_Create_SP')?['statusCode']", 201),
                 yes=Seq().set_var("Set SP id", "varSpId", "@body('HTTP_Create_SP')?['id']"),
                 no=Seq().delay("Retry delay", 10),
                 run_after={"HTTP_Create_SP": ["Succeeded", "Failed"]})
     make_sp = Seq().delay("Wait for replication", 10)
     make_sp.until("Do until SP", "@not(empty(variables('varSpId')))", sp_try, 6, "PT10M")
-    c1.cond("Create SP?", is_true("@equals(outputs('Payload')?['createServicePrincipal'], true)"), yes=make_sp)
+    c1.cond("Create SP", is_true("@equals(outputs('Payload')?['createServicePrincipal'], true)"), yes=make_sp)
     groups = Seq().append_var("Queue new role assignment", "varAssignTodo", queue("For_each_new_role", "For_each_new_role_group", "Filter_created_role"))
     roles = Seq()
     roles.filter("Filter created role", "@body('HTTP_Create_application')?['appRoles']", "@equals(item()?['value'], items('For_each_new_role')?['value'])")
@@ -543,7 +548,7 @@ def er02() -> dict:
     c4.foreach("For each added role", "@coalesce(outputs('Payload')?['appRoles'], createArray())", r4)
     sp4 = Seq().graph("HTTP Create SP for roles", "POST", f"{GRAPH}/servicePrincipals", body_file("HTTP_Create_SP_existing"))
     sp4.set_var("Set SP id roles", "varSpId", "@body('HTTP_Create_SP_for_roles')?['id']")
-    c4.cond("Needs SP for roles?", is_true("@and(greater(length(variables('varAssignTodo')), 0), empty(variables('varSpId')))"), yes=sp4)
+    c4.cond("Needs SP for roles", is_true("@and(greater(length(variables('varAssignTodo')), 0), empty(variables('varSpId')))"), yes=sp4)
     c4.set_var("Result roles", "varResult", {"applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}",
                                              "appId": "@{body('HTTP_Get_target_app')?['appId']}",
                                              "servicePrincipalId": "@{variables('varSpId')}"})
@@ -557,7 +562,7 @@ def er02() -> dict:
     c5.set_var("Set assignment todo", "varAssignTodo", "@body('Select_assignment_todo')")
     sp5 = Seq().graph("HTTP Create SP for assign", "POST", f"{GRAPH}/servicePrincipals", body_file("HTTP_Create_SP_existing"))
     sp5.set_var("Set SP id assign", "varSpId", "@body('HTTP_Create_SP_for_assign')?['id']")
-    c5.cond("Needs SP for assign?", is_true("@empty(variables('varSpId'))"), yes=sp5)
+    c5.cond("Needs SP for assign", is_true("@empty(variables('varSpId'))"), yes=sp5)
     c5.graph("HTTP Patch tags assign", "PATCH", target, body_file("HTTP_Patch_tags"))
     c5.set_var("Result assign", "varResult", {"applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}",
                                               "servicePrincipalId": "@{variables('varSpId')}"})
@@ -565,7 +570,7 @@ def er02() -> dict:
     # -- createServicePrincipal
     c6 = Seq()
     sp_exists = fail_item(Seq(), "Fail SP exists", "Stop SP exists", "This app already has an enterprise application.", "SpExists")
-    c6.cond("SP already exists?", eq("@empty(variables('varSpId'))", False), yes=sp_exists)
+    c6.cond("SP already exists", eq("@empty(variables('varSpId'))", False), yes=sp_exists)
     c6.graph("HTTP Create SP existing", "POST", f"{GRAPH}/servicePrincipals", body_file("HTTP_Create_SP_existing"))
     c6.set_var("Set SP id sp", "varSpId", "@body('HTTP_Create_SP_existing')?['id']")
     c6.graph("HTTP Patch tags sp", "PATCH", target, body_file("HTTP_Patch_tags"))
@@ -590,13 +595,13 @@ def er02() -> dict:
     newg.delay("Wait for group replication", 15)
     oldg = Seq().set_var("Set group id", "varGroupId", "@items('Apply_to_each_assignment')?['id']")
     each = Seq()
-    each.cond("Group is new?", eq("@items('Apply_to_each_assignment')?['mode']", "new"), yes=newg, no=oldg)
+    each.cond("Group is new", eq("@items('Apply_to_each_assignment')?['mode']", "new"), yes=newg, no=oldg)
     each.graph("HTTP Assign role", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo",
                body_file("HTTP_Assign_role"), retry={"type": "exponential", "count": 4, "interval": "PT10S"})
     each.append_var("Record assignment", "varAssignments", "@concat(items('Apply_to_each_assignment')?['displayName'], ' -> ', items('Apply_to_each_assignment')?['roleValue'])")
     t.foreach("Apply to each assignment", "@variables('varAssignTodo')", each)
     default = Seq().graph("HTTP Assign default access", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo", body_file("HTTP_Assign_default_access"))
-    t.cond("Default access?", is_true("@and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId'))))"), yes=default)
+    t.cond("Default access", is_true("@and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId'))))"), yes=default)
     t.sp_patch("Mark completed", "EntraRequests", ID, {
         "Title": TITLE, "Status/Value": "Completed", "CompletedAt": "@utcNow()",
         "ResultJson": "@string(setProperty(variables('varResult'), 'assignmentsText', join(variables('varAssignments'), '; ')))"})
@@ -648,7 +653,7 @@ def er03() -> dict:
     team.select("Select member upns", "@body('HTTP_Team_members')?['value']", "@toLower(item()?['userPrincipalName'])")
     team.set_var("Set members", "varMembers", "@concat(';', join(body('Select_member_upns'), ';'), ';')")
     team.sp_get_items("Get team row", "EntraCatalogGroups", "GroupId eq '@{outputs('Team_id')}'", 1)
-    team.cond("Team row missing?", is_true("@empty(body('Get_team_row')?['value'])"), yes=Seq().sp_post("Create team row", "EntraCatalogGroups", {
+    team.cond("Team row missing", is_true("@empty(body('Get_team_row')?['value'])"), yes=Seq().sp_post("Create team row", "EntraCatalogGroups", {
         "Title": "@if(empty(body('Filter_app_team_name')), outputs('Team_id'), substring(first(body('Filter_app_team_name')), 9))",
         "GroupId": "@outputs('Team_id')",
         "AppCatId": "@if(empty(body('Filter_app_appcat')), '', substring(first(body('Filter_app_appcat')), 9))",
@@ -673,12 +678,12 @@ def er03() -> dict:
     app.filter("Filter app appcat", f"@{A}?['tags']", "@startsWith(item(), 'appCatID:')")
     app.compose("Team id", "@if(empty(body('Filter_app_team')), '', substring(first(body('Filter_app_team')), 5))")
     app.set_var("Reset members", "varMembers", "")
-    app.cond("Has team?", eq("@empty(outputs('Team_id'))", False), yes=team)
+    app.cond("Has team", eq("@empty(outputs('Team_id'))", False), yes=team)
     app.graph("HTTP App owners", "GET", f"{GRAPH}/applications/@{{{A}?['id']}}/owners/microsoft.graph.user?$select=userPrincipalName")
     app.select("Select owner upns", "@body('HTTP_App_owners')?['value']", "@toLower(item()?['userPrincipalName'])")
     app.graph("HTTP App SP", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{{A}?['appId']}}'&$select=id")
     app.sp_get_items("Get app row", "EntraCatalogApps", f"ObjectId eq '@{{{A}?['id']}}'", 1)
-    app.cond("App row missing?", is_true("@empty(body('Get_app_row')?['value'])"),
+    app.cond("App row missing", is_true("@empty(body('Get_app_row')?['value'])"),
              yes=Seq().sp_post("Create app row", "EntraCatalogApps", row),
              no=Seq().sp_patch("Update app row", "EntraCatalogApps", "@first(body('Get_app_row')?['value'])?['ID']", row))
     s.foreach("Apply to each app", "@body('HTTP_List_managed_apps')?['value']", app)
@@ -718,9 +723,9 @@ def er04() -> dict:
     t.graph("HTTP Check membership", "POST", f"{GRAPH}/users/@{{body('HTTP_Get_requester')?['id']}}/checkMemberGroups",
             "{\"groupIds\": [\"@{outputs('Group_id')}\"]}")
     t.graph("HTTP Group owners", "GET", f"{GRAPH}/groups/@{{outputs('Group_id')}}/owners/microsoft.graph.user?$select=id,userPrincipalName")
-    t.cond("Member or owner?", is_true("@or(not(empty(body('HTTP_Check_membership')?['value'])), contains(string(body('HTTP_Group_owners')?['value']), body('HTTP_Get_requester')?['id']))"),
+    t.cond("Member or owner", is_true("@or(not(empty(body('HTTP_Check_membership')?['value'])), contains(string(body('HTTP_Group_owners')?['value']), body('HTTP_Get_requester')?['id']))"),
            no=fail_item(Seq(), "Fail not member", "Stop not member", "You are neither a member nor an owner of this group.", "NotMemberOrOwner"))
-    t.cond("Security enabled?", eq("@body('HTTP_Get_group')?['securityEnabled']", True),
+    t.cond("Security enabled", eq("@body('HTTP_Get_group')?['securityEnabled']", True),
            no=fail_item(Seq(), "Fail not security", "Stop not security", "Only security-enabled groups can be used for owning teams and app roles.", "NotSecurityGroup"))
     t.graph("HTTP Group members", "GET", f"{GRAPH}/groups/@{{outputs('Group_id')}}/transitiveMembers/microsoft.graph.user?$select=userPrincipalName&$top=999")
     t.select("Select member upns", "@body('HTTP_Group_members')?['value']", "@toLower(item()?['userPrincipalName'])")
@@ -733,7 +738,7 @@ def er04() -> dict:
         "OwnerUpns": "@concat(';', join(body('Select_owner_upns'), ';'), ';')",
         "LastSynced": "@utcNow()"}
     t.sp_get_items("Get catalog row", "EntraCatalogGroups", "GroupId eq '@{outputs('Group_id')}'", 1)
-    t.cond("Row missing?", is_true("@empty(body('Get_catalog_row')?['value'])"),
+    t.cond("Row missing", is_true("@empty(body('Get_catalog_row')?['value'])"),
            yes=Seq().sp_post("Create catalog row", "EntraCatalogGroups", row),
            no=Seq().sp_patch("Update catalog row", "EntraCatalogGroups", "@first(body('Get_catalog_row')?['value'])?['ID']", row))
     t.sp_patch("Mark completed", "EntraRequests", ID, {

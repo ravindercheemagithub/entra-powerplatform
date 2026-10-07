@@ -68,6 +68,9 @@ for f in sorted(glob.glob('src/Workflows/*.json')):
             if len([x for x in acts.values() if not x.get('runAfter')]) > 1:
                 pass
     collect(defn['actions'], [])
+    for k in all_actions:
+        if set(k) & set('?<>%&\\/:*#"\''):
+            errors.append(f"{flow}: action name {k!r} contains a character Power Automate rejects")
     roots = [k for k, a in defn['actions'].items() if not a.get('runAfter')]
     if len(roots) != 1: errors.append(f"{flow}: top level has {len(roots)} start actions {roots}")
     init_vars = set()

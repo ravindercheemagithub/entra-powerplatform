@@ -100,7 +100,7 @@
           },
           "runAfter": {}
         },
-        "Approved_by_the_flow?": {
+        "Approved_by_the_flow": {
           "type": "If",
           "expression": {
             "and": [
@@ -160,7 +160,7 @@
             "authentication": "@parameters('$authentication')"
           },
           "runAfter": {
-            "Approved_by_the_flow?": [
+            "Approved_by_the_flow": [
               "Succeeded"
             ]
           }
@@ -365,7 +365,7 @@
                 ]
               }
             },
-            "Has_target_app?": {
+            "Has_target_app": {
               "type": "If",
               "expression": {
                 "and": [
@@ -474,7 +474,7 @@
                     ]
                   }
                 },
-                "Requester_may_change?": {
+                "Requester_may_change": {
                   "type": "If",
                   "expression": {
                     "and": [
@@ -536,7 +536,7 @@
                   "type": "Compose",
                   "inputs": "@union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId']), concat('managedBy:', body('Get_settings')?['ManagedByTag'])), createArray()))",
                   "runAfter": {
-                    "Requester_may_change?": [
+                    "Requester_may_change": [
                       "Succeeded"
                     ]
                   }
@@ -593,7 +593,7 @@
                     "Do_createAppRegistration": {
                       "type": "Scope",
                       "actions": {
-                        "Team_is_new?": {
+                        "Team_is_new": {
                           "type": "If",
                           "expression": {
                             "and": [
@@ -712,7 +712,7 @@
                                 },
                                 "runAfter": {}
                               },
-                              "Is_team_member?": {
+                              "Is_team_member": {
                                 "type": "If",
                                 "expression": {
                                   "and": [
@@ -785,7 +785,7 @@
                                   "authentication": "@parameters('$authentication')"
                                 },
                                 "runAfter": {
-                                  "Is_team_member?": [
+                                  "Is_team_member": [
                                     "Succeeded"
                                   ]
                                 }
@@ -832,7 +832,7 @@
                             }
                           },
                           "runAfter": {
-                            "Team_is_new?": [
+                            "Team_is_new": [
                               "Succeeded"
                             ]
                           }
@@ -945,7 +945,7 @@
                             ]
                           }
                         },
-                        "Expose_API?": {
+                        "Expose_API": {
                           "type": "If",
                           "expression": {
                             "and": [
@@ -1019,12 +1019,12 @@
                             }
                           },
                           "runAfter": {
-                            "Expose_API?": [
+                            "Expose_API": [
                               "Succeeded"
                             ]
                           }
                         },
-                        "Create_SP?": {
+                        "Create_SP": {
                           "type": "If",
                           "expression": {
                             "and": [
@@ -1078,7 +1078,7 @@
                                   },
                                   "runAfter": {}
                                 },
-                                "SP_created?": {
+                                "SP_created": {
                                   "type": "If",
                                   "expression": {
                                     "and": [
@@ -1189,7 +1189,7 @@
                             }
                           },
                           "runAfter": {
-                            "Create_SP?": [
+                            "Create_SP": [
                               "Succeeded"
                             ]
                           }
@@ -1515,7 +1515,7 @@
                             ]
                           }
                         },
-                        "Needs_SP_for_roles?": {
+                        "Needs_SP_for_roles": {
                           "type": "If",
                           "expression": {
                             "and": [
@@ -1581,7 +1581,7 @@
                             }
                           },
                           "runAfter": {
-                            "Needs_SP_for_roles?": [
+                            "Needs_SP_for_roles": [
                               "Succeeded"
                             ]
                           }
@@ -1625,7 +1625,7 @@
                             ]
                           }
                         },
-                        "Needs_SP_for_assign?": {
+                        "Needs_SP_for_assign": {
                           "type": "If",
                           "expression": {
                             "and": [
@@ -1699,7 +1699,7 @@
                             "authentication": "@parameters('$authentication')"
                           },
                           "runAfter": {
-                            "Needs_SP_for_assign?": [
+                            "Needs_SP_for_assign": [
                               "Succeeded"
                             ]
                           }
@@ -1730,7 +1730,7 @@
                     "Do_createServicePrincipal": {
                       "type": "Scope",
                       "actions": {
-                        "SP_already_exists?": {
+                        "SP_already_exists": {
                           "type": "If",
                           "expression": {
                             "and": [
@@ -1803,7 +1803,7 @@
                             "authentication": "@parameters('$authentication')"
                           },
                           "runAfter": {
-                            "SP_already_exists?": [
+                            "SP_already_exists": [
                               "Succeeded"
                             ]
                           }
@@ -1869,7 +1869,7 @@
                 "actions": {}
               },
               "runAfter": {
-                "Has_target_app?": [
+                "Has_target_app": [
                   "Succeeded"
                 ]
               }
@@ -1878,7 +1878,7 @@
               "type": "Foreach",
               "foreach": "@variables('varAssignTodo')",
               "actions": {
-                "Group_is_new?": {
+                "Group_is_new": {
                   "type": "If",
                   "expression": {
                     "and": [
@@ -2014,7 +2014,7 @@
                     }
                   },
                   "runAfter": {
-                    "Group_is_new?": [
+                    "Group_is_new": [
                       "Succeeded"
                     ]
                   }
@@ -2043,7 +2043,7 @@
                 ]
               }
             },
-            "Default_access?": {
+            "Default_access": {
               "type": "If",
               "expression": {
                 "and": [
@@ -2106,7 +2106,7 @@
                 "authentication": "@parameters('$authentication')"
               },
               "runAfter": {
-                "Default_access?": [
+                "Default_access": [
                   "Succeeded"
                 ]
               }

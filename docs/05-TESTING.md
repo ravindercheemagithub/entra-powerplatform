@@ -67,7 +67,7 @@ After the next ER-03 run (or right away, through ER-02's catalog insert), the ap
 |---|---|
 | A user opens a colleague's request URL in SharePoint | not visible (item-level security) |
 | Requester edits their item after submitting | denied (read-only after ER-01's lock) |
-| Site owner sets Status = Approved by hand on a request | ER-02 runs and stops at `Approved by the flow?` (Terminate: Cancelled). Nothing executes. |
+| Site owner sets Status = Approved by hand on a request | ER-02 runs and stops at `Approved by the flow` (Terminate: Cancelled). Nothing executes. |
 | Requester is their own approver (e.g. a manager requesting) and approves | recorded as Rejected |
 | Change request for an app your groups don't own (forge the item as an owner) | ER-02: `Failed – The app is not owned by any of your groups` |
 | Remove `AppRoleAssignment.ReadWrite.All` from entra-pp-graph, request role assignments | `Failed` with a Graph *Authorization_RequestDenied* message in ErrorMessage. Restore the permission. |

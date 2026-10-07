@@ -1,6 +1,6 @@
 # Power Platform solution
 
-`dist/EntraSelfService_1_1_0_0.zip` is an unmanaged solution with the flows SP-00, ER-01, ER-02, ER-03 and ER-04, five connection references and the `esp_SiteUrl` environment variable. How to import it: [docs/09-SOLUTION-IMPORT.md](../docs/09-SOLUTION-IMPORT.md).
+`dist/EntraSelfService_1_1_1_0.zip` is an unmanaged solution with the flows SP-00, ER-01, ER-02, ER-03 and ER-04, five connection references and the `esp_SiteUrl` environment variable. How to import it: [docs/09-SOLUTION-IMPORT.md](../docs/09-SOLUTION-IMPORT.md).
 
 | Path | What |
 |---|---|

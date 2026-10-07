@@ -124,7 +124,7 @@ Expected: Enterprise applications now lists pp-t2-nosp with Assignment required 
 
 | Test | How | Expected |
 |---|---|---|
-| Hand-edited status | As a site owner who is **not** the flow account, set an item's Status to Approved (with both decisions Approved) | ER-02 run status **Cancelled** at `Approved by the flow?`; the item stays as it was; nothing in Entra |
+| Hand-edited status | As a site owner who is **not** the flow account, set an item's Status to Approved (with both decisions Approved) | ER-02 run status **Cancelled** at `Approved by the flow`; the item stays as it was; nothing in Entra |
 | Not your app | Path A: a requester who is neither in the app's team group nor an owner submits test 4 for pp-t2-app | Status **Failed**, ErrorMessage *The app is not owned by any of your groups, or its appCatID differs.* |
 | Wrong appCatID | Test 4 with AppCatId `APP-9999` | Status **Failed** with the same message |
 | Not in owning team | Test 2 with `"owningGroup":{"mode":"existing","id":"<a group the requester is not in>",…}` | Status **Failed**, *You are not a member of the owning team.* |
@@ -141,6 +141,7 @@ Expected: Enterprise applications now lists pp-t2-nosp with Assignment required 
 | `HTTP Create SP` fails 6 times | The new app had not replicated after ~70 s; rare, re-run |
 | `HTTP Assign role` 400 *Permission being assigned was not found* | Role ID wrong (test 6) or the role does not allow `User` members |
 | `HTTP Assign role` 403 / licence error | Tenant has no Entra ID P1/P2 for group assignment |
+| Flow checker warns *"Your flow may have a circular loop"* on Mark in progress, Mark completed, Mark failed and the Fail … actions | Expected. ER-02 updates the list it is triggered by, but it only starts when Status = Approved and it only ever writes InProgress, Completed or Failed, so its own updates never start another run. The warnings don't stop the flow from saving or running. |
 | Status stuck **InProgress** | The run is still going (open it), or it was cancelled manually; check run history |
 
 ## 7.8 Clean up

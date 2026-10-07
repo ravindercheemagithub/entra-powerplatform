@@ -165,7 +165,7 @@
                 ]
               }
             },
-            "Has_team?": {
+            "Has_team": {
               "type": "If",
               "expression": {
                 "and": [
@@ -240,7 +240,7 @@
                     ]
                   }
                 },
-                "Team_row_missing?": {
+                "Team_row_missing": {
                   "type": "If",
                   "expression": {
                     "and": [
@@ -308,7 +308,7 @@
                 "authentication": "@parameters('$authentication')"
               },
               "runAfter": {
-                "Has_team?": [
+                "Has_team": [
                   "Succeeded"
                 ]
               }
@@ -367,7 +367,7 @@
                 ]
               }
             },
-            "App_row_missing?": {
+            "App_row_missing": {
               "type": "If",
               "expression": {
                 "and": [

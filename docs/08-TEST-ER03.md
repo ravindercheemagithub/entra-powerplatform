@@ -59,7 +59,7 @@ Expected:
 1. Delete the app's row from `EntraCatalogApps`.
 2. Run ER-03.
 
-Expected: the row is created again with all columns (`App row missing?` → If yes → `Create app row`).
+Expected: the row is created again with all columns (`App row missing` → If yes → `Create app row`).
 
 ## 8.6 Test 5: a deleted group
 
@@ -81,7 +81,7 @@ Expected: `HTTP Group` fails with **404** in that iteration, and the run ends as
 | `HTTP List managed apps` returns nothing although ER-02 created apps | `ManagedByTag` differs from the value stamped on the apps (check the app's tags in its Manifest) |
 | `HTTP …` 401 / 403 | Graph connection auth type or certificate wrong, or admin consent missing (`Application.ReadWrite.All` / `Directory.Read.All`) |
 | `Get app row` / `Get team row` fails | Filter Query typo; it must be `ObjectId eq '@{items('Apply_to_each_app')?['id']}'` / `GroupId eq '@{outputs('Team_id')}'` |
-| Duplicate rows in `EntraCatalogApps` | `Get app row` filter not matching (wrong column name), so `App row missing?` is always true |
+| Duplicate rows in `EntraCatalogApps` | `Get app row` filter not matching (wrong column name), so `App row missing` is always true |
 | Some members missing from MemberUpns | Only user accounts are listed; devices, service principals and contacts in a group are left out on purpose (`microsoft.graph.user`) |
 
 ## 8.9 Clean up

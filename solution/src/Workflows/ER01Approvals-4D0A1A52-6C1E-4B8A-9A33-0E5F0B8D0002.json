@@ -405,7 +405,7 @@
             ]
           }
         },
-        "Manager_approved?": {
+        "Manager_approved": {
           "type": "If",
           "expression": {
             "and": [
