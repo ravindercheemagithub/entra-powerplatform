@@ -23,10 +23,10 @@ ER-01 runs when a **new item** is added to `EntraRequests` with **Status = Submi
 | Column | Value |
 |---|---|
 | Title | `REQ-TEST-0001` (use a new number for each test) |
-| RequestType | the type of the payload you paste (e.g. `createAppRegistration`) |
+| RequestType | `createAppRegistration` |
 | Status | `Submitted` (the default; leave it) |
 | AppCatId | `APP-1234` |
-| TargetDisplayName | the payload's `displayName` (e.g. `pp-test-app`) |
+| TargetDisplayName | the payload's `displayName` (e.g. `APP-1234-D-PPTEST-pp-test-app`) |
 | Justification | `Testing ER-01` |
 | PayloadJson | a payload from 6.3, pasted as a single line |
 
@@ -36,23 +36,19 @@ The flow starts within about a minute (sooner in test mode). PayloadJson must be
 
 Copy the whole line. Each one is valid JSON.
 
-**A. createAppRegistration, minimal** (RequestType `createAppRegistration`, TargetDisplayName `pp-test-app`)
+**A. createAppRegistration, minimal** (RequestType `createAppRegistration`, TargetDisplayName `APP-1234-D-PPTEST-pp-test-app`)
 
 ```json
-{"displayName":"pp-test-app","description":"ER-01 test","signInAudience":"AzureADMyOrg","owningGroup":{"mode":"new","id":"","displayName":"grp-pp-test-team","description":"","ownerIds":""},"redirectUrisWeb":"","redirectUrisSpa":"","exposeApi":{"enabled":false,"identifierUriTemplate":"api://{appId}","scopes":[]},"optionalClaimsIdToken":"","optionalClaimsAccessToken":"","groupMembershipClaims":"None","appRoles":[],"createServicePrincipal":true,"appRoleAssignmentRequired":true,"additionalOwnerIds":"","tags":""}
+{"displayName":"APP-1234-D-PPTEST-pp-test-app","appEnv":"D","borShortName":"PPTEST","nameText":"pp-test-app","description":"ER-01 test","signInAudience":"AzureADMyOrg","owningGroup":{"mode":"existing","id":"<TEAM_ID>","displayName":"grp-pp-team"},"redirectUrisWeb":"","redirectUrisSpa":"","exposeApi":{"enabled":false,"identifierUriTemplate":"api://{appId}","scopes":[]},"optionalClaimsIdToken":"","optionalClaimsAccessToken":"","groupMembershipClaims":"None","appRoles":[],"createServicePrincipal":true,"appRoleAssignmentRequired":true,"tags":""}
 ```
 
-**B. createAppRegistration with an API scope and two roles with groups** (RequestType `createAppRegistration`, TargetDisplayName `pp-orders-api`). The approval summary then shows the API and both roles.
+**B. createAppRegistration with an API scope and two roles held by existing groups** (RequestType `createAppRegistration`, TargetDisplayName `APP-1234-D-PPTEST-pp-orders-api`). The approval summary then shows the API and both roles.
 
 ```json
-{"displayName":"pp-orders-api","description":"Orders API (ER-01 test)","signInAudience":"AzureADMyOrg","owningGroup":{"mode":"new","id":"","displayName":"grp-pp-orders-team","description":"","ownerIds":""},"redirectUrisWeb":"","redirectUrisSpa":"https://localhost:3000","exposeApi":{"enabled":true,"identifierUriTemplate":"api://{appId}","scopes":[{"value":"access_as_user","type":"User","adminConsentDisplayName":"Access pp-orders-api","adminConsentDescription":"Allows the app to call pp-orders-api as the signed-in user."}]},"optionalClaimsIdToken":"email","optionalClaimsAccessToken":"","groupMembershipClaims":"None","appRoles":[{"value":"OrdersApi.User","displayName":"pp-orders-api User","description":"Can use pp-orders-api","allowedMemberTypes":"User","assignGroups":[{"mode":"new","id":"","displayName":"grp-pp-orders-users","description":"","ownerIds":""}]},{"value":"OrdersApi.Admin","displayName":"pp-orders-api Admin","description":"Can administer pp-orders-api","allowedMemberTypes":"User","assignGroups":[{"mode":"new","id":"","displayName":"grp-pp-orders-admins","description":"","ownerIds":""}]}],"createServicePrincipal":true,"appRoleAssignmentRequired":true,"additionalOwnerIds":"","tags":"costCentre=CC-0000"}
+{"displayName":"APP-1234-D-PPTEST-pp-orders-api","appEnv":"D","borShortName":"PPTEST","nameText":"pp-orders-api","description":"Orders API (ER-01 test)","signInAudience":"AzureADMyOrg","owningGroup":{"mode":"existing","id":"<TEAM_ID>","displayName":"grp-pp-team"},"redirectUrisWeb":"","redirectUrisSpa":"https://localhost:3000","exposeApi":{"enabled":true,"identifierUriTemplate":"api://{appId}","scopes":[{"value":"access_as_user","type":"User","adminConsentDisplayName":"Access pp-orders-api","adminConsentDescription":"Allows the app to call pp-orders-api as the signed-in user."}]},"optionalClaimsIdToken":"email","optionalClaimsAccessToken":"","groupMembershipClaims":"None","appRoles":[{"value":"OrdersApi.User","displayName":"pp-orders-api User","description":"Can use pp-orders-api","allowedMemberTypes":"User","assignGroups":[{"mode":"existing","id":"<USERS_ID>","displayName":"grp-pp-users"}]},{"value":"OrdersApi.Admin","displayName":"pp-orders-api Admin","description":"Can administer pp-orders-api","allowedMemberTypes":"User","assignGroups":[{"mode":"existing","id":"<ADMINS_ID>","displayName":"grp-pp-admins"}]}],"createServicePrincipal":true,"appRoleAssignmentRequired":true,"tags":"costCentre=CC-0000"}
 ```
 
-**C. createGroup** (RequestType `createGroup`, TargetDisplayName `grp-pp-test-group`)
-
-```json
-{"displayName":"grp-pp-test-group","description":"ER-01 test group","ownerIds":"","memberIds":""}
-```
+ER-01 doesn't look at the group IDs, so the `<…_ID>` placeholders can stay for an ER-01-only test. Replace them with real Object IDs of groups you are a member of if the request will go on to ER-02 (doc 07). Groups are never created by this platform.
 
 ## 6.4 What should happen
 
@@ -60,9 +56,9 @@ Copy the whole line. Each one is valid JSON.
 |---|---|---|
 | Steps 2–6 (lock) | The item → **… → Manage access** | The item has its own permissions: Owners have Full Control, the requester has **Read** only. As the requester, editing the item is no longer possible. |
 | Step 14 | The item | Status **PendingManagerApproval**; ManagerEmail and ManagerName filled in; ApprovedPayloadJson equals PayloadJson; RequestSummary has text |
-| Step 15 | The manager's Outlook, Teams Approvals app, or Power Automate → **Approvals** | Card *Entra request REQ-TEST-0001: createAppRegistration – pp-test-app* with the summary |
+| Step 15 | The manager's Outlook, Teams Approvals app, or Power Automate → **Approvals** | Card *Entra request REQ-TEST-0001: createAppRegistration – APP-1234-D-PPTEST-pp-test-app* with the summary |
 | Manager approves | The item | ManagerDecision **Approved**, ManagerDecisionBy/At/Comment filled; Status **PendingEntraApproval** |
-| Step 20 | The Entra approvers' inbox / Approvals | Card *Entra team approval – REQ-TEST-0001: pp-test-app* |
+| Step 20 | The Entra approvers' inbox / Approvals | Card *Entra team approval – REQ-TEST-0001: APP-1234-D-PPTEST-pp-test-app* |
 | Entra team approves | The item, and the requester's inbox | EntraDecision **Approved**; **Status Approved**; *Modified By* = the flow account; the requester gets *… is approved and being applied* |
 
 Follow the run as described in [6.6](#66-checking-a-run). While it waits for an approval the run shows **Running**, which is normal. The first approval in a new environment can take a few minutes while Power Automate sets up Approvals (Dataverse).

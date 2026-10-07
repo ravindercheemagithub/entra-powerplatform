@@ -6,7 +6,6 @@ EditorState:
   ScreensOrder:
   - scrHome
   - scrNewApp
-  - scrNewGroup
   - scrAddGroup
   - scrAppChange
   - scrMyRequests

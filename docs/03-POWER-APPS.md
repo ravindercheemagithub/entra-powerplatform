@@ -6,14 +6,13 @@ Five screens, built by pasting YAML into Power Apps Studio. Every control is a c
 |---|---|
 | `scrHome` | operation cards + your recent requests |
 | `scrNewApp` | **Register an application**: 5 sections, Submit / Next / Cancel at the bottom |
-| `scrNewGroup` | new security group, as a request on its own or inline for the wizard ("Create new group") |
 | `scrAppChange` | changes to an existing app your groups own: Expose an API, App roles, Role assignments, Enterprise app |
-| `scrAddGroup` | **Add existing group**: enter a group's Object ID to make it selectable (flow ER-04 checks you are a member or owner; no approval) |
+| `scrAddGroup` | **Add existing group**: enter a group's name or Object ID to make it selectable (flow ER-04 checks you are a member or owner; no approval). Groups are created outside this app. |
 | `scrMyRequests` | history with approval stages, created IDs and errors |
 
 ## 3.0 Fastest: import the packed app (.msapp)
 
-[`powerapps/dist/EntraSelfService.msapp`](../powerapps/dist/EntraSelfService.msapp) is the whole app: all five screens (300 controls), App.Formulas, App.OnStart, each screen's Fill and OnVisible, tablet layout 1366 × 768, and data row limit 2000. Importing it replaces 3.1 to 3.3.
+[`powerapps/dist/EntraSelfService.msapp`](../powerapps/dist/EntraSelfService.msapp) is the whole app: all five screens (about 300 controls), App.Formulas, App.OnStart, each screen's Fill and OnVisible, tablet layout 1366 × 768, and data row limit 2000. Importing it replaces 3.1 to 3.3.
 
 It contains **no data sources**: a SharePoint data source embeds each list's GUID and column schema from your tenant, so you add them after opening (step 4). Until then Studio shows formula errors, which is expected.
 
@@ -55,7 +54,7 @@ In the Tree view select **App**:
 
 ## 3.3 Screens
 
-For each screen, in this order: **scrHome, scrMyRequests, scrNewGroup, scrAddGroup, scrNewApp, scrAppChange**. The order avoids "screen not found" errors while you paste, since formulas navigate between screens; any order works once all exist.
+For each screen, in this order: **scrHome, scrMyRequests, scrAddGroup, scrNewApp, scrAppChange**. The order avoids "screen not found" errors while you paste, since formulas navigate between screens; any order works once all exist.
 
 1. **New screen → Blank**, rename it exactly (e.g. `scrHome`). Delete `Screen1` at the end; `scrHome` must be first in the Tree view, which makes it the start screen.
 2. Select the screen. Set **Fill** = `gTheme.Bg`, and **OnVisible** = its formula from [`powerapps/Screens.OnVisible.fx`](../powerapps/Screens.OnVisible.fx).
@@ -70,7 +69,7 @@ Studio validates the code before creating controls. If a paste is refused:
 ## 3.4 What each screen does
 
 ### scrHome
-- **galOps_Home**: cards from `gOperations` (3 per row). Clicking a card navigates: *App registration* → `scrNewApp`; *Security group* → `scrNewGroup` (standalone); *My requests* → `scrMyRequests`; the other four → `scrAppChange`, with `varOp` = the operation.
+- **galOps_Home**: cards from `gOperations` (3 per row). Clicking a card navigates: *App registration* → `scrNewApp`; *Add existing group* → `scrAddGroup`; *My requests* → `scrMyRequests`; the other four → `scrAppChange`, with `varOp` = the operation. There is no group-creation card: groups are created outside this app.
 - **galRecent_Home**: your last 7 requests (item-level security means the list only returns your items). Click one to open it.
 
 ### scrNewApp: Register an application
@@ -78,40 +77,37 @@ Left: a step list (`galSteps_NewApp`). You can click back to any step you've vis
 
 | Section | Fields (control name) | Required |
 |---|---|---|
-| 1 Basics | Display name `txtAppName_NewApp`, appCatID `txtAppCatId_NewApp` (defaults to your groups' appCatID), Account types `radAudience_NewApp`, Owning team `cmbTeam_NewApp` or **＋ Create new team group**, Justification `txtJustification_NewApp`, Description, Redirect URI platform + URIs, Change ticket | name, appCatID, team, justification |
+| 1 Basics | **App BoR ID** (appCatID) `txtAppCatId_NewApp`; **App environment** `ddEnv_NewApp`; **App BoR short name** `txtBorShort_NewApp`; **Owning team** `cmbTeam_NewApp` (+ link *Group not listed? Add an existing group*); **Display name**: read-only prefix `lblNamePrefix_NewApp` + free text `txtAppName_NewApp`; Justification; Description; Redirect URI platform + URIs | appCatID, environment, BoR short name, free-text name, team, justification |
 | 2 Expose an API & claims | Expose an API `chkExpose_NewApp`; App ID URI (`api://{appId}` or custom); scopes editor (**＋ access_as_user**, **＋ Custom scope**); optional claims in ID / access token; groups claim | – |
-| 3 App roles & groups | **＋ User + Admin roles with groups** (adds `<Name>.User` / `<Name>.Admin` with new groups `grp-<name>-users/-admins`); **＋ Custom role**; per role: value, display name, members, description, groups (pick existing, or **＋ Create new group**) | – |
-| 4 Enterprise app & owners | Create the enterprise app (forced on when any role has groups), Assignment required, Additional owners, Optional tags | – |
+| 3 App roles & groups | **＋ User + Admin roles** (adds `<Name>.User` / `<Name>.Admin`); **＋ Custom role**; per role: value, display name, members, description, and the **existing** groups that hold it (pick from your groups; *Group not listed?* opens Add existing group) | – |
+| 4 Enterprise app & sign-in | Create the enterprise application (forced on when any role has groups); **Assignment required** (`appRoleAssignmentRequired`); Supported account types; Optional tags; Change ticket | – |
 | 5 Review + submit | HTML summary of everything + what happens next | – |
 
-- **Next** validates the current section (hidden labels `lblErr1/2/3_NewApp` hold the rules).
+- **Display name follows the naming convention** `<App BoR ID>-<App Env>-<App BoR short name>-<free text>`, e.g. `APP-1234-Q-ORDERS-orders-api`. The prefix is built from the three fields above it and can't be typed over; only the free text is editable. Environments: **P** production, **Q** QA, **D** development, **L** lab, **U** UAT, **F** performance, **T** dev integration testing, **S** system integration testing (`gEnvironments`). The full name is in the hidden label `lblFullName_NewApp`, max 120 characters. The payload also carries `appEnv` and `borShortName`; ER-02 stamps them as tags.
+- **Next** validates the current section (hidden labels `lblErr1/2/3_NewApp` hold the rules). If something is missing, the message appears in red next to the buttons, as well as in a banner.
 - **Submit** validates everything, builds `PayloadJson` with `JSON()`, and **Patches** `EntraRequests` with `Status = Submitted`. Then it opens My requests.
-- "＋ Create new group" opens `scrNewGroup` in *inline* mode. **Add to request** returns to the wizard with the group added, marked *(new)*; it is created when the request is approved. Everything typed so far is kept: `scrNewApp.OnVisible` resets only when `varResetNewApp` is true.
+- **No group creation and no owners.** The owning team and role groups are always existing groups. *Group not listed?* opens `scrAddGroup`; when you come back everything typed is kept (`scrNewApp.OnVisible` resets only when `varResetNewApp` is true) and the pickers are refreshed. The app registration gets no owners.
 
 #### Where the Owning team list comes from
 `cmbTeam_NewApp` lists rows of the **EntraCatalogGroups** SharePoint list (not Entra directly) where your UPN is in **MemberUpns** (formula `gMyTeams`). Rows get there three ways:
-- **ER-02** adds every group it creates (you, the requester, as owner and member of a new team group).
-- **You onboard an existing group:** add a row with **Title** and **GroupId** (the group's Object ID) and run **ER-03**, which fills in MemberUpns, OwnerUpns and the appCatID.
+- **You add it in the app:** *Add existing group* (ER-04) looks the group up by name or Object ID and adds it if you are a member or owner.
+- **An admin onboards it:** a row with **Title** and **GroupId** in EntraCatalogGroups, then **ER-03** fills in MemberUpns, OwnerUpns and the appCatID.
 - **ER-03** keeps all rows current every hour, and adds the team group of every app the platform manages.
 
 So a group that already exists in Entra appears only after it has been onboarded, and only for its members. Users onboard groups themselves: **Group not listed? Add an existing group** next to the picker, or the **Add existing group** card on Home, opens `scrAddGroup`. To use it as the owning team you must be a member, because ER-02 checks membership.
 
-### scrNewGroup
-- **Standalone** (from Home): name, appCatID, description, additional owners, initial members, justification → **Submit request** (`createGroup`).
-- **Inline** (`varGroupMode` = `inline-team` / `inline-role` / `inline-assign`, opened from **＋ Create new group** in a request): name, description, additional owners → **Add to request** → back. The appCatID is shown read-only: an inline group always gets the appCatID of the request it belongs to (ER-02 stamps it from the request). *Initial members* is disabled: groups created with a request start with owners only, and the owners add members once the group exists.
-- **Owners / members pickers** search the directory through Office 365 Users: type part of a name and pick from the list (nothing to type in a special format). They stay empty until the **Office 365 Users** data source is added. The requester is always an owner, so *Additional owners* is optional.
-
 ### scrAddGroup: Add an existing group
-- One field, **Group Object ID** (`txtGroupId_AddGroup`). **Add group** checks it looks like a GUID and isn't already in your groups, then Patches `EntraRequests` with `RequestType = onboardGroup`, `Status = Submitted`, `TargetObjectId` = the ID.
-- **ER-04** (not ER-01) picks it up: it checks in Entra that you are a member or owner and that the group is security-enabled, then creates or updates the `EntraCatalogGroups` row. No approval; nothing changes in Entra.
-- The list at the bottom shows your recent additions with their status and any error (e.g. *You are neither a member nor an owner of this group*). **↻ Refresh** reloads it; the Owning team picker refreshes each time you open the New app screen.
+- One field, **Group name or Object ID** (`txtGroup_AddGroup`). **Add group** checks the field isn't empty and the group isn't already in your pickers, then Patches `EntraRequests` with `RequestType = onboardGroup`, `Status = Submitted`, `TargetDisplayName` = what you typed (and `TargetObjectId` when it is a GUID).
+- **ER-04** (not ER-01) picks it up: it finds the group by Object ID, or by **exact** display name, checks you are a member or owner and that it is security-enabled, then creates or updates the `EntraCatalogGroups` row. No approval; nothing changes in Entra.
+- **The result appears in the app:** the timer `tmrOnboard_AddGroup` checks the request every 3 seconds (up to a minute). On success the group is added to the pickers. On failure the error is shown in a banner, for example: *No group named … was found*, *3 groups are named …; enter the Object ID*, *You are neither a member nor an owner of …*, *… is not a security group*.
+- The list at the bottom shows your recent additions with status and error; **↻ Refresh** reloads it.
 
 ### scrAppChange
 - Left: **your applications** (`gMyApps`: catalog rows where you're in the team group or an owner), with search.
 - Right: app details, plus the section for `varOp`:
   - **Expose an API**: URI (added; existing ones are kept) + new scopes
-  - **App roles**: new roles, each with groups (existing or new)
-  - **Role assignments**: pick an app role (from `AppRolesJson`) and a group, **Add**; or "＋ Create new group" for that role
+  - **App roles**: new roles, each with existing groups
+  - **Role assignments**: pick an app role (from `AppRolesJson`) and one of your groups, **Add**; *Group not listed?* opens Add existing group
   - **Enterprise application**: assignment required toggle (disabled if one exists)
 - Justification + **Submit request** → `exposeApi` / `addAppRoles` / `assignGroupsToAppRoles` / `createServicePrincipal`.
 
@@ -125,27 +121,28 @@ Same shapes as `entra-portal-next`, with string lists as `;`-separated strings s
 
 ```json
 {
-  "displayName": "orders-api", "description": "Orders REST API", "signInAudience": "AzureADMyOrg",
-  "owningGroup": { "mode": "existing", "id": "<group id>", "displayName": "team-orders", "description": "", "ownerIds": "" },
+  "displayName": "APP-1234-Q-ORDERS-orders-api", "appEnv": "Q", "borShortName": "ORDERS", "nameText": "orders-api",
+  "description": "Orders REST API", "signInAudience": "AzureADMyOrg",
+  "owningGroup": { "mode": "existing", "id": "<group object id>", "displayName": "team-orders" },
   "redirectUrisWeb": "", "redirectUrisSpa": "https://orders.contoso.com",
   "exposeApi": { "enabled": true, "identifierUriTemplate": "api://{appId}",
                  "scopes": [ { "value": "access_as_user", "type": "User", "adminConsentDisplayName": "Access orders-api", "adminConsentDescription": "…" } ] },
   "optionalClaimsIdToken": "email,upn", "optionalClaimsAccessToken": "idtyp", "groupMembershipClaims": "None",
-  "appRoles": [ { "value": "OrdersApi.User", "displayName": "orders-api User", "description": "…", "allowedMemberTypes": "User",
-                  "assignGroups": [ { "mode": "new", "id": "", "displayName": "grp-orders-api-users", "description": "…", "ownerIds": "" } ] } ],
-  "createServicePrincipal": true, "appRoleAssignmentRequired": true, "additionalOwnerIds": "<oid>;<oid>", "tags": "costCentre=CC-4410"
+  "appRoles": [ { "value": "OrdersApi.User", "displayName": "APP-1234-Q-ORDERS-orders-api User", "description": "…", "allowedMemberTypes": "User",
+                  "assignGroups": [ { "mode": "existing", "id": "<group object id>", "displayName": "grp-orders-users" } ] } ],
+  "createServicePrincipal": true, "appRoleAssignmentRequired": true, "tags": "costCentre=CC-4410"
 }
 ```
 
 | Request type | Payload |
 |---|---|
-| `createGroup` | `{ displayName, description, ownerIds: "a;b", memberIds: "a;b" }` |
 | `exposeApi` | `{ applicationObjectId, applicationDisplayName, identifierUriTemplate, scopes: [...] }` |
-| `addAppRoles` | `{ applicationObjectId, applicationDisplayName, appRoles: [...] }` (same role shape as above) |
-| `assignGroupsToAppRoles` | `{ applicationObjectId, applicationDisplayName, assignments: [ { appRoleId, appRoleValue, mode, id, displayName, description, ownerIds } ] }` |
+| `addAppRoles` | `{ applicationObjectId, applicationDisplayName, appRoles: [...] }` (same role shape as above; groups are existing) |
+| `assignGroupsToAppRoles` | `{ applicationObjectId, applicationDisplayName, assignments: [ { appRoleId, appRoleValue, mode: "existing", id, displayName } ] }` |
 | `createServicePrincipal` | `{ applicationObjectId, applicationDisplayName, appRoleAssignmentRequired }` |
+| `onboardGroup` | `{ group: "<name or Object ID>" }` (also in TargetDisplayName) |
 
-Free text that the flow later embeds in Graph JSON (descriptions) has line breaks, double quotes and backslashes removed in the app. Display names may not contain `"` or `\`.
+Free text that the flow later embeds in Graph JSON (descriptions) has line breaks, double quotes and backslashes removed in the app. The free-text part of the display name allows letters, digits, spaces, `.`, `_` and `-`.
 
 ## 3.6 Publish and share
 

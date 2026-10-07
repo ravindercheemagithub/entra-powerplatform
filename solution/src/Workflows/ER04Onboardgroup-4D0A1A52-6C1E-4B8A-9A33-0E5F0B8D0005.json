@@ -118,11 +118,28 @@
             ]
           }
         },
-        "Group_id": {
+        "Group_query": {
           "type": "Compose",
-          "inputs": "@toLower(trim(coalesce(triggerOutputs()?['body/TargetObjectId'], '')))",
+          "inputs": "@trim(coalesce(triggerOutputs()?['body/TargetDisplayName'], triggerOutputs()?['body/TargetObjectId'], ''))",
           "runAfter": {
             "Requester": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Init_varGroup": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varGroup",
+                "type": "object",
+                "value": {}
+              }
+            ]
+          },
+          "runAfter": {
+            "Group_query": [
               "Succeeded"
             ]
           }
@@ -146,22 +163,266 @@
               },
               "runAfter": {}
             },
-            "HTTP_Get_group": {
-              "type": "OpenApiConnection",
-              "inputs": {
-                "host": {
-                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                  "connectionName": "shared_webcontents",
-                  "operationId": "InvokeHttp"
+            "Query_is_object_id": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@and(equals(length(outputs('Group_query')), 36), equals(length(split(outputs('Group_query'), '-')), 5))",
+                      true
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "HTTP_Get_group_by_id": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                      "connectionName": "shared_webcontents",
+                      "operationId": "InvokeHttp"
+                    },
+                    "parameters": {
+                      "request/method": "GET",
+                      "request/url": "https://graph.microsoft.com/v1.0/groups/@{toLower(outputs('Group_query'))}?$select=id,displayName,description,securityEnabled"
+                    },
+                    "authentication": "@parameters('$authentication')",
+                    "retryPolicy": {
+                      "type": "none"
+                    }
+                  },
+                  "runAfter": {}
                 },
-                "parameters": {
-                  "request/method": "GET",
-                  "request/url": "https://graph.microsoft.com/v1.0/groups/@{outputs('Group_id')}?$select=id,displayName,description,securityEnabled"
-                },
-                "authentication": "@parameters('$authentication')"
+                "Found_by_id": {
+                  "type": "If",
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@outputs('HTTP_Get_group_by_id')?['statusCode']",
+                          200
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Set_group_from_id": {
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "varGroup",
+                        "value": "@body('HTTP_Get_group_by_id')"
+                      },
+                      "runAfter": {}
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "Fail_id_not_found": {
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                            "connectionName": "shared_sharepointonline",
+                            "operationId": "PatchItem"
+                          },
+                          "parameters": {
+                            "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                            "table": "EntraRequests",
+                            "id": "@int(triggerOutputs()?['body/ID'])",
+                            "item/Title": "@triggerOutputs()?['body/Title']",
+                            "item/Status/Value": "Failed",
+                            "item/ErrorMessage": "@concat('No group with Object ID ', outputs('Group_query'), ' was found. Check the ID (Entra admin center > Groups > the group > Object ID).')"
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        },
+                        "runAfter": {}
+                      },
+                      "Stop_id_not_found": {
+                        "type": "Terminate",
+                        "inputs": {
+                          "runStatus": "Failed",
+                          "runError": {
+                            "code": "GroupNotFound",
+                            "message": "@concat('No group with Object ID ', outputs('Group_query'), ' was found. Check the ID (Entra admin center > Groups > the group > Object ID).')"
+                          }
+                        },
+                        "runAfter": {
+                          "Fail_id_not_found": [
+                            "Succeeded"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "HTTP_Get_group_by_id": [
+                      "Succeeded",
+                      "Failed"
+                    ]
+                  }
+                }
+              },
+              "else": {
+                "actions": {
+                  "HTTP_Find_group_by_name": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                        "connectionName": "shared_webcontents",
+                        "operationId": "InvokeHttp"
+                      },
+                      "parameters": {
+                        "request/method": "GET",
+                        "request/url": "https://graph.microsoft.com/v1.0/groups?$filter=displayName eq '@{encodeUriComponent(replace(outputs('Group_query'), '''', ''''''))}'&$select=id,displayName,description,securityEnabled&$top=5"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    },
+                    "runAfter": {}
+                  },
+                  "No_group_with_that_name": {
+                    "type": "If",
+                    "expression": {
+                      "and": [
+                        {
+                          "equals": [
+                            "@empty(body('HTTP_Find_group_by_name')?['value'])",
+                            true
+                          ]
+                        }
+                      ]
+                    },
+                    "actions": {
+                      "Fail_name_not_found": {
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                            "connectionName": "shared_sharepointonline",
+                            "operationId": "PatchItem"
+                          },
+                          "parameters": {
+                            "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                            "table": "EntraRequests",
+                            "id": "@int(triggerOutputs()?['body/ID'])",
+                            "item/Title": "@triggerOutputs()?['body/Title']",
+                            "item/Status/Value": "Failed",
+                            "item/ErrorMessage": "@concat('No group named ', outputs('Group_query'), ' was found. Check the exact name, or enter the group''s Object ID.')"
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        },
+                        "runAfter": {}
+                      },
+                      "Stop_name_not_found": {
+                        "type": "Terminate",
+                        "inputs": {
+                          "runStatus": "Failed",
+                          "runError": {
+                            "code": "GroupNotFound",
+                            "message": "@concat('No group named ', outputs('Group_query'), ' was found. Check the exact name, or enter the group''s Object ID.')"
+                          }
+                        },
+                        "runAfter": {
+                          "Fail_name_not_found": [
+                            "Succeeded"
+                          ]
+                        }
+                      }
+                    },
+                    "else": {
+                      "actions": {}
+                    },
+                    "runAfter": {
+                      "HTTP_Find_group_by_name": [
+                        "Succeeded"
+                      ]
+                    }
+                  },
+                  "Several_groups_with_that_name": {
+                    "type": "If",
+                    "expression": {
+                      "and": [
+                        {
+                          "greater": [
+                            "@length(body('HTTP_Find_group_by_name')?['value'])",
+                            1
+                          ]
+                        }
+                      ]
+                    },
+                    "actions": {
+                      "Fail_name_ambiguous": {
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                            "connectionName": "shared_sharepointonline",
+                            "operationId": "PatchItem"
+                          },
+                          "parameters": {
+                            "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                            "table": "EntraRequests",
+                            "id": "@int(triggerOutputs()?['body/ID'])",
+                            "item/Title": "@triggerOutputs()?['body/Title']",
+                            "item/Status/Value": "Failed",
+                            "item/ErrorMessage": "@concat(string(length(body('HTTP_Find_group_by_name')?['value'])), ' groups are named ', outputs('Group_query'), '. Enter the Object ID of the one you mean.')"
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        },
+                        "runAfter": {}
+                      },
+                      "Stop_name_ambiguous": {
+                        "type": "Terminate",
+                        "inputs": {
+                          "runStatus": "Failed",
+                          "runError": {
+                            "code": "GroupNameAmbiguous",
+                            "message": "@concat(string(length(body('HTTP_Find_group_by_name')?['value'])), ' groups are named ', outputs('Group_query'), '. Enter the Object ID of the one you mean.')"
+                          }
+                        },
+                        "runAfter": {
+                          "Fail_name_ambiguous": [
+                            "Succeeded"
+                          ]
+                        }
+                      }
+                    },
+                    "else": {
+                      "actions": {}
+                    },
+                    "runAfter": {
+                      "No_group_with_that_name": [
+                        "Succeeded"
+                      ]
+                    }
+                  },
+                  "Set_group_from_name": {
+                    "type": "SetVariable",
+                    "inputs": {
+                      "name": "varGroup",
+                      "value": "@first(body('HTTP_Find_group_by_name')?['value'])"
+                    },
+                    "runAfter": {
+                      "Several_groups_with_that_name": [
+                        "Succeeded"
+                      ]
+                    }
+                  }
+                }
               },
               "runAfter": {
                 "HTTP_Get_requester": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Group_id": {
+              "type": "Compose",
+              "inputs": "@variables('varGroup')?['id']",
+              "runAfter": {
+                "Query_is_object_id": [
                   "Succeeded"
                 ]
               }
@@ -185,7 +446,7 @@
                 "authentication": "@parameters('$authentication')"
               },
               "runAfter": {
-                "HTTP_Get_group": [
+                "Group_id": [
                   "Succeeded"
                 ]
               }
@@ -239,7 +500,7 @@
                         "id": "@int(triggerOutputs()?['body/ID'])",
                         "item/Title": "@triggerOutputs()?['body/Title']",
                         "item/Status/Value": "Failed",
-                        "item/ErrorMessage": "You are neither a member nor an owner of this group."
+                        "item/ErrorMessage": "@concat('You are neither a member nor an owner of ', variables('varGroup')?['displayName'], '. Ask one of its owners to add you, or pick another group.')"
                       },
                       "authentication": "@parameters('$authentication')"
                     },
@@ -251,7 +512,7 @@
                       "runStatus": "Failed",
                       "runError": {
                         "code": "NotMemberOrOwner",
-                        "message": "You are neither a member nor an owner of this group."
+                        "message": "@concat('You are neither a member nor an owner of ', variables('varGroup')?['displayName'], '. Ask one of its owners to add you, or pick another group.')"
                       }
                     },
                     "runAfter": {
@@ -274,7 +535,7 @@
                 "and": [
                   {
                     "equals": [
-                      "@body('HTTP_Get_group')?['securityEnabled']",
+                      "@variables('varGroup')?['securityEnabled']",
                       true
                     ]
                   }
@@ -297,7 +558,7 @@
                         "id": "@int(triggerOutputs()?['body/ID'])",
                         "item/Title": "@triggerOutputs()?['body/Title']",
                         "item/Status/Value": "Failed",
-                        "item/ErrorMessage": "Only security-enabled groups can be used for owning teams and app roles."
+                        "item/ErrorMessage": "@concat(variables('varGroup')?['displayName'], ' is not a security group. Only security-enabled groups can be used for owning teams and app roles.')"
                       },
                       "authentication": "@parameters('$authentication')"
                     },
@@ -309,7 +570,7 @@
                       "runStatus": "Failed",
                       "runError": {
                         "code": "NotSecurityGroup",
-                        "message": "Only security-enabled groups can be used for owning teams and app roles."
+                        "message": "@concat(variables('varGroup')?['displayName'], ' is not a security group. Only security-enabled groups can be used for owning teams and app roles.')"
                       }
                     },
                     "runAfter": {
@@ -416,10 +677,10 @@
                     "parameters": {
                       "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
                       "table": "EntraCatalogGroups",
-                      "item/Title": "@body('HTTP_Get_group')?['displayName']",
-                      "item/GroupId": "@body('HTTP_Get_group')?['id']",
-                      "item/Description": "@body('HTTP_Get_group')?['description']",
-                      "item/AppCatId": "@if(contains(coalesce(body('HTTP_Get_group')?['description'], ''), '[appCatID='), first(split(last(split(body('HTTP_Get_group')?['description'], '[appCatID=')), ';')), '')",
+                      "item/Title": "@variables('varGroup')?['displayName']",
+                      "item/GroupId": "@outputs('Group_id')",
+                      "item/Description": "@variables('varGroup')?['description']",
+                      "item/AppCatId": "@if(contains(coalesce(variables('varGroup')?['description'], ''), '[appCatID='), first(split(last(split(variables('varGroup')?['description'], '[appCatID=')), ';')), '')",
                       "item/MemberUpns": "@concat(';', join(body('Select_member_upns'), ';'), ';')",
                       "item/OwnerUpns": "@concat(';', join(body('Select_owner_upns'), ';'), ';')",
                       "item/LastSynced": "@utcNow()"
@@ -443,10 +704,10 @@
                         "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
                         "table": "EntraCatalogGroups",
                         "id": "@first(body('Get_catalog_row')?['value'])?['ID']",
-                        "item/Title": "@body('HTTP_Get_group')?['displayName']",
-                        "item/GroupId": "@body('HTTP_Get_group')?['id']",
-                        "item/Description": "@body('HTTP_Get_group')?['description']",
-                        "item/AppCatId": "@if(contains(coalesce(body('HTTP_Get_group')?['description'], ''), '[appCatID='), first(split(last(split(body('HTTP_Get_group')?['description'], '[appCatID=')), ';')), '')",
+                        "item/Title": "@variables('varGroup')?['displayName']",
+                        "item/GroupId": "@outputs('Group_id')",
+                        "item/Description": "@variables('varGroup')?['description']",
+                        "item/AppCatId": "@if(contains(coalesce(variables('varGroup')?['description'], ''), '[appCatID='), first(split(last(split(variables('varGroup')?['description'], '[appCatID=')), ';')), '')",
                         "item/MemberUpns": "@concat(';', join(body('Select_member_upns'), ';'), ';')",
                         "item/OwnerUpns": "@concat(';', join(body('Select_owner_upns'), ';'), ';')",
                         "item/LastSynced": "@utcNow()"
@@ -478,8 +739,9 @@
                   "item/Title": "@triggerOutputs()?['body/Title']",
                   "item/Status/Value": "Completed",
                   "item/CompletedAt": "@utcNow()",
-                  "item/TargetDisplayName": "@body('HTTP_Get_group')?['displayName']",
-                  "item/ResultJson": "@string(setProperty(setProperty(json('{}'), 'groupId', body('HTTP_Get_group')?['id']), 'groupDisplayName', body('HTTP_Get_group')?['displayName']))"
+                  "item/TargetDisplayName": "@variables('varGroup')?['displayName']",
+                  "item/TargetObjectId": "@outputs('Group_id')",
+                  "item/ResultJson": "@string(setProperty(setProperty(json('{}'), 'groupId', outputs('Group_id')), 'groupDisplayName', variables('varGroup')?['displayName']))"
                 },
                 "authentication": "@parameters('$authentication')"
               },
@@ -491,7 +753,7 @@
             }
           },
           "runAfter": {
-            "Group_id": [
+            "Init_varGroup": [
               "Succeeded"
             ]
           }
@@ -509,7 +771,7 @@
             },
             "Error_text": {
               "type": "Compose",
-              "inputs": "@if(equals(outputs('HTTP_Get_group')?['statusCode'], 404), 'Group not found: check the Object ID (Entra admin center > Groups > the group > Object ID).', concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-04 run history')))",
+              "inputs": "@concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-04 run history'))",
               "runAfter": {
                 "Failed_actions": [
                   "Succeeded"

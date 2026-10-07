@@ -6,7 +6,7 @@ names, theme and layout stay consistent. Run:  python3 build.py
 Screens (create them in Studio with exactly these names):
   scrHome        cards for every operation + recent requests
   scrNewApp      "Register an application" wizard: 5 sections, Submit / Next / Cancel
-  scrNewGroup    new security group (standalone request, or inline for the wizard)
+  scrAddGroup    add an EXISTING group to the catalog (no group creation in this app)
   scrAppChange   changes to an EXISTING app: expose API, app roles, role assignments, enterprise app
   scrMyRequests  request history with approval stages and results
 """
@@ -15,13 +15,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from pa import (button, checkbox, combobox, container, dropdown, emit, field_label, frame, gallery, hint, html, icon,
-                label, link, q, radio, rect, status_badge, text_input, toggle)
+                label, link, q, radio, rect, status_badge, text_input, timer, toggle)
 
 OUT = Path(__file__).resolve().parent.parent / "screens"
 
 COL1_X, COL_W = "0", "(Parent.Width - 24) / 2"
 COL2_X = "(Parent.Width + 24) / 2"
-NO_TEAM = '{Mode: "", GroupId: "", DisplayName: "", Description: "", OwnerIds: ""}'
+GUID_RX = '"^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$"'
+ADD_EXISTING = "Navigate(scrAddGroup, ScreenTransition.Fade)"
 NEW_REQ_ID = 'Set(varReqId, "REQ-" & Text(Now(), "yymm") & "-" & Upper(Left(Substitute(Text(GUID()), "-", ""), 6)))'
 def clean(expr: str) -> str:
     """Free text the flow embeds in Graph JSON strings: no line breaks, double quotes or backslashes."""
@@ -48,7 +49,6 @@ def home() -> None:
         wrap=3,
         on_select="""Switch(ThisItem.Key,
     "newApp", Set(varResetNewApp, true); Navigate(scrNewApp, ScreenTransition.Fade),
-    "group", Set(varGroupMode, "standalone"); Set(varGroupSuggest, "grp-"); Navigate(scrNewGroup, ScreenTransition.Fade),
     "onboardGroup", Navigate(scrAddGroup, ScreenTransition.Fade),
     "myRequests", Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade),
     Set(varOp, ThisItem.Key); Set(varResetChange, true); Navigate(scrAppChange, ScreenTransition.Fade)
@@ -59,7 +59,7 @@ def home() -> None:
             rect("recCardAccent_Home", 8, 8, 4, "Parent.TemplateHeight - 16", fill="gTheme.Primary", thickness=0, OnSelect="Select(Parent)"),
             icon("icoCard_Home",
                  'Switch(ThisItem.Key, "newApp", Icon.AddDocument, "exposeApi", Icon.Settings, "addAppRoles", Icon.Lock, '
-                 '"assignGroups", Icon.People, "createSP", Icon.Waffle, "group", Icon.AddUser, "onboardGroup", Icon.Search, Icon.DetailList)',
+                 '"assignGroups", Icon.People, "createSP", Icon.Waffle, "onboardGroup", Icon.AddUser, Icon.DetailList)',
                  28, 28, 44, 44, color="gTheme.Primary", on_select="Select(Parent)", Fill="gTheme.PrimaryLight",
                  PaddingTop=10, PaddingBottom=10, PaddingLeft=10, PaddingRight=10),
             label("lblCardTitle_Home", "ThisItem.Title", 84, 26, "Parent.TemplateWidth - 140", 26, size=13, bold=True, OnSelect="Select(Parent)"),
@@ -101,7 +101,7 @@ def steps_nav(s: str) -> list:
     return [
         rect(f"recSteps_{s}", 24, 146, 256, "Parent.Height - 146 - 80"),
         gallery(f"galSteps_{s}", "gSteps", 24, 156, 256, 340, 64,
-                on_select="If(ThisItem.Step <= varMaxStep, Set(varStep, ThisItem.Step))",
+                on_select='If(ThisItem.Step <= Coalesce(varMaxStep, 1), Set(varStepError, ""); Set(varStep, ThisItem.Step))',
                 children=[
                     rect(f"recStepSel_{s}", 0, 8, 4, 48, fill="If(ThisItem.Step = varStep, gTheme.Primary, RGBA(0, 0, 0, 0))", thickness=0,
                          OnSelect="Select(Parent)"),
@@ -120,7 +120,7 @@ def steps_nav(s: str) -> list:
 
 
 def step_container(s: str, n: int, children: list) -> dict:
-    return container(f"cntStep{n}_{s}", 320, 162, "Parent.Width - 360", "Parent.Height - 162 - 92", children, Visible=f"varStep = {n}")
+    return container(f"cntStep{n}_{s}", 320, 162, "Parent.Width - 360", "Parent.Height - 162 - 92", children, Visible=f"Coalesce(varStep, 1) = {n}")
 
 
 def section_head(name: str, title: str, sub: str) -> list:
@@ -166,7 +166,7 @@ def scopes_editor(s: str, top: int, enabled: str, gallery_h: str = "120") -> lis
     ]
 
 
-def roles_editor(s: str, top: int, inline_mode: str) -> list:
+def roles_editor(s: str, top: int) -> list:
     """Editable app roles over colRoles; the groups each role gets live in colRoleGroups."""
     return [
         hint(f"lblRoleColValue_{s}", q("Value (in the roles claim)"), 12, top, 200),
@@ -186,7 +186,7 @@ def roles_editor(s: str, top: int, inline_mode: str) -> list:
                        OnChange="Patch(colRoles, ThisItem, {Description: Self.Text})"),
             label(f"lblRoleGroupsCap_{s}", q("Groups:"), 12, 98, 60, 24, size=10, bold=True),
             label(f"lblRoleGroups_{s}",
-                  'Coalesce(Concat(Filter(colRoleGroups, RoleKey = ThisItem.Key), DisplayName & If(Mode = "new", " (new)", ""), ",  "), '
+                  'Coalesce(Concat(Filter(colRoleGroups, RoleKey = ThisItem.Key), DisplayName, ",  "), '
                   '"None — nobody holds this role yet")', 72, 98, "Parent.TemplateWidth - 560", 24, size=10,
                   color='If(CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key)) = 0, gTheme.Muted, gTheme.Text)'),
             combobox(f"cmbRoleGroup_{s}", "gMyGroups", '["Title"]', '["Title"]', "Parent.TemplateWidth - 480", 94, 210, 32,
@@ -194,10 +194,7 @@ def roles_editor(s: str, top: int, inline_mode: str) -> list:
                      OnChange='If(!IsBlank(Self.Selected.GroupId) && CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key && GroupId = Self.Selected.GroupId)) = 0, '
                               'Collect(colRoleGroups, {RoleKey: ThisItem.Key, Mode: "existing", GroupId: Self.Selected.GroupId, DisplayName: Self.Selected.Title, '
                               'Description: "", OwnerIds: ""})); Reset(Self)'),
-            link(f"lnkRoleNewGroup_{s}", q("＋ Create new group"),
-                 f'Set(varGroupMode, "{inline_mode}"); Set(varGroupForRole, ThisItem.Key); '
-                 'Set(varGroupSuggest, "grp-" & Lower(Substitute(ThisItem.Value, ".", "-"))); Navigate(scrNewGroup, ScreenTransition.Fade)',
-                 "Parent.TemplateWidth - 260", 98, 180, 24),
+            link(f"lnkRoleAddGroup_{s}", q("Group not listed?"), ADD_EXISTING, "Parent.TemplateWidth - 260", 98, 180, 24),
             icon(f"icoRoleClear_{s}", "Icon.Cancel", "Parent.TemplateWidth - 36", 98, 24, 24, color="gTheme.Muted",
                  on_select="RemoveIf(colRoleGroups, RoleKey = ThisItem.Key)",
                  Visible="CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key)) > 0", Tooltip=q("Remove all groups from this role")),
@@ -207,48 +204,44 @@ def roles_editor(s: str, top: int, inline_mode: str) -> list:
 
 def new_app() -> None:
     s = "NewApp"
-    team = (f'If(varNewTeam.Mode = "new", varNewTeam, {{Mode: "existing", GroupId: cmbTeam_{s}.Selected.GroupId, '
-            f'DisplayName: cmbTeam_{s}.Selected.Title, Description: "", OwnerIds: ""}})')
+    team = (f'{{Mode: "existing", GroupId: cmbTeam_{s}.Selected.GroupId, DisplayName: cmbTeam_{s}.Selected.Title, Description: "", OwnerIds: ""}}')
+    # Naming convention: <App BoR ID = appCatID>-<App Env>-<App BoR short name>-<free text>. The prefix is built from
+    # the three fields above it and cannot be edited in the name box; lblFullName_NewApp holds the full display name.
+    prefix = f'Upper(Trim(txtAppCatId_{s}.Text)) & "-" & Left(ddEnv_{s}.Selected.Value, 1) & "-" & Trim(txtBorShort_{s}.Text) & "-"'
+    full = f"lblFullName_{s}.Text"
 
     step1 = step_container(s, 1, section_head(f"S1_{s}", "Basics", "The minimum needed to register the application. Everything after this step is optional.") + [
-        field_label(f"lblName_{s}", "Display name", COL1_X, 64, COL_W, required=True),
-        text_input(f"txtAppName_{s}", '""', q("orders-api"), COL1_X, 86, COL_W),
-        hint(f"hntName_{s}", q("Shown in the Entra admin center and on consent screens."), COL1_X, 124, COL_W),
-        field_label(f"lblAppCat_{s}", "appCatID", COL2_X, 64, COL_W, required=True),
-        text_input(f"txtAppCatId_{s}", 'Coalesce(First(Filter(gMyGroups, !IsBlank(AppCatId))).AppCatId, "")', q("APPCAT-001"), COL2_X, 86, COL_W),
-        hint(f"hntAppCat_{s}", q("Your application catalogue id. Stamped on every object this request creates."), COL2_X, 124, COL_W),
+        field_label(f"lblAppCat_{s}", "App BoR ID (appCatID)", COL1_X, 64, COL_W, required=True),
+        text_input(f"txtAppCatId_{s}", 'Coalesce(First(Filter(gMyGroups, !IsBlank(AppCatId))).AppCatId, "")', q("APPCAT-001"), COL1_X, 86, COL_W),
+        hint(f"hntAppCat_{s}", q("Book of record id of the application. Stamped on every object this request creates."), COL1_X, 124, COL_W),
+        field_label(f"lblEnv_{s}", "App environment", COL2_X, 64, COL_W, required=True),
+        dropdown(f"ddEnv_{s}", "gEnvironments", q("D – Development"), COL2_X, 86, COL_W),
+        hint(f"hntEnv_{s}", q("P production · Q QA · D development · L lab · U UAT · F performance · T dev integration · S system integration"), COL2_X, 124, COL_W),
 
-        field_label(f"lblAudience_{s}", "Supported account types", COL1_X, 154, COL_W),
-        radio(f"radAudience_{s}", '["Single tenant", "Multitenant"]', q("Single tenant"), COL1_X, 176, COL_W, 36),
-        hint(f"hntAudience_{s}", q("Single tenant: only accounts in this organization (recommended)."), COL1_X, 212, COL_W),
+        field_label(f"lblBorShort_{s}", "App BoR short name", COL1_X, 154, COL_W, required=True),
+        text_input(f"txtBorShort_{s}", '""', q("ORDERS"), COL1_X, 176, COL_W),
+        hint(f"hntBorShort_{s}", q("Short name of the application in the book of record: 2–20 letters or digits."), COL1_X, 214, COL_W),
         field_label(f"lblTeam_{s}", "Owning team", COL2_X, 154, COL_W, required=True),
-        combobox(f"cmbTeam_{s}", "gMyTeams", '["Title"]', '["Title"]', COL2_X, 176, COL_W, placeholder="Choose a group you are a member of",
-                 Visible='varNewTeam.Mode <> "new"', OnChange=f"Set(varNewTeam, {NO_TEAM})"),
-        label(f"lblNewTeam_{s}", '"New team group: " & varNewTeam.DisplayName & "  (created when approved)"', COL2_X, 176,
-              f"{COL_W} - 40", 36, size=10, bold=True, color="gTheme.Primary", Fill="gTheme.PrimaryLight", PaddingLeft="10",
-              Visible='varNewTeam.Mode = "new"'),
-        icon(f"icoClearTeam_{s}", "Icon.Cancel", f"{COL2_X} + {COL_W} - 32", 182, 24, 24, color="gTheme.Muted",
-             on_select=f"Set(varNewTeam, {NO_TEAM})", Visible='varNewTeam.Mode = "new"'),
-        link(f"lnkNewTeam_{s}", q("＋ Create new team group"),
-             f'Set(varGroupMode, "inline-team"); Set(varGroupSuggest, "team-" & Lower(Substitute(Trim(txtAppName_{s}.Text), " ", "-"))); '
-             "Navigate(scrNewGroup, ScreenTransition.Fade)", COL2_X, 214, 260),
-        link(f"lnkAddExisting_{s}", q("Group not listed? Add an existing group"), "Navigate(scrAddGroup, ScreenTransition.Fade)",
-             f"{COL2_X} + 262", 214, f"{COL_W} - 262"),
+        combobox(f"cmbTeam_{s}", "gMyTeams", '["Title"]', '["Title"]', COL2_X, 176, COL_W, placeholder="Choose a group you are a member of"),
+        link(f"lnkAddExisting_{s}", q("Group not listed? Add an existing group"), ADD_EXISTING, COL2_X, 214, COL_W),
 
-        field_label(f"lblJust_{s}", "Business justification", COL1_X, 248, COL_W, required=True),
+        field_label(f"lblName_{s}", "Display name", COL1_X, 248, "Parent.Width", required=True),
+        label(f"lblNamePrefix_{s}", prefix, COL1_X, 270, 300, 36, size=11, bold=True, color="gTheme.Muted", Fill="gTheme.Bg",
+              BorderColor="gTheme.Border", BorderThickness=1, PaddingLeft=10, Tooltip=q("Built from the fields above; it can't be edited here.")),
+        text_input(f"txtAppName_{s}", '""', q("free text, e.g. orders-api"), 308, 270, "Parent.Width - 308"),
+        hint(f"hntName_{s}", f'"Full name: " & {full} & "   ·   shown in the Entra admin center and on consent screens"', COL1_X, 308, "Parent.Width"),
+
+        field_label(f"lblJust_{s}", "Business justification", COL1_X, 338, COL_W, required=True),
         text_input(f"txtJustification_{s}", '""', q("Why is this needed, and for which service? Your manager and the Entra ID team read this."),
-                   COL1_X, 270, COL_W, 76, multiline=True),
-        field_label(f"lblDesc_{s}", "Description", COL2_X, 248, COL_W),
-        text_input(f"txtDescription_{s}", '""', q("Optional"), COL2_X, 270, COL_W, 76, multiline=True),
+                   COL1_X, 360, COL_W, 64, multiline=True),
+        field_label(f"lblDesc_{s}", "Description", COL2_X, 338, COL_W),
+        text_input(f"txtDescription_{s}", '""', q("Optional"), COL2_X, 360, COL_W, 64, multiline=True),
 
-        field_label(f"lblPlatform_{s}", "Redirect URI platform", COL1_X, 362, COL_W),
-        dropdown(f"ddPlatform_{s}", '["None", "Web", "Single-page app"]', q("None"), COL1_X, 384, COL_W),
-        field_label(f"lblRedirect_{s}", "Redirect URI(s)", COL2_X, 362, COL_W),
-        text_input(f"txtRedirect_{s}", '""', q("https://app.contoso.com/signin-oidc   (separate several with ;)"), COL2_X, 384, COL_W,
+        field_label(f"lblPlatform_{s}", "Redirect URI platform", COL1_X, 436, COL_W),
+        dropdown(f"ddPlatform_{s}", '["None", "Web", "Single-page app"]', q("None"), COL1_X, 458, COL_W),
+        field_label(f"lblRedirect_{s}", "Redirect URI(s)", COL2_X, 436, COL_W),
+        text_input(f"txtRedirect_{s}", '""', q("https://app.contoso.com/signin-oidc   (separate several with ;)"), COL2_X, 458, COL_W,
                    DisplayMode=f'If(ddPlatform_{s}.Selected.Value = "None", DisplayMode.Disabled, DisplayMode.Edit)'),
-
-        field_label(f"lblTicket_{s}", "Change ticket", COL1_X, 436, COL_W),
-        text_input(f"txtTicket_{s}", '""', q("Optional, e.g. CHG0012345"), COL1_X, 458, COL_W),
     ])
 
     step2 = step_container(s, 2, section_head(f"S2_{s}", "Expose an API & token claims",
@@ -276,61 +269,61 @@ def new_app() -> None:
     ])
 
     step3 = step_container(s, 3, section_head(f"S3_{s}", "App roles & groups",
-                                              "Roles appear in the token's roles claim. Give each role a group — the group's owners then manage access without another request.") + [
-        button(f"btnStdRoles_{s}", q("＋ User + Admin roles with groups"),
+                                              "Roles appear in the token's roles claim. Give each role an existing group — the group's owners then manage access without another request.") + [
+        button(f"btnStdRoles_{s}", q("＋ User + Admin roles"),
                f"""With({{n: Trim(txtAppName_{s}.Text)}},
-    With({{p: Concat(Split(Substitute(n, " ", "-"), "-"), Upper(Left(Value, 1)) & Mid(Value, 2)), sl: Lower(Substitute(n, " ", "-")), k1: Text(GUID()), k2: Text(GUID())}},
+    With({{p: Concat(Split(Substitute(n, " ", "-"), "-"), Upper(Left(Value, 1)) & Mid(Value, 2))}},
         If(CountRows(Filter(colRoles, Value = p & ".User")) = 0,
-            Collect(colRoles, {{Key: k1, Value: p & ".User", DisplayName: n & " User", Description: "Standard users of " & n, Members: "Users/Groups"}});
-            Collect(colRoleGroups, {{RoleKey: k1, Mode: "new", GroupId: "", DisplayName: "grp-" & sl & "-users", Description: "Members hold the " & p & ".User role", OwnerIds: ""}})
+            Collect(colRoles, {{Key: Text(GUID()), Value: p & ".User", DisplayName: {full} & " User", Description: "Standard users of " & {full}, Members: "Users/Groups"}})
         );
         If(CountRows(Filter(colRoles, Value = p & ".Admin")) = 0,
-            Collect(colRoles, {{Key: k2, Value: p & ".Admin", DisplayName: n & " Admin", Description: "Administrators of " & n, Members: "Users/Groups"}});
-            Collect(colRoleGroups, {{RoleKey: k2, Mode: "new", GroupId: "", DisplayName: "grp-" & sl & "-admins", Description: "Members hold the " & p & ".Admin role", OwnerIds: ""}})
+            Collect(colRoles, {{Key: Text(GUID()), Value: p & ".Admin", DisplayName: {full} & " Admin", Description: "Administrators of " & {full}, Members: "Users/Groups"}})
         )
     )
-)""", 0, 60, 290, 34, kind="secondary"),
+)""", 0, 60, 230, 34, kind="secondary"),
         button(f"btnAddRole_{s}", q("＋ Custom role"),
-               'Collect(colRoles, {Key: Text(GUID()), Value: "", DisplayName: "", Description: "", Members: "Users/Groups"})', 300, 60, 150, 34, kind="subtle"),
-        *roles_editor(s, 108, "inline-role"),
-        label(f"lblNoRoles_{s}", q("No app roles yet. Most applications want a User and an Admin role — add both, each with its own new group, in one click."),
+               'Collect(colRoles, {Key: Text(GUID()), Value: "", DisplayName: "", Description: "", Members: "Users/Groups"})', 240, 60, 150, 34, kind="subtle"),
+        *roles_editor(s, 108),
+        label(f"lblNoRoles_{s}", q("No app roles yet. Most applications want a User and an Admin role — add both in one click, then pick the existing group that should hold each role."),
               12, 140, "Parent.Width - 24", 48, size=10, color="gTheme.Muted", Wrap="true", Visible="CountRows(colRoles) = 0"),
     ])
 
-    step4 = step_container(s, 4, section_head(f"S4_{s}", "Enterprise application & ownership",
+    step4 = step_container(s, 4, section_head(f"S4_{s}", "Enterprise application & sign-in",
                                               "The enterprise application (service principal) is what users sign in to and what holds role assignments.") + [
         field_label(f"lblCreateSp_{s}", "Create the enterprise application", 0, 64, 400),
         toggle(f"tglCreateSp_{s}", "true", 0, 86, DisplayMode="If(CountRows(colRoleGroups) > 0, DisplayMode.Disabled, DisplayMode.Edit)"),
-        hint(f"hntCreateSp_{s}", q("Required for role assignments — always created when any role has groups."), 0, 122, "Parent.Width"),
-        field_label(f"lblAssign_{s}", "Assignment required", 0, 156, 400),
+        hint(f"hntCreateSp_{s}", q("Created for this app registration (same appId). Required for role assignments — always created when any role has groups."), 0, 122, "Parent.Width"),
+        field_label(f"lblAssign_{s}", "Assignment required (appRoleAssignmentRequired)", 0, 156, 500),
         toggle(f"tglAssign_{s}", "true", 0, 178),
-        hint(f"hntAssign_{s}", q("Only users in an assigned group can sign in or get tokens. Recommended."), 0, 214, "Parent.Width"),
-        field_label(f"lblOwners_{s}", "Additional owners", 0, 248, COL_W),
-        combobox(f"cmbOwners_{s}", USERS, '["DisplayName", "Mail"]', '["DisplayName"]', 0, 270, COL_W, multi=True, placeholder="Search people"),
-        hint(f"hntOwners_{s}", q("You are always an owner. Owners can manage the app registration in the Entra admin center."), 0, 308, COL_W),
-        field_label(f"lblTags_{s}", "Optional tags", 0, 342, "Parent.Width"),
-        text_input(f"txtTags_{s}", '""', q("costCentre=CC-4410; project=atlas"), 0, 364, "Parent.Width"),
-        hint(f"hntTags_{s}", q("appCatID, team, createdBy, requestId and the other platform tags are added automatically."), 0, 402, "Parent.Width"),
+        hint(f"hntAssign_{s}", q("Yes: only users in an assigned group can sign in or get tokens (recommended). No: any user in the tenant can."), 0, 214, "Parent.Width"),
+        field_label(f"lblAudience_{s}", "Supported account types", 0, 248, COL_W),
+        radio(f"radAudience_{s}", '["Single tenant", "Multitenant"]', q("Single tenant"), 0, 270, COL_W, 36),
+        hint(f"hntAudience_{s}", q("Single tenant: only accounts in this organization (recommended)."), 0, 306, COL_W),
+        field_label(f"lblTags_{s}", "Optional tags", 0, 340, "Parent.Width"),
+        text_input(f"txtTags_{s}", '""', q("costCentre=CC-4410; project=atlas"), 0, 362, "Parent.Width"),
+        hint(f"hntTags_{s}", q("appCatID, team, appEnv, createdBy, requestId and the other platform tags are added automatically."), 0, 400, "Parent.Width"),
+        field_label(f"lblTicket_{s}", "Change ticket", 0, 434, COL_W),
+        text_input(f"txtTicket_{s}", '""', q("Optional, e.g. CHG0012345"), 0, 456, COL_W),
     ])
 
     review_html = f"""With({{team: {team}}},
 "<div style='font-family:Segoe UI, sans-serif; font-size:13px; color:#323130; line-height:1.5'>" &
 "<table style='border-collapse:collapse; width:100%'>" &
-"<tr><td style='color:#605e5c; width:220px; padding:4px 0'>Display name</td><td><b>" & Trim(txtAppName_{s}.Text) & "</b></td></tr>" &
-"<tr><td style='color:#605e5c; padding:4px 0'>appCatID</td><td>" & Upper(Trim(txtAppCatId_{s}.Text)) & "</td></tr>" &
+"<tr><td style='color:#605e5c; width:220px; padding:4px 0'>Display name</td><td><b>" & {full} & "</b></td></tr>" &
+"<tr><td style='color:#605e5c; padding:4px 0'>appCatID · environment · BoR short name</td><td>" & Upper(Trim(txtAppCatId_{s}.Text)) & " · " & ddEnv_{s}.Selected.Value & " · " & Trim(txtBorShort_{s}.Text) & "</td></tr>" &
+"<tr><td style='color:#605e5c; padding:4px 0'>Owning team</td><td>" & team.DisplayName & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Account types</td><td>" & radAudience_{s}.Selected.Value & "</td></tr>" &
-"<tr><td style='color:#605e5c; padding:4px 0'>Owning team</td><td>" & team.DisplayName & If(team.Mode = "new", " <i>(new group)</i>", "") & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Redirect URIs</td><td>" & If(ddPlatform_{s}.Selected.Value = "None", "none", ddPlatform_{s}.Selected.Value & ": " & txtRedirect_{s}.Text) & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Expose an API</td><td>" & If(chkExpose_{s}.Value, If(radUri_{s}.Selected.Value = "Custom", txtCustomUri_{s}.Text, "api://{{appId}}") & If(CountRows(colScopes) > 0, " — scopes: " & Concat(colScopes, Value, ", "), ""), "no") & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Groups claim</td><td>" & ddGroupsClaim_{s}.Selected.Value & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0; vertical-align:top'>App roles</td><td>" &
     If(CountRows(colRoles) = 0, "none", "<ul style='margin:0; padding-left:18px'>" &
-        Concat(ForAll(colRoles As r, {{t: "<li><b>" & r.Value & "</b> → " & Coalesce(Concat(Filter(colRoleGroups, RoleKey = r.Key), DisplayName & If(Mode = "new", " <i>(new)</i>", ""), ", "), "<i>no groups</i>") & "</li>"}}), t) & "</ul>") & "</td></tr>" &
-"<tr><td style='color:#605e5c; padding:4px 0'>Enterprise app</td><td>" & If(tglCreateSp_{s}.Value || CountRows(colRoleGroups) > 0, "yes" & If(tglAssign_{s}.Value, ", assignment required", ""), "no") & "</td></tr>" &
-"<tr><td style='color:#605e5c; padding:4px 0'>Additional owners</td><td>" & Coalesce(Concat(cmbOwners_{s}.SelectedItems, DisplayName, ", "), "none") & "</td></tr>" &
+        Concat(ForAll(colRoles As r, {{t: "<li><b>" & r.Value & "</b> → " & Coalesce(Concat(Filter(colRoleGroups, RoleKey = r.Key), DisplayName, ", "), "<i>no groups</i>") & "</li>"}}), t) & "</ul>") & "</td></tr>" &
+"<tr><td style='color:#605e5c; padding:4px 0'>Enterprise app</td><td>" & If(tglCreateSp_{s}.Value || CountRows(colRoleGroups) > 0, "yes" & If(tglAssign_{s}.Value, ", assignment required", ", assignment not required"), "no") & "</td></tr>" &
+"<tr><td style='color:#605e5c; padding:4px 0'>Owners</td><td>none (access is managed through the owning team and role groups)</td></tr>" &
 "</table>" &
 "<p style='margin-top:14px; padding:10px 12px; background:#ebf3fc; border-left:3px solid #0f6cbd'><b>What happens next</b><br>" &
-"1. Your manager approves in Outlook / Teams.  2. The Entra ID team approves.  3. The app registration, roles, groups and enterprise app are created automatically and appear under My requests.</p>" &
+"1. Your manager approves in Outlook / Teams.  2. The Entra ID team approves.  3. The app registration, roles, role assignments and enterprise app are created automatically and appear under My requests.</p>" &
 "</div>"
 )"""
     step5 = step_container(s, 5, section_head(f"S5_{s}", "Review + submit", "Check the request. You can still go back to any section.") + [
@@ -338,10 +331,11 @@ def new_app() -> None:
     ])
 
     err1 = f"""Coalesce(
-    If(Len(Trim(txtAppName_{s}.Text)) < 3, "Display name is required (3+ characters)."),
-    If(!IsMatch(Trim(txtAppName_{s}.Text), "^[^""\\\\]{{1,120}}$"), "Display name cannot contain double quotes or backslashes (max 120 characters)."),
-    If(!IsMatch(Upper(Trim(txtAppCatId_{s}.Text)), gAppCatPattern), "appCatID looks like APPCAT-001."),
-    If(varNewTeam.Mode <> "new" && IsBlank(cmbTeam_{s}.Selected.GroupId), "Choose the owning team, or create a new team group."),
+    If(!IsMatch(Upper(Trim(txtAppCatId_{s}.Text)), gAppCatPattern), "App BoR ID (appCatID) looks like APPCAT-001."),
+    If(!IsMatch(Trim(txtBorShort_{s}.Text), "^[A-Za-z0-9]{{2,20}}$"), "App BoR short name: 2–20 letters or digits, no spaces."),
+    If(!IsMatch(Trim(txtAppName_{s}.Text), "^[A-Za-z0-9][A-Za-z0-9 ._-]{{1,79}}$"), "Display name: enter the free-text part after the prefix (2–80 letters, digits, spaces, . _ -)."),
+    If(Len({full}) > 120, "The full display name is longer than 120 characters; shorten the free-text part."),
+    If(IsBlank(cmbTeam_{s}.Selected.GroupId), "Choose the owning team. Not listed? Use 'Group not listed? Add an existing group'."),
     If(Len(Trim(txtJustification_{s}.Text)) < 10, "Business justification is required (10+ characters)."),
     If(ddPlatform_{s}.Selected.Value <> "None" && !IsMatch(Trim(txtRedirect_{s}.Text), "^\\S+$"), "Redirect URIs: no spaces; separate several with ;")
 )"""
@@ -357,10 +351,13 @@ def new_app() -> None:
 
     payload = f"""With({{team: {team}}},
 JSON({{
-    displayName: Trim(txtAppName_{s}.Text),
+    displayName: {full},
+    appEnv: Left(ddEnv_{s}.Selected.Value, 1),
+    borShortName: Trim(txtBorShort_{s}.Text),
+    nameText: Trim(txtAppName_{s}.Text),
     description: {clean(f"txtDescription_{s}.Text")},
     signInAudience: If(radAudience_{s}.Selected.Value = "Multitenant", "AzureADMultipleOrgs", "AzureADMyOrg"),
-    owningGroup: {{mode: team.Mode, id: team.GroupId, displayName: team.DisplayName, description: team.Description, ownerIds: team.OwnerIds}},
+    owningGroup: {{mode: "existing", id: team.GroupId, displayName: team.DisplayName}},
     redirectUrisWeb: If(ddPlatform_{s}.Selected.Value = "Web", Trim(txtRedirect_{s}.Text), ""),
     redirectUrisSpa: If(ddPlatform_{s}.Selected.Value = "Single-page app", Trim(txtRedirect_{s}.Text), ""),
     exposeApi: {{
@@ -374,17 +371,17 @@ JSON({{
     appRoles: ForAll(colRoles As r, {{
         value: r.Value, displayName: r.DisplayName, description: r.Description,
         allowedMemberTypes: Switch(r.Members, "Applications", "Application", "Both", "User,Application", "User"),
-        assignGroups: ForAll(Filter(colRoleGroups, RoleKey = r.Key) As g, {{mode: g.Mode, id: g.GroupId, displayName: g.DisplayName, description: g.Description, ownerIds: g.OwnerIds}})
+        assignGroups: ForAll(Filter(colRoleGroups, RoleKey = r.Key) As g, {{mode: "existing", id: g.GroupId, displayName: g.DisplayName}})
     }}),
     createServicePrincipal: tglCreateSp_{s}.Value || CountRows(colRoleGroups) > 0,
     appRoleAssignmentRequired: tglAssign_{s}.Value,
-    additionalOwnerIds: Concat(cmbOwners_{s}.SelectedItems, Id, ";"),
     tags: Trim(txtTags_{s}.Text)
 }}, JSONFormat.Compact)
 )"""
     submit = f"""With({{err: lblErrAll_{s}.Text}},
     If(!IsBlank(err),
-        Notify(err, NotificationType.Warning),
+        Set(varStepError, err); Notify(err, NotificationType.Warning),
+        Set(varStepError, "");
         {NEW_REQ_ID};
         IfError(
             Patch(EntraRequests, Defaults(EntraRequests), {{
@@ -392,7 +389,7 @@ JSON({{
                 RequestType: {{Value: "createAppRegistration"}},
                 Status: {{Value: "Submitted"}},
                 AppCatId: Upper(Trim(txtAppCatId_{s}.Text)),
-                TargetDisplayName: Trim(txtAppName_{s}.Text),
+                TargetDisplayName: {full},
                 Justification: Trim(txtJustification_{s}.Text),
                 TicketReference: Trim(txtTicket_{s}.Text),
                 PayloadJson: {payload.replace(chr(10), chr(10) + "                ")}
@@ -405,21 +402,31 @@ JSON({{
         )
     )
 )"""
-    next_ = f"""With({{err: Switch(varStep, 1, lblErr1_{s}.Text, 2, lblErr2_{s}.Text, 3, lblErr3_{s}.Text, "")}},
-    If(IsBlank(err),
-        Set(varStep, Min(varStep + 1, 5)); Set(varMaxStep, Max(varMaxStep, varStep)),
-        Notify(err, NotificationType.Warning)
+    # Coalesce(varStep, 1): works even when the screen was opened without the Home card (e.g. preview in Studio).
+    next_ = f"""With({{cur: Coalesce(varStep, 1)}},
+    With({{err: Switch(cur, 1, lblErr1_{s}.Text, 2, lblErr2_{s}.Text, 3, lblErr3_{s}.Text, "")}},
+        If(IsBlank(err),
+            Set(varStepError, "");
+            Set(varStep, Min(cur + 1, 5));
+            Set(varMaxStep, Max(Coalesce(varMaxStep, 1), Min(cur + 1, 5))),
+            Set(varStepError, err);
+            Notify(err, NotificationType.Warning)
+        )
     )
 )"""
     bar_y = "Parent.Height - 50"
     command_bar = [
         rect(f"recCmd_{s}", 0, "Parent.Height - 64", "Parent.Width", 64, border="gTheme.Border"),
         button(f"btnSubmit_{s}", q("Submit request"), submit, 320, bar_y, 170, 36),
-        button(f"btnNext_{s}", q("Next  ›"), next_, 500, bar_y, 120, 36, kind="secondary", Visible="varStep < 5"),
-        button(f"btnBack_{s}", q("‹  Previous"), "Set(varStep, Max(1, varStep - 1))", 630, bar_y, 120, 36, kind="subtle", Visible="varStep > 1"),
-        button(f"btnCancel_{s}", q("Cancel"), "Set(varResetNewApp, true); Navigate(scrHome, ScreenTransition.Fade)",
+        button(f"btnNext_{s}", q("Next  ›"), next_, 500, bar_y, 120, 36, kind="secondary", Visible="Coalesce(varStep, 1) < 5"),
+        button(f"btnBack_{s}", q("‹  Previous"), 'Set(varStepError, ""); Set(varStep, Max(1, Coalesce(varStep, 1) - 1))', 630, bar_y, 120, 36,
+               kind="subtle", Visible="Coalesce(varStep, 1) > 1"),
+        button(f"btnCancel_{s}", q("Cancel"), 'Set(varStepError, ""); Set(varResetNewApp, true); Navigate(scrHome, ScreenTransition.Fade)',
                "Parent.Width - 144", bar_y, 120, 36, kind="subtle"),
-        label(f"lblStepOf_{s}", '"Step " & varStep & " of 5"', 24, bar_y, 200, 36, size=10, color="gTheme.Muted"),
+        label(f"lblStepOf_{s}", '"Step " & Coalesce(varStep, 1) & " of 5"', 24, bar_y, 200, 36, size=10, color="gTheme.Muted"),
+        label(f"lblStepError_{s}", "varStepError", 764, "Parent.Height - 58", "Parent.Width - 764 - 160", 52, size=10, bold=True,
+              color="gTheme.Danger", Wrap="true", VerticalAlign="VerticalAlign.Middle", Visible="!IsBlank(varStepError)"),
+        label(f"lblFullName_{s}", f'{prefix} & Trim(txtAppName_{s}.Text)', 0, 0, 10, 10, Visible="false"),
         label(f"lblErr1_{s}", err1, 0, 0, 10, 10, Visible="false"),
         label(f"lblErr2_{s}", err2, 0, 0, 10, 10, Visible="false"),
         label(f"lblErr3_{s}", err3, 0, 0, 10, 10, Visible="false"),
@@ -427,7 +434,7 @@ JSON({{
     ]
 
     children = frame(s, q("Register an application"),
-                     q("App registration, Application ID URI, scopes, app roles, groups and enterprise app — in one request."),
+                     q("App registration, Application ID URI, scopes, app roles, role assignments and enterprise app — in one request."),
                      q("Home  ›  App registrations  ›  Register an application")) + steps_nav(s) + [
         rect(f"recMain_{s}", 296, 146, "Parent.Width - 320", "Parent.Height - 146 - 80"),
         step1, step2, step3, step4, step5,
@@ -435,114 +442,46 @@ JSON({{
     write("scrNewApp", root(s, children), "Register an application: 5-section wizard (Basics required; Submit / Next / Cancel)")
 
 
-# ============================================================================ scrNewGroup
-def new_group() -> None:
-    s = "Group"
-    standalone = 'varGroupMode = "standalone"'
-    payload = f"""JSON({{
-    displayName: Trim(txtGroupName_{s}.Text),
-    description: {clean(f"txtGroupDesc_{s}.Text")},
-    ownerIds: Concat(cmbGroupOwners_{s}.SelectedItems, Id, ";"),
-    memberIds: Concat(cmbGroupMembers_{s}.SelectedItems, Id, ";")
-}}, JSONFormat.Compact)"""
-    primary = f"""With({{err: Coalesce(
-        If(!IsMatch(Trim(txtGroupName_{s}.Text), "^[A-Za-z0-9][A-Za-z0-9 ._-]{{2,119}}$"), "Group name: 3-120 letters, digits, spaces, . _ or -"),
-        If({standalone} && !IsMatch(Upper(Trim(txtGroupAppCat_{s}.Text)), gAppCatPattern), "appCatID looks like APPCAT-001."),
-        If({standalone} && Len(Trim(txtGroupJust_{s}.Text)) < 10, "Business justification is required (10+ characters).")
-    )}},
-    If(!IsBlank(err),
-        Notify(err, NotificationType.Warning),
-        With({{g: {{Mode: "new", GroupId: "", DisplayName: Trim(txtGroupName_{s}.Text), Description: {clean(f"txtGroupDesc_{s}.Text")}, OwnerIds: Concat(cmbGroupOwners_{s}.SelectedItems, Id, ";")}}}},
-            Switch(varGroupMode,
-                "inline-team", Set(varNewTeam, g); Back(),
-                "inline-role", Collect(colRoleGroups, {{RoleKey: varGroupForRole, Mode: "new", GroupId: "", DisplayName: g.DisplayName, Description: g.Description, OwnerIds: g.OwnerIds}}); Back(),
-                "inline-assign", Collect(colAssign, {{RoleId: varAssignRole.Id, RoleValue: varAssignRole.Value, Mode: "new", GroupId: "", DisplayName: g.DisplayName, Description: g.Description, OwnerIds: g.OwnerIds}}); Back(),
-                {NEW_REQ_ID};
-                IfError(
-                    Patch(EntraRequests, Defaults(EntraRequests), {{
-                        Title: varReqId,
-                        RequestType: {{Value: "createGroup"}},
-                        Status: {{Value: "Submitted"}},
-                        AppCatId: Upper(Trim(txtGroupAppCat_{s}.Text)),
-                        TargetDisplayName: Trim(txtGroupName_{s}.Text),
-                        Justification: Trim(txtGroupJust_{s}.Text),
-                        PayloadJson: {payload.replace(chr(10), chr(10) + "                        ")}
-                    }}),
-                    Notify("The request could not be submitted: " & FirstError.Message, NotificationType.Error),
-                    Notify("Request " & varReqId & " submitted for approval.", NotificationType.Success); Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade)
-                )
-            )
-        )
-    )
-)"""
-    form = container(f"cntGroup_{s}", 48, 170, "Parent.Width - 96", "Parent.Height - 170 - 92", [
-        field_label(f"lblGName_{s}", "Group name", COL1_X, 0, COL_W, required=True),
-        text_input(f"txtGroupName_{s}", "varGroupSuggest", q("grp-orders-admins"), COL1_X, 22, COL_W),
-        hint(f"hntGName_{s}", q("Security group. A unique mail nickname is generated automatically."), COL1_X, 60, COL_W),
-        field_label(f"lblGAppCat_{s}", "appCatID", COL2_X, 0, COL_W, required=True, ),
-        # Inline groups inherit the appCatID of the request they belong to: shown read-only.
-        text_input(f"txtGroupAppCat_{s}",
-                   f'If({standalone}, Coalesce(First(Filter(gMyGroups, !IsBlank(AppCatId))).AppCatId, ""), '
-                   f'varGroupMode = "inline-assign", varApp.AppCatId, txtAppCatId_NewApp.Text)',
-                   q("APPCAT-001"), COL2_X, 22, COL_W,
-                   DisplayMode=f"If({standalone}, DisplayMode.Edit, DisplayMode.View)"),
-        hint(f"hntGAppCat_{s}", q("Taken from the request this group belongs to; it can't differ."), COL2_X, 60, COL_W,
-             Visible=f"!({standalone})"),
-        field_label(f"lblGDesc_{s}", "Description", COL1_X, 96, "Parent.Width"),
-        text_input(f"txtGroupDesc_{s}", '""', q("What membership of this group grants"), COL1_X, 118, "Parent.Width", 64, multiline=True),
-        field_label(f"lblGOwners_{s}", "Additional owners", COL1_X, 196, COL_W),
-        combobox(f"cmbGroupOwners_{s}", USERS, '["DisplayName", "Mail"]', '["DisplayName"]', COL1_X, 218, COL_W, multi=True,
-                 placeholder="Optional: type a name to search"),
-        field_label(f"lblGMembers_{s}", "Initial members", COL2_X, 196, COL_W),
-        combobox(f"cmbGroupMembers_{s}", USERS, '["DisplayName", "Mail"]', '["DisplayName"]', COL2_X, 218, COL_W, multi=True,
-                 placeholder=f'If({standalone}, "Optional: type a name to search", "Added by the owners after creation")',
-                 DisplayMode=f"If({standalone}, DisplayMode.Edit, DisplayMode.Disabled)"),
-        hint(f"hntGMembers_{s}", q("Groups created with a request start with owners only. Owners add members once it exists."),
-             COL2_X, 256, COL_W, 36, Visible=f"!({standalone})"),
-        field_label(f"lblGJust_{s}", "Business justification", COL1_X, 270, COL_W, required=True),
-        text_input(f"txtGroupJust_{s}", '""', q("Why is this group needed?"), COL1_X, 292, COL_W, 64, multiline=True, Visible=standalone),
-        hint(f"hntGJust_{s}", q("Inline groups are justified by the request they belong to."), COL1_X, 292, COL_W, 36, Visible=f"!({standalone})"),
-        rect(f"recGInfo_{s}", COL1_X, 376, "Parent.Width", 64, fill="gTheme.PrimaryLight", border="gTheme.PrimaryLight"),
-        label(f"lblGInfo_{s}",
-              q("You will be an owner of this group. Owners add and remove members themselves in My Groups or the Entra admin center — "
-                "that is how access to app roles is managed day to day, without new requests."),
-              16, 382, "Parent.Width - 32", 52, size=10, Wrap="true", VerticalAlign="VerticalAlign.Middle"),
-    ])
-    children = frame(s, f'If({standalone}, "New security group", "New group for this request")',
-                     f'If({standalone}, "Raise a request for a security group you own.", "The group is created when the request is approved, and is owned by you.")',
-                     f'If({standalone}, "Home  ›  Groups  ›  New security group", "Home  ›  Register an application  ›  New group")') + [
-        rect(f"recCard_{s}", 24, 146, "Parent.Width - 48", "Parent.Height - 146 - 80"),
-        form,
-        rect(f"recCmd_{s}", 0, "Parent.Height - 64", "Parent.Width", 64),
-        button(f"btnGroupPrimary_{s}", f'If({standalone}, "Submit request", "Add to request")', primary, 24, "Parent.Height - 50", 170, 36),
-        button(f"btnGroupCancel_{s}", q("Cancel"), "Back()", 204, "Parent.Height - 50", 120, 36, kind="subtle"),
-    ]
-    write("scrNewGroup", root(s, children), "New security group: standalone request, or inline group for the wizard / change screen")
-
-
 # ============================================================================ scrAddGroup
 def add_group() -> None:
     s = "AddGroup"
-    gid = f"Lower(Trim(txtGroupId_{s}.Text))"
+    q_in = f"Trim(txtGroup_{s}.Text)"
     submit = f"""If(
-    !IsMatch({gid}, "^[0-9a-f]{{8}}-([0-9a-f]{{4}}-){{3}}[0-9a-f]{{12}}$"),
-        Notify("Enter the group's Object ID: 32 hex digits in the form 00000000-0000-0000-0000-000000000000.", NotificationType.Warning),
-    !IsBlank(LookUp(gMyGroups, GroupId = {gid})),
+    Len({q_in}) < 2,
+        Notify("Enter the group's exact name or its Object ID.", NotificationType.Warning),
+    varOnboardBusy,
+        Notify("Still checking the previous group, one moment.", NotificationType.Information),
+    !IsBlank(LookUp(gMyGroups, GroupId = Lower({q_in}) || Lower(Title) = Lower({q_in}))),
         Notify("This group is already available to you in the pickers.", NotificationType.Information),
     {NEW_REQ_ID};
     IfError(
-        Patch(EntraRequests, Defaults(EntraRequests), {{
+        Set(varOnboardRec, Patch(EntraRequests, Defaults(EntraRequests), {{
             Title: varReqId,
             RequestType: {{Value: "onboardGroup"}},
             Status: {{Value: "Submitted"}},
-            TargetObjectId: {gid},
-            TargetDisplayName: {gid},
+            TargetDisplayName: {q_in},
+            TargetObjectId: If(IsMatch(Lower({q_in}), {GUID_RX}), Lower({q_in}), ""),
             Justification: "Add an existing group to the self-service catalog",
-            PayloadJson: JSON({{groupId: {gid}}}, JSONFormat.Compact)
-        }}),
+            PayloadJson: JSON({{group: {q_in}}}, JSONFormat.Compact)
+        }})),
         Notify("The request could not be submitted: " & FirstError.Message, NotificationType.Error),
-        Notify("Request " & varReqId & " submitted. The group appears in about a minute if you are a member or owner.", NotificationType.Success);
-        Reset(txtGroupId_{s}); Refresh(EntraRequests)
+        Set(varOnboardPolls, 0); Set(varOnboardBusy, true)
+    )
+)"""
+    # Poll the request every 3 s until ER-04 marks it Completed or Failed (max ~60 s), then tell the user.
+    poll = f"""Set(varOnboardPolls, varOnboardPolls + 1);
+Refresh(EntraRequests);
+With({{r: LookUp(EntraRequests, ID = varOnboardRec.ID)}},
+    If(
+        r.Status.Value = "Completed",
+            Set(varOnboardBusy, false); Refresh(EntraCatalogGroups); Reset(txtGroup_{s});
+            Notify("Added: " & r.TargetDisplayName & ". It is now available in the Owning team and role-group pickers.", NotificationType.Success),
+        r.Status.Value = "Failed",
+            Set(varOnboardBusy, false);
+            Notify("Not added: " & Coalesce(r.ErrorMessage, "the group was not found, or you are not a member or owner of it."), NotificationType.Error),
+        varOnboardPolls >= 20,
+            Set(varOnboardBusy, false);
+            Notify("Still checking. The result will appear in the list below when the check finishes.", NotificationType.Information)
     )
 )"""
     history = gallery(
@@ -559,29 +498,35 @@ def add_group() -> None:
         ],
     )
     form = container(f"cntAddGroup_{s}", 48, 170, "Parent.Width - 96", "Parent.Height - 170 - 92", [
-        field_label(f"lblGroupId_{s}", "Group Object ID", COL1_X, 0, COL_W, required=True),
-        text_input(f"txtGroupId_{s}", '""', q("00000000-0000-0000-0000-000000000000"), COL1_X, 22, COL_W),
-        hint(f"hntGroupId_{s}", q("Entra admin center → Groups → the group → Overview → Object ID."), COL1_X, 60, COL_W),
+        field_label(f"lblGroup_{s}", "Group name or Object ID", COL1_X, 0, COL_W, required=True),
+        text_input(f"txtGroup_{s}", '""', q("grp-orders-admins   or   00000000-0000-0000-0000-000000000000"), COL1_X, 22, COL_W,
+                   DisplayMode="If(varOnboardBusy, DisplayMode.Disabled, DisplayMode.Edit)"),
+        hint(f"hntGroup_{s}", q("The group's exact display name, or its Object ID (Entra admin center → Groups → the group). Use the Object ID if several groups share the name."),
+             COL1_X, 60, COL_W, 36, Wrap="true"),
+        label(f"lblChecking_{s}", q("Checking the group in Entra…"), COL1_X, 104, COL_W, 28, size=10, bold=True, color="gTheme.Primary",
+              Visible="varOnboardBusy"),
         rect(f"recInfo_{s}", COL2_X, 0, COL_W, 132, fill="gTheme.PrimaryLight", border="gTheme.PrimaryLight"),
         label(f"lblInfo_{s}",
-              q("No approval is needed: nothing changes in Entra. A flow checks that you are a member or owner of the group and that it is a "
-                "security group, then makes it selectable here. It appears for all its members and owners, usually within a minute, "
-                "and is kept up to date every hour."),
+              q("Groups are created outside this app. Here you make an existing group selectable for your app registrations and role "
+                "assignments. A flow looks the group up in Entra and checks that you are a member or owner of it and that it is a security "
+                "group. No approval is needed and nothing changes in Entra. The result shows here within a few seconds."),
               f"{COL2_X} + 14", 8, f"{COL_W} - 28", 116, size=10, Wrap="true", VerticalAlign="VerticalAlign.Top"),
         label(f"lblHistory_{s}", q("Your recent additions"), COL1_X, 264, COL_W, 28, size=12, bold=True),
-        link(f"lnkRefresh_{s}", q("↻ Refresh"), "Refresh(EntraRequests); Refresh(EntraCatalogGroups)", f"Parent.Width - 120", 266, 120),
+        link(f"lnkRefresh_{s}", q("↻ Refresh"), "Refresh(EntraRequests); Refresh(EntraCatalogGroups)", "Parent.Width - 120", 266, 120),
         history,
         label(f"lblHistoryEmpty_{s}", q("Nothing added yet."), COL1_X, 304, COL_W, 24, size=10, color="gTheme.Muted",
               Visible=f"CountRows(galOnboard_{s}.AllItems) = 0"),
     ])
     children = frame(s, q("Add an existing group"),
-                     q("If a group you belong to isn't offered in the Owning team or group pickers, add it here."),
+                     q("Make a group you belong to selectable as an owning team or role group."),
                      q("Home  ›  Groups  ›  Add existing group")) + [
         rect(f"recCard_{s}", 24, 146, "Parent.Width - 48", "Parent.Height - 146 - 80"),
         form,
         rect(f"recCmd_{s}", 0, "Parent.Height - 64", "Parent.Width", 64),
-        button(f"btnSubmit_{s}", q("Add group"), submit, 24, "Parent.Height - 50", 170, 36),
+        button(f"btnSubmit_{s}", q("Add group"), submit, 24, "Parent.Height - 50", 170, 36,
+               DisplayMode="If(varOnboardBusy, DisplayMode.Disabled, DisplayMode.Edit)"),
         button(f"btnBack_{s}", q("Back"), "Back()", 204, "Parent.Height - 50", 120, 36, kind="subtle"),
+        timer(f"tmrOnboard_{s}", poll, "varOnboardBusy"),
     ]
     write("scrAddGroup", root(s, children), "Add an existing group to the catalog (request type onboardGroup, processed by flow ER-04)")
 
@@ -655,7 +600,7 @@ def app_change() -> None:
         button(f"btnAddRole_{s}", q("＋ Add role"),
                'Collect(colRoles, {Key: Text(GUID()), Value: "", DisplayName: "", Description: "", Members: "Users/Groups"})',
                "Parent.Width - 150", -4, 150, 32, kind="secondary"),
-        *roles_editor(s, 36, "inline-role"),
+        *roles_editor(s, 36),
     ], Visible='varOp = "addAppRoles"')
     assign = container(f"cntAssign_{s}", 0, 96, "Parent.Width", sections_h, [
         field_label(f"lblARole_{s}", "App role", 0, 0, 240),
@@ -666,13 +611,9 @@ def app_change() -> None:
                f'If(!IsBlank(ddRole_{s}.Selected.Id) && !IsBlank(cmbGroup_{s}.Selected.GroupId), Collect(colAssign, {{RoleId: ddRole_{s}.Selected.Id, RoleValue: ddRole_{s}.Selected.Value, '
                f'Mode: "existing", GroupId: cmbGroup_{s}.Selected.GroupId, DisplayName: cmbGroup_{s}.Selected.Title, Description: "", OwnerIds: ""}}); Reset(cmbGroup_{s}))',
                560, 22, 90, 36),
-        link(f"lnkNewGroup_{s}", q("＋ Create new group"),
-             f'If(IsBlank(ddRole_{s}.Selected.Id), Notify("Choose the app role first.", NotificationType.Information), '
-             f'Set(varGroupMode, "inline-assign"); Set(varAssignRole, ddRole_{s}.Selected); '
-             f'Set(varGroupSuggest, "grp-" & Lower(Substitute(ddRole_{s}.Selected.Value, ".", "-"))); Navigate(scrNewGroup, ScreenTransition.Fade))',
-             665, 28, 180),
+        link(f"lnkAddGroup_{s}", q("Group not listed? Add an existing group"), ADD_EXISTING, 665, 28, 300),
         gallery(f"galAssign_{s}", "colAssign", 0, 72, "Parent.Width", "Parent.Height - 72", 44, children=[
-            label(f"lblAssignRow_{s}", 'ThisItem.RoleValue & "   →   " & ThisItem.DisplayName & If(ThisItem.Mode = "new", "   (new group)", "")',
+            label(f"lblAssignRow_{s}", 'ThisItem.RoleValue & "   →   " & ThisItem.DisplayName',
                   8, 8, "Parent.TemplateWidth - 56", 28, size=11),
             icon(f"icoAssignRemove_{s}", "Icon.Trash", "Parent.TemplateWidth - 36", 10, 24, 24, color="gTheme.Danger", on_select="Remove(colAssign, ThisItem)"),
             rect(f"recAssignSep_{s}", 8, 43, "Parent.TemplateWidth - 16", 1, fill="gTheme.Border", thickness=0),
@@ -817,7 +758,6 @@ If(!IsBlank({sel}.RequestSummary), "<p style='margin-top:10px; color:#605e5c'><b
 if __name__ == "__main__":
     home()
     new_app()
-    new_group()
     add_group()
     app_change()
     my_requests()

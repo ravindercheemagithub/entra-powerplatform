@@ -1,4 +1,5 @@
 {
+  "accountEnabled": true,
   "appId": "@{body('HTTP_Get_target_app')?['appId']}",
   "appRoleAssignmentRequired": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},
   "tags": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Workflow WorkflowId="{4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0005}" Name="ER-04 Onboard group" Description="Adds an existing group to EntraCatalogGroups when the requester is a member or owner. Read-only in Entra; no approval." xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<Workflow WorkflowId="{4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0005}" Name="ER-04 Onboard group" Description="Finds an existing group by name or Object ID and adds it to EntraCatalogGroups when the requester is a member or owner. Read-only in Entra; no approval." xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <JsonFileName>/Workflows/ER04Onboardgroup-4D0A1A52-6C1E-4B8A-9A33-0E5F0B8D0005.json</JsonFileName>
   <Type>1</Type>
   <Subprocess>0</Subprocess>
@@ -25,6 +25,6 @@
     <LocalizedName languagecode="1033" description="ER-04 Onboard group" />
   </LocalizedNames>
   <Descriptions>
-    <Description languagecode="1033" description="Adds an existing group to EntraCatalogGroups when the requester is a member or owner. Read-only in Entra; no approval." />
+    <Description languagecode="1033" description="Finds an existing group by name or Object ID and adds it to EntraCatalogGroups when the requester is a member or owner. Read-only in Entra; no approval." />
   </Descriptions>
 </Workflow>

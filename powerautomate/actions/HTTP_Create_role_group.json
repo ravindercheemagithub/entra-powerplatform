@@ -1,9 +1,0 @@
-{
-  "displayName": "@{items('Apply_to_each_assignment')?['displayName']}",
-  "description": "@{concat(if(empty(items('Apply_to_each_assignment')?['description']), concat('Members hold the ', items('Apply_to_each_assignment')?['roleValue'], ' role'), items('Apply_to_each_assignment')?['description']), outputs('Group_meta'))}",
-  "mailEnabled": false,
-  "mailNickname": "@{concat('erg-', substring(replace(guid(), '-', ''), 0, 12))}",
-  "securityEnabled": true,
-  "groupTypes": [],
-  "owners@odata.bind": @{body('Select_role_group_owner_binds')}
-}

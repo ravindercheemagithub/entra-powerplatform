@@ -84,7 +84,7 @@
       - lblSubtitle_AddGroup:
           Control: Label
           Properties:
-            Text: ="If a group you belong to isn't offered in the Owning team or group pickers, add it here."
+            Text: ="Make a group you belong to selectable as an owning team or role group."
             X: =24
             Y: =112
             Width: =Parent.Width - 48
@@ -117,10 +117,10 @@
             BorderThickness: =0
             DropShadow: =DropShadow.None
           Children:
-            - lblGroupId_AddGroup:
+            - lblGroup_AddGroup:
                 Control: Label
                 Properties:
-                  Text: ="Group Object ID *"
+                  Text: ="Group name or Object ID *"
                   X: =0
                   Y: =0
                   Width: =(Parent.Width - 24) / 2
@@ -131,11 +131,11 @@
                   FontWeight: =FontWeight.Semibold
                   PaddingLeft: =0
                   PaddingRight: =0
-            - txtGroupId_AddGroup:
+            - txtGroup_AddGroup:
                 Control: Classic/TextInput
                 Properties:
                   Default: =""
-                  HintText: ="00000000-0000-0000-0000-000000000000"
+                  HintText: ="grp-orders-admins   or   00000000-0000-0000-0000-000000000000"
                   X: =0
                   Y: =22
                   Width: =(Parent.Width - 24) / 2
@@ -154,20 +154,37 @@
                   RadiusTopRight: =4
                   RadiusBottomLeft: =4
                   RadiusBottomRight: =4
-            - hntGroupId_AddGroup:
+                  DisplayMode: =If(varOnboardBusy, DisplayMode.Disabled, DisplayMode.Edit)
+            - hntGroup_AddGroup:
                 Control: Label
                 Properties:
-                  Text: ="Entra admin center → Groups → the group → Overview → Object ID."
+                  Text: ="The group's exact display name, or its Object ID (Entra admin center → Groups → the group). Use the Object ID if several groups share the name."
                   X: =0
                   Y: =60
                   Width: =(Parent.Width - 24) / 2
-                  Height: =20
+                  Height: =36
                   Size: =9
                   Font: =Font.'Segoe UI'
                   Color: =gTheme.Muted
                   FontWeight: =FontWeight.Normal
                   PaddingLeft: =0
                   PaddingRight: =0
+                  Wrap: =true
+            - lblChecking_AddGroup:
+                Control: Label
+                Properties:
+                  Text: ="Checking the group in Entra…"
+                  X: =0
+                  Y: =104
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =28
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Primary
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  Visible: =varOnboardBusy
             - recInfo_AddGroup:
                 Control: Rectangle
                 Properties:
@@ -181,8 +198,7 @@
             - lblInfo_AddGroup:
                 Control: Label
                 Properties:
-                  Text: |-
-                    ="No approval is needed: nothing changes in Entra. A flow checks that you are a member or owner of the group and that it is a security group, then makes it selectable here. It appears for all its members and owners, usually within a minute, and is kept up to date every hour."
+                  Text: ="Groups are created outside this app. Here you make an existing group selectable for your app registrations and role assignments. A flow looks the group up in Entra and checks that you are a member or owner of it and that it is a security group. No approval is needed and nothing changes in Entra. The result shows here within a few seconds."
                   X: =(Parent.Width + 24) / 2 + 14
                   Y: =8
                   Width: =(Parent.Width - 24) / 2 - 28
@@ -339,24 +355,25 @@
             Text: ="Add group"
             OnSelect: |-
               =If(
-                  !IsMatch(Lower(Trim(txtGroupId_AddGroup.Text)), "^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$"),
-                      Notify("Enter the group's Object ID: 32 hex digits in the form 00000000-0000-0000-0000-000000000000.", NotificationType.Warning),
-                  !IsBlank(LookUp(gMyGroups, GroupId = Lower(Trim(txtGroupId_AddGroup.Text)))),
+                  Len(Trim(txtGroup_AddGroup.Text)) < 2,
+                      Notify("Enter the group's exact name or its Object ID.", NotificationType.Warning),
+                  varOnboardBusy,
+                      Notify("Still checking the previous group, one moment.", NotificationType.Information),
+                  !IsBlank(LookUp(gMyGroups, GroupId = Lower(Trim(txtGroup_AddGroup.Text)) || Lower(Title) = Lower(Trim(txtGroup_AddGroup.Text)))),
                       Notify("This group is already available to you in the pickers.", NotificationType.Information),
                   Set(varReqId, "REQ-" & Text(Now(), "yymm") & "-" & Upper(Left(Substitute(Text(GUID()), "-", ""), 6)));
                   IfError(
-                      Patch(EntraRequests, Defaults(EntraRequests), {
+                      Set(varOnboardRec, Patch(EntraRequests, Defaults(EntraRequests), {
                           Title: varReqId,
                           RequestType: {Value: "onboardGroup"},
                           Status: {Value: "Submitted"},
-                          TargetObjectId: Lower(Trim(txtGroupId_AddGroup.Text)),
-                          TargetDisplayName: Lower(Trim(txtGroupId_AddGroup.Text)),
+                          TargetDisplayName: Trim(txtGroup_AddGroup.Text),
+                          TargetObjectId: If(IsMatch(Lower(Trim(txtGroup_AddGroup.Text)), "^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$"), Lower(Trim(txtGroup_AddGroup.Text)), ""),
                           Justification: "Add an existing group to the self-service catalog",
-                          PayloadJson: JSON({groupId: Lower(Trim(txtGroupId_AddGroup.Text))}, JSONFormat.Compact)
-                      }),
+                          PayloadJson: JSON({group: Trim(txtGroup_AddGroup.Text)}, JSONFormat.Compact)
+                      })),
                       Notify("The request could not be submitted: " & FirstError.Message, NotificationType.Error),
-                      Notify("Request " & varReqId & " submitted. The group appears in about a minute if you are a member or owner.", NotificationType.Success);
-                      Reset(txtGroupId_AddGroup); Refresh(EntraRequests)
+                      Set(varOnboardPolls, 0); Set(varOnboardBusy, true)
                   )
               )
             X: =24
@@ -376,6 +393,7 @@
             PressedFill: =gTheme.PrimaryHover
             BorderThickness: =0
             HoverColor: =RGBA(255, 255, 255, 1)
+            DisplayMode: =If(varOnboardBusy, DisplayMode.Disabled, DisplayMode.Edit)
       - btnBack_AddGroup:
           Control: Classic/Button
           Properties:
@@ -400,3 +418,31 @@
             BorderThickness: =1
             HoverColor: =gTheme.Text
             HoverBorderColor: =gTheme.Muted
+      - tmrOnboard_AddGroup:
+          Control: Timer
+          Properties:
+            Duration: =3000
+            Repeat: =true
+            AutoStart: =false
+            Start: =varOnboardBusy
+            OnTimerEnd: |-
+              =Set(varOnboardPolls, varOnboardPolls + 1);
+              Refresh(EntraRequests);
+              With({r: LookUp(EntraRequests, ID = varOnboardRec.ID)},
+                  If(
+                      r.Status.Value = "Completed",
+                          Set(varOnboardBusy, false); Refresh(EntraCatalogGroups); Reset(txtGroup_AddGroup);
+                          Notify("Added: " & r.TargetDisplayName & ". It is now available in the Owning team and role-group pickers.", NotificationType.Success),
+                      r.Status.Value = "Failed",
+                          Set(varOnboardBusy, false);
+                          Notify("Not added: " & Coalesce(r.ErrorMessage, "the group was not found, or you are not a member or owner of it."), NotificationType.Error),
+                      varOnboardPolls >= 20,
+                          Set(varOnboardBusy, false);
+                          Notify("Still checking. The result will appear in the list below when the check finishes.", NotificationType.Information)
+                  )
+              )
+            Visible: =false
+            X: =0
+            Y: =0
+            Width: =10
+            Height: =10

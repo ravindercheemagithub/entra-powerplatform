@@ -12,14 +12,12 @@ Clear(colRoleGroups);
 ClearCollect(colAssign, { RoleId: "", RoleValue: "", Mode: "", GroupId: "", DisplayName: "", Description: "", OwnerIds: "" });
 Clear(colAssign);
 
-Set(varNewTeam, { Mode: "", GroupId: "", DisplayName: "", Description: "", OwnerIds: "" });
-Set(varAssignRole, { Id: "", Value: "" });
 Set(varStep, 1);
 Set(varMaxStep, 1);
+Set(varStepError, "");
+Set(varOnboardBusy, false);
+Set(varOnboardPolls, 0);
 Set(varOp, "exposeApi");
-Set(varGroupMode, "standalone");
-Set(varGroupForRole, "");
-Set(varGroupSuggest, "grp-");
 Set(varReqId, "");
 Set(varSelectedReqId, Blank());
 Set(varResetNewApp, true);

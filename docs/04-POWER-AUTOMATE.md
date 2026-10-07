@@ -5,7 +5,7 @@
 | **ER-01 Approvals** | SharePoint: item created in EntraRequests | SharePoint, Office 365 Users, Approvals, Office 365 Outlook, Teams (optional) | Standard |
 | **ER-02 Execute** | SharePoint: item created or modified, `Status = Approved` | SharePoint, Outlook, plus a Graph connection: **HTTP with Microsoft Entra ID (preauthorized)** (option A) or **HTTP** + **Azure Key Vault** (option B) | Premium (owner's licence) |
 | **ER-03 Catalog sync** | Recurrence, hourly (+ run manually) | SharePoint, plus the same Graph connection | Premium (owner's licence) |
-| **ER-04 Onboard group** | SharePoint: item created, `RequestType = onboardGroup` | SharePoint, plus the same Graph connection | Premium (owner's licence) |
+| **ER-04 Onboard group** | SharePoint: item created, `RequestType = onboardGroup` (group looked up by name or Object ID) | SharePoint, plus the same Graph connection | Premium (owner's licence) |
 
 **Shortcut:** instead of building the flows by hand, import them as a solution: [doc 09](09-SOLUTION-IMPORT.md). This page remains the reference for what each action does.
 
@@ -188,7 +188,7 @@ Trigger **Settings**:
 | 6 | `Requester` | Compose | Inputs `toLower(last(split(triggerOutputs()?['body/Author/Claims'], '\|')))` (the requester's UPN) |
 | 7 | `Payload` | Compose | Inputs `json(triggerOutputs()?['body/ApprovedPayloadJson'])` |
 | 8 | `Now` | Compose | Inputs `utcNow()` |
-| 9 | Ten variables | Variables – Initialize variable ×10 | One action per row, named `Init <name>`: `varTeamGroupId` String (empty); `varTeamGroupName` String (empty); `varSpId` String (empty); `varGroupId` String (empty); `varRoleId` String (empty); `varAssignTodo` Array, Value *plain text* `[]`; `varAssignments` Array, Value `[]`; `varResult` Object, Value `{}`; `varOwnerOk` String, Value `no`; `varAssignOk` String, Value `no` (ten variables in total) |
+| 9 | Ten variables | Variables – Initialize variable ×10 | One action per row, named `Init <name>`: `varTeamGroupId` String (empty); `varTeamGroupName` String (empty); `varSpId` String (empty); `varGroupId` String (empty); `varRoleId` String (empty); `varAssignTodo` Array, Value *plain text* `[]`; `varAssignments` Array, Value `[]`; `varResult` Object, Value `{}`; `varExposeOk` String, Value `no`; `varAssignOk` String, Value `no` |
 | 10 | `Try` | Control – Scope | Everything in the next sections goes **inside** this scope |
 | 11 | `Catch` | Control – Scope | After `Try` (not inside it). See [Catch](#catch-scope). |
 
@@ -218,23 +218,17 @@ Trigger **Settings**:
 
 ### Inside `Try`, after `Has target app`: Switch
 
-**Control – Switch** named `Request type`; On `triggerOutputs()?['body/RequestType/Value']`. Add six cases; in each case's **Equals** box type the request type as *plain text* (e.g. `createAppRegistration`). Inside each case add **one Scope** named `Do <type>` (e.g. `Do createAppRegistration`) and put that case's actions inside it. The Catch refers to those exact scope names. Leave **Default** empty.
+**Control – Switch** named `Request type`; On `triggerOutputs()?['body/RequestType/Value']`. Add five cases (createAppRegistration, exposeApi, addAppRoles, assignGroupsToAppRoles, createServicePrincipal); in each case's **Equals** box type the request type as *plain text* (e.g. `createAppRegistration`). Inside each case add **one Scope** named `Do <type>` (e.g. `Do createAppRegistration`) and put that case's actions inside it. The Catch refers to those exact scope names. Leave **Default** empty.
 
 #### Case `createAppRegistration` → Scope `Do createAppRegistration`
 
 | # | Action | Type | Configuration |
 |---|---|---|---|
-| 1 | `Team is new` | Condition | Left `outputs('Payload')?['owningGroup']?['mode']`; is equal to; right *plain text* `new` |
-| 1y.1 | *If yes:* `Select team owner binds` | Select | From `union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['owningGroup']?['ownerIds']), json('[]'), split(outputs('Payload')?['owningGroup']?['ownerIds'], ';')))`; Map in text mode `concat('https://graph.microsoft.com/v1.0/directoryObjects/', item())` |
-| 1y.2 | *If yes:* `HTTP Create team group` | Graph | `POST` `https://graph.microsoft.com/v1.0/groups`; Body [`HTTP_Create_team_group.json`](../powerautomate/actions/HTTP_Create_team_group.json) |
-| 1y.3 | *If yes:* `Set team id (new)` | Set variable | Name `varTeamGroupId`; Value `body('HTTP_Create_team_group')?['id']` |
-| 1y.4 | *If yes:* `Set team name (new)` | Set variable | Name `varTeamGroupName`; Value `body('HTTP_Create_team_group')?['displayName']` |
-| 1y.5 | *If yes:* `Catalog new team` | SharePoint – Create item | List `EntraCatalogGroups`; Title `body('HTTP_Create_team_group')?['displayName']`; GroupId `body('HTTP_Create_team_group')?['id']`; AppCatId `triggerOutputs()?['body/AppCatId']`; Description `body('HTTP_Create_team_group')?['description']`; OwnerUpns `concat(';', outputs('Requester'), ';')`; MemberUpns `concat(';', outputs('Requester'), ';')`; LastSynced `utcNow()` |
-| 1n.1 | *If no:* `HTTP Check team membership` | Graph | `POST` `https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups`; Body `{"groupIds": ["@{outputs('Payload')?['owningGroup']?['id']}"]}` |
-| 1n.2 | *If no:* `Is team member` | Condition | Left `length(body('HTTP_Check_team_membership')?['value'])`; **is greater than**; right *plain text* `0`. **If no:** `Fail not team member` (Update item: List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `Failed`; ErrorMessage *plain text* `You are not a member of the owning team.`) → `Stop not team member` (Terminate: Status **Failed**, Code `NotTeamMember`, Message *plain text* `Requester is not in the owning team`). **If yes:** leave empty. |
-| 1n.3 | *If no (after 1n.2):* `HTTP Get team group` | Graph | `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Payload')?['owningGroup']?['id']}?$select=id,displayName` |
-| 1n.4 | *If no:* `Set team id` | Set variable | Name `varTeamGroupId`; Value `body('HTTP_Get_team_group')?['id']` |
-| 1n.5 | *If no:* `Set team name` | Set variable | Name `varTeamGroupName`; Value `body('HTTP_Get_team_group')?['displayName']` |
+| 1 | `Owning team missing` | Condition | `empty(outputs('Payload')?['owningGroup']?['id'])` is equal to `true`. **If yes:** `Fail no team` (Update item: List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `Failed`; ErrorMessage *plain text* `The request has no owning team. Choose an existing group you are a member of.`) → `Stop no team` (Terminate: **Failed**, Code `NoOwningTeam`). **If no:** leave empty. Groups are created outside this platform, so the owning team is always an existing group. |
+| 2 | `HTTP Check team membership` | Graph | `POST` `https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups`; Body `{"groupIds": ["@{outputs('Payload')?['owningGroup']?['id']}"]}` |
+| 3 | `Is team member` | Condition | Left `length(body('HTTP_Check_team_membership')?['value'])`; **is greater than**; right *plain text* `0`. **If no:** `Fail not team member` (Update item as in step 1 with ErrorMessage *plain text* `You are not a member of the owning team.`) → `Stop not team member` (Terminate: **Failed**, Code `NotTeamMember`). **If yes:** leave empty. |
+| 4 | `HTTP Get team group` | Graph | `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Payload')?['owningGroup']?['id']}?$select=id,displayName` |
+| 5 | `Set team id` / `Set team name` | Set variable ×2 | `varTeamGroupId` = `body('HTTP_Get_team_group')?['id']`; `varTeamGroupName` = `body('HTTP_Get_team_group')?['displayName']` |
 | 2 | `Select app roles` | Select | From `coalesce(outputs('Payload')?['appRoles'], json('[]'))`; Map (key/value rows): `id` → `guid()`; `value` → `item()?['value']`; `displayName` → `item()?['displayName']`; `description` → `item()?['description']`; `allowedMemberTypes` → `split(item()?['allowedMemberTypes'], ',')`; `isEnabled` → `true` |
 | 3 | `Select scopes` | Select | From `if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), coalesce(outputs('Payload')?['exposeApi']?['scopes'], json('[]')), json('[]'))`; Map: `id` → `guid()`; `value` → `item()?['value']`; `type` → `item()?['type']`; `adminConsentDisplayName` → `item()?['adminConsentDisplayName']`; `adminConsentDescription` → `item()?['adminConsentDescription']`; `userConsentDisplayName` → `item()?['adminConsentDisplayName']`; `userConsentDescription` → `item()?['adminConsentDescription']`; `isEnabled` → `true` |
 | 4 | `Select id token claims` | Select | From `if(empty(outputs('Payload')?['optionalClaimsIdToken']), json('[]'), split(outputs('Payload')?['optionalClaimsIdToken'], ','))`; Map: `name` → `item()`; `essential` → `false` |
@@ -243,31 +237,20 @@ Trigger **Settings**:
 | 7 | `Select optional tags` | Select | From `body('Filter_optional_tags')`; Map in text mode `concat(trim(first(split(item(), '='))), ':', trim(last(split(item(), '='))))` |
 | 8 | `App tags` | Compose | Inputs `union(outputs('Base_tags'), createArray(concat('team:', variables('varTeamGroupId')), concat('teamName:', variables('varTeamGroupName'))), body('Select_optional_tags'))` |
 | 9 | `HTTP Create application` | Graph | `POST` `https://graph.microsoft.com/v1.0/applications`; Body [`HTTP_Create_application.json`](../powerautomate/actions/HTTP_Create_application.json) |
-| 9b | `Wait for app replication` | Schedule – Delay | Count `15`, Unit **Second**. A new app takes a few seconds to replicate; calls against it before that return 404. |
-| 10 | `Expose API` | Condition | `equals(outputs('Payload')?['exposeApi']?['enabled'], true)` is equal to `true`. **If yes:** `HTTP Expose API` (Graph: `PATCH` `https://graph.microsoft.com/v1.0/applications/@{body('HTTP_Create_application')?['id']}`; Body [`HTTP_Expose_API.json`](../powerautomate/actions/HTTP_Expose_API.json)). **If no:** leave empty. |
-| 11 | `Apply to each owner` | Control – Apply to each (concurrency 1) | Select an output from previous steps `union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['additionalOwnerIds']), json('[]'), split(outputs('Payload')?['additionalOwnerIds'], ';')))`. Inside: the **retry pattern** below with call `HTTP Add owner` (Graph: `POST` `https://graph.microsoft.com/v1.0/applications/@{body('HTTP_Create_application')?['id']}/owners/$ref`; Body [`HTTP_Add_owner.json`](../powerautomate/actions/HTTP_Add_owner.json)), success status `204`, flag `varOwnerOk`, failure message `concat('Could not add owner ', items('Apply_to_each_owner'), ' to the new app registration (object id ', body('HTTP_Create_application')?['id'], ') after 6 attempts. Delete that app in Entra before retrying.')` |
+| 9b | `Wait for app replication` | Schedule – Delay | Count `15`, Unit **Second**. A new app takes a few seconds to replicate; calls against it before that return 404. Expose API (10) also retries. |
+| 10 | `Expose API` | Condition | `equals(outputs('Payload')?['exposeApi']?['enabled'], true)` is equal to `true`. **If yes:** the **retry pattern** below with call `HTTP Expose API` (Graph: `PATCH` `https://graph.microsoft.com/v1.0/applications/@{body('HTTP_Create_application')?['id']}`; Body [`HTTP_Expose_API.json`](../powerautomate/actions/HTTP_Expose_API.json)), success status `204`, flag `varExposeOk`, failure message `concat('Could not set the Application ID URI and scopes on the new app registration (object id ', body('HTTP_Create_application')?['id'], ') after 6 attempts. Delete that app in Entra before retrying.')`. **If no:** leave empty. |
 | 12 | `Create SP` | Condition | `equals(outputs('Payload')?['createServicePrincipal'], true)` is equal to `true`. **If yes:** 12.1–12.2. **If no:** leave empty. |
 | 12.1 | *If yes:* `Wait for replication` | Schedule – Delay | Count `10`, Unit **Second** |
 | 12.2 | *If yes:* `Do until SP` | Control – Do until | Loop until: `empty(variables('varSpId'))` is equal to `false`. Change limits: Count `6`, Timeout `PT10M`. Inside, in order: **(a)** `HTTP Create SP` (Graph: `POST` `https://graph.microsoft.com/v1.0/servicePrincipals`; Body [`HTTP_Create_SP.json`](../powerautomate/actions/HTTP_Create_SP.json); Settings → Retry policy **None**). **(b)** `SP created` (Condition: `outputs('HTTP_Create_SP')?['statusCode']` is equal to *plain text* `201`; **Run after** `HTTP Create SP`: **is successful** + **has failed**). *If yes:* `Set SP id` (Set variable `varSpId` = `body('HTTP_Create_SP')?['id']`). *If no:* `Retry delay` (Delay 10 seconds). |
 | 13 | `For each new role` | Apply to each (concurrency 1) | From `coalesce(outputs('Payload')?['appRoles'], json('[]'))`. Inside, in order: **(a)** `Filter created role` (Filter array: From `body('HTTP_Create_application')?['appRoles']`; condition `item()?['value']` is equal to `items('For_each_new_role')?['value']`). **(b)** `For each new role group` (Apply to each, concurrency 1, From `coalesce(items('For_each_new_role')?['assignGroups'], json('[]'))`). Inside it: `Queue new role assignment` (Variables – **Append to array variable**, Name `varAssignTodo`, Value: the JSON below). |
 | 14 | `Result create app` | Set variable | Name `varResult`; Value (text with tokens) `{"applicationObjectId": "@{body('HTTP_Create_application')?['id']}", "appId": "@{body('HTTP_Create_application')?['appId']}", "identifierUri": "@{if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId']), '')}", "servicePrincipalId": "@{variables('varSpId')}", "teamGroupId": "@{variables('varTeamGroupId')}"}` |
-| 15 | `Catalog new app` | SharePoint – Create item | List `EntraCatalogApps`; Title `outputs('Payload')?['displayName']`; ObjectId `body('HTTP_Create_application')?['id']`; AppId `body('HTTP_Create_application')?['appId']`; AppCatId `triggerOutputs()?['body/AppCatId']`; TeamGroupId `variables('varTeamGroupId')`; TeamGroupName `variables('varTeamGroupName')`; ServicePrincipalId `variables('varSpId')`; IdentifierUri `variables('varResult')?['identifierUri']`; AppRolesJson `string(body('HTTP_Create_application')?['appRoles'])`; ScopesJson `string(body('Select_scopes'))`; TeamMemberUpns `concat(';', outputs('Requester'), ';')`; OwnerUpns `concat(';', outputs('Requester'), ';')`; LastSynced `utcNow()`. ER-03 fills in the full team membership within the hour. |
+| 15 | `Catalog new app` | SharePoint – Create item | List `EntraCatalogApps`; Title `outputs('Payload')?['displayName']`; ObjectId `body('HTTP_Create_application')?['id']`; AppId `body('HTTP_Create_application')?['appId']`; AppCatId `triggerOutputs()?['body/AppCatId']`; TeamGroupId `variables('varTeamGroupId')`; TeamGroupName `variables('varTeamGroupName')`; ServicePrincipalId `variables('varSpId')`; IdentifierUri `variables('varResult')?['identifierUri']`; AppRolesJson `string(body('HTTP_Create_application')?['appRoles'])`; ScopesJson `string(body('Select_scopes'))`; TeamMemberUpns `concat(';', outputs('Requester'), ';')`; LastSynced `utcNow()`. ER-03 fills in the full team membership within the hour. The app registration gets **no owners**: access is managed through the owning team and role groups. |
 
 Step 13 `Queue new role assignment` Value (text with tokens):
 
 ```
 {"roleId": "@{first(body('Filter_created_role'))?['id']}", "roleValue": "@{items('For_each_new_role')?['value']}", "mode": "@{items('For_each_new_role_group')?['mode']}", "id": "@{items('For_each_new_role_group')?['id']}", "displayName": "@{items('For_each_new_role_group')?['displayName']}", "description": "@{items('For_each_new_role_group')?['description']}", "ownerIds": "@{items('For_each_new_role_group')?['ownerIds']}"}
 ```
-
-#### Case `createGroup` → Scope `Do createGroup`
-
-| Action | Type | Configuration |
-|---|---|---|
-| `Select group owner binds` | Select | From `union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['ownerIds']), json('[]'), split(outputs('Payload')?['ownerIds'], ';')))`; Map in text mode `concat('https://graph.microsoft.com/v1.0/directoryObjects/', item())` |
-| `Select group member binds` | Select | From `if(empty(outputs('Payload')?['memberIds']), json('[]'), split(outputs('Payload')?['memberIds'], ';'))`; Map in text mode `concat('https://graph.microsoft.com/v1.0/directoryObjects/', item())` |
-| `HTTP Create group` | Graph | `POST` `https://graph.microsoft.com/v1.0/groups`; Body [`HTTP_Create_group.json`](../powerautomate/actions/HTTP_Create_group.json) |
-| `Catalog group` | SharePoint – Create item | List `EntraCatalogGroups`; Title `body('HTTP_Create_group')?['displayName']`; GroupId `body('HTTP_Create_group')?['id']`; AppCatId `triggerOutputs()?['body/AppCatId']`; Description `body('HTTP_Create_group')?['description']`; OwnerUpns `concat(';', outputs('Requester'), ';')`; MemberUpns: leave empty (ER-03 fills it); LastSynced `utcNow()` |
-| `Result create group` | Set variable | Name `varResult`; Value `{"groupId": "@{body('HTTP_Create_group')?['id']}", "groupDisplayName": "@{body('HTTP_Create_group')?['displayName']}"}` |
 
 #### Case `exposeApi` → Scope `Do exposeApi`
 
@@ -318,22 +301,17 @@ Step 13 `Queue new role assignment` Value (text with tokens):
 | # | Action | Type | Configuration |
 |---|---|---|---|
 | 1 | `Apply to each assignment` | Apply to each, **Settings → Concurrency 1** | From `variables('varAssignTodo')`. Inside: 1.1 to 1.3. |
-| 1.1 | `Group is new` | Condition | Left `items('Apply_to_each_assignment')?['mode']`; is equal to; right *plain text* `new` |
-| | *If yes:* `Select role group owner binds` | Select | From `union(createArray(body('HTTP_Get_requester')?['id']), if(empty(items('Apply_to_each_assignment')?['ownerIds']), json('[]'), split(items('Apply_to_each_assignment')?['ownerIds'], ';')))`; Map in text mode `concat('https://graph.microsoft.com/v1.0/directoryObjects/', item())` |
-| | *If yes:* `HTTP Create role group` | Graph | `POST` `https://graph.microsoft.com/v1.0/groups`; Body [`HTTP_Create_role_group.json`](../powerautomate/actions/HTTP_Create_role_group.json) |
-| | *If yes:* `Set group id (new)` | Set variable | Name `varGroupId`; Value `body('HTTP_Create_role_group')?['id']` |
-| | *If yes:* `Catalog role group` | SharePoint – Create item | List `EntraCatalogGroups`; Title `body('HTTP_Create_role_group')?['displayName']`; GroupId `body('HTTP_Create_role_group')?['id']`; AppCatId `triggerOutputs()?['body/AppCatId']`; Description `body('HTTP_Create_role_group')?['description']`; OwnerUpns `concat(';', outputs('Requester'), ';')`; LastSynced `utcNow()` |
-| | *If yes:* `Wait for group replication` | Delay | Count `15`, Unit **Second** |
-| | *If no:* `Set group id` | Set variable | Name `varGroupId`; Value `items('Apply_to_each_assignment')?['id']` |
+| 1.1 | `Group id missing` | Condition | `empty(items('Apply_to_each_assignment')?['id'])` is equal to `true`. **If yes:** `Fail no group id` (Update item: Status `Failed`, ErrorMessage `concat('Group ', items('Apply_to_each_assignment')?['displayName'], ' has no Object ID. Requests can only use existing groups: add it with Add existing group and pick it again.')`) → `Stop no group id` (Terminate: **Failed**, Code `NoGroupId`). Groups are never created here. |
+| 1.1b | `Set group id` | Set variable | Name `varGroupId`; Value `items('Apply_to_each_assignment')?['id']` |
 | 1.2 | `HTTP Assign role` | retry pattern | The **retry pattern** below with call `HTTP Assign role` (Graph: `POST` `https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}/appRoleAssignedTo`; Body [`HTTP_Assign_role.json`](../powerautomate/actions/HTTP_Assign_role.json)), success status `201`, flag `varAssignOk`, failure message `concat('Could not assign ', items('Apply_to_each_assignment')?['displayName'], ' to role ', items('Apply_to_each_assignment')?['roleValue'], ' after 6 attempts. ResultJson of this request lists what was created.')` |
 | 1.3 | `Record assignment` | Append to array variable | Name `varAssignments`; Value `concat(items('Apply_to_each_assignment')?['displayName'], ' -> ', items('Apply_to_each_assignment')?['roleValue'])` |
 | 2 | `Default access` | Condition | `and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId'))))` is equal to `true`. **If yes:** `HTTP Assign default access` (Graph: `POST` `https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}/appRoleAssignedTo`; Body [`HTTP_Assign_default_access.json`](../powerautomate/actions/HTTP_Assign_default_access.json)). With assignment required and no roles, the owning team gets Default Access so someone can sign in. |
 | 3 | `Mark completed` | SharePoint – Update item | List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `Completed`; CompletedAt `utcNow()`; ResultJson `string(setProperty(variables('varResult'), 'assignmentsText', join(variables('varAssignments'), '; ')))` |
 | 4 | `Mail completed` | Send an email (V2) | To `triggerOutputs()?['body/Author/Email']`; Subject `concat('Your Entra request ', triggerOutputs()?['body/Title'], ' is complete')`; Body: [completed email body](#er-02-completed-email-body) |
 
-### Retry pattern (owners and role assignments)
+### Retry pattern (Expose API and role assignments)
 
-Right after an app, enterprise app or group is created, Graph can answer **404** or **400** for a few seconds, until the object has replicated. Power Automate's retry policy only retries 408, 429 and 5xx errors, so ER-02 retries these two calls itself. For a call `<Call>` with success status `<status>` and flag variable `<flag>`:
+Right after an app, enterprise app or group is created, Graph can answer **404** or **400** for a few seconds, until the object has replicated. Power Automate's retry policy only retries 408, 429 and 5xx errors, so ER-02 retries these calls itself. For a call `<Call>` with success status `<status>` and flag variable `<flag>`:
 
 | Action | Type | Configuration |
 |---|---|---|
@@ -343,7 +321,7 @@ Right after an app, enterprise app or group is created, Graph can answer **404**
 | `<Call> ok` | Condition, **Run after** `<Call>`: is successful + has failed | `or(equals(outputs('<Call_with_underscores>')?['statusCode'], <status>), contains(string(outputs('<Call_with_underscores>')?['body']), 'already exist'))` is equal to `true`. **If yes:** `Set <flag>` (Set variable `<flag>` = `yes`). **If no:** `<Call> retry delay` (Delay 10 seconds) |
 | `<Call> gave up` | Condition, after the Do until | `variables('<flag>')` is equal to *plain text* `no`. **If yes:** `Fail …` (Update item: Status `Failed`, ErrorMessage = the step's failure message) → `Stop …` (Terminate: **Failed**, Code `GraphRetryExhausted`) |
 
-"Already exists" counts as success, so re-running a request doesn't fail on owners or assignments that are already there.
+"Already exists" counts as success, so re-running a request doesn't fail on assignments that are already there.
 
 ### Catch scope
 
@@ -351,7 +329,7 @@ Right after an app, enterprise app or group is created, Graph can answer **404**
 
 | Action | Type | Configuration |
 |---|---|---|
-| `Failed actions` | Filter array | From `union(result('Do_createAppRegistration'), result('Do_createGroup'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Try'))`; condition `item()?['status']` is equal to *plain text* `Failed` |
+| `Failed actions` | Filter array | From `union(result('Do_createAppRegistration'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Try'))`; condition `item()?['status']` is equal to *plain text* `Failed` |
 | `Error text` | Compose | Inputs `concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-02 run history'))` |
 | `Mark failed` | SharePoint – Update item | List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `Failed`; ErrorMessage `outputs('Error_text')`; ResultJson `string(variables('varResult'))` (what was created before the failure, for a manual fix) |
 | `Mail failed` | Send an email (V2) | To `concat(triggerOutputs()?['body/Author/Email'], ';', replace(replace(body('Get_settings')?['EntraApproverEmails'], decodeUriComponent('%0D'), ''), decodeUriComponent('%0A'), ';'))`; Subject `concat('Entra request ', triggerOutputs()?['body/Title'], ' failed')`; Body: [failed email body](#er-02-failed-email-body) |
@@ -456,7 +434,7 @@ A deleted group makes `HTTP Group` fail with 404, which fails that iteration and
 
 ## ER-04 Onboard group (Premium)
 
-Adds an **existing** group to `EntraCatalogGroups` so it appears in the app's pickers for its members and owners. The requester must be a **member or owner** of the group and the group must be **security-enabled**. No approval is needed and nothing changes in Entra.
+Makes an **existing** group selectable in the app. Groups are created outside this platform; users add the ones they need with **Add existing group**, by typing the group's **display name or Object ID**. ER-04 finds the group in Entra, checks that the requester is a **member or owner** and that it is **security-enabled**, then creates or updates its `EntraCatalogGroups` row. No approval; nothing changes in Entra. The app shows the result within a few seconds (it polls the request).
 
 **+ Create → Automated cloud flow** → name `ER-04 Onboard group` → trigger **SharePoint – When an item is created** → Site Address = your site, List Name = `EntraRequests`.
 Trigger **Settings → Trigger conditions** → **+ Add**: `@and(equals(triggerOutputs()?['body/Status/Value'], 'Submitted'), equals(triggerOutputs()?['body/RequestType/Value'], 'onboardGroup'))`
@@ -466,30 +444,35 @@ Trigger **Settings → Trigger conditions** → **+ Add**: `@and(equals(triggerO
 | 1 | `Get settings` | SharePoint – Get item | List Name `EntraSettings`; Id *plain text* `1` |
 | 2 | `Mark in progress` | SharePoint – Update item | List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `InProgress` |
 | 3 | `Requester` | Compose | Inputs `toLower(last(split(triggerOutputs()?['body/Author/Claims'], '\|')))` |
-| 4 | `Group id` | Compose | Inputs `toLower(trim(coalesce(triggerOutputs()?['body/TargetObjectId'], '')))` |
-| 5 | `Try` | Control – Scope | Contains 5.1–5.12 |
-| 5.1 | `HTTP Get requester` | Graph | `GET` `https://graph.microsoft.com/v1.0/users/@{outputs('Requester')}?$select=id` |
-| 5.2 | `HTTP Get group` | Graph | `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Group_id')}?$select=id,displayName,description,securityEnabled` |
-| 5.3 | `HTTP Check membership` | Graph | `POST` `https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups`; Body `{"groupIds": ["@{outputs('Group_id')}"]}` (transitive: nested membership counts) |
-| 5.4 | `HTTP Group owners` | Graph | `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Group_id')}/owners/microsoft.graph.user?$select=id,userPrincipalName` |
-| 5.5 | `Member or owner` | Condition | `or(not(empty(body('HTTP_Check_membership')?['value'])), contains(string(body('HTTP_Group_owners')?['value']), body('HTTP_Get_requester')?['id']))` is equal to `true`. **If no:** `Fail not member` (Update item: List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `Failed`; ErrorMessage *plain text* `You are neither a member nor an owner of this group.`) → `Stop not member` (Terminate: **Failed**, Code `NotMemberOrOwner`) |
-| 5.6 | `Security enabled` | Condition | Left `body('HTTP_Get_group')?['securityEnabled']`; is equal to; right **fx** `true`. **If no:** `Fail not security` (Update item as above with ErrorMessage *plain text* `Only security-enabled groups can be used for owning teams and app roles.`) → `Stop not security` (Terminate: **Failed**, Code `NotSecurityGroup`) |
-| 5.7 | `HTTP Group members` | Graph | `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Group_id')}/transitiveMembers/microsoft.graph.user?$select=userPrincipalName&$top=999` |
-| 5.8 | `Select member upns` | Select | From `body('HTTP_Group_members')?['value']`; Map in text mode `toLower(item()?['userPrincipalName'])` |
-| 5.9 | `Select owner upns` | Select | From `body('HTTP_Group_owners')?['value']`; Map in text mode `toLower(item()?['userPrincipalName'])` |
-| 5.10 | `Get catalog row` | SharePoint – Get items | List `EntraCatalogGroups`; Filter Query `GroupId eq '@{outputs('Group_id')}'`; Top Count `1` |
-| 5.11 | `Row missing` | Condition | `empty(body('Get_catalog_row')?['value'])` is equal to `true`. **If yes:** `Create catalog row` (Create item, List `EntraCatalogGroups`, fields below). **If no:** `Update catalog row` (Update item, List `EntraCatalogGroups`, Id `first(body('Get_catalog_row')?['value'])?['ID']`, fields below) |
-| 5.12 | `Mark completed` | Update item | List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `Completed`; CompletedAt `utcNow()`; TargetDisplayName `body('HTTP_Get_group')?['displayName']`; ResultJson `string(setProperty(setProperty(json('{}'), 'groupId', body('HTTP_Get_group')?['id']), 'groupDisplayName', body('HTTP_Get_group')?['displayName']))` |
-| 6 | `Catch` | Scope, **Run after** `Try`: has failed + has timed out | `Failed actions` (Filter array: From `result('Try')`; `item()?['status']` is equal to `Failed`) → `Error text` (Compose: `if(equals(outputs('HTTP_Get_group')?['statusCode'], 404), 'Group not found: check the Object ID (Entra admin center > Groups > the group > Object ID).', concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-04 run history')))`) → `Mark failed` (Update item: Id, Title, **Status Value** `Failed`, ErrorMessage `outputs('Error_text')`) |
+| 4 | `Group query` | Compose | Inputs `trim(coalesce(triggerOutputs()?['body/TargetDisplayName'], triggerOutputs()?['body/TargetObjectId'], ''))` (what the user typed) |
+| 5 | `Init varGroup` | Initialize variable | Name `varGroup`; Type Object; Value `{}` |
+| 6 | `Try` | Control – Scope | Contains 6.1–6.14 |
+| 6.1 | `HTTP Get requester` | Graph | `GET` `https://graph.microsoft.com/v1.0/users/@{outputs('Requester')}?$select=id` |
+| 6.2 | `Query is object id` | Condition | `and(equals(length(outputs('Group_query')), 36), equals(length(split(outputs('Group_query'), '-')), 5))` is equal to `true`. **If yes:** 6.2y. **If no:** 6.2n. |
+| 6.2y | *by Object ID* | | `HTTP Get group by id` (Graph: `GET` `https://graph.microsoft.com/v1.0/groups/@{toLower(outputs('Group_query'))}?$select=id,displayName,description,securityEnabled`; Retry policy **None**) → `Found by id` (Condition, **Run after** HTTP Get group by id: is successful + has failed; `outputs('HTTP_Get_group_by_id')?['statusCode']` is equal to *plain text* `200`). **If yes:** `Set group from id` (Set variable `varGroup` = `body('HTTP_Get_group_by_id')`). **If no:** `Fail id not found` (Update item: Status `Failed`, ErrorMessage `concat('No group with Object ID ', outputs('Group_query'), ' was found. Check the ID (Entra admin center > Groups > the group > Object ID).')`) → `Stop id not found` (Terminate: **Failed**) |
+| 6.2n | *by name* | | `HTTP Find group by name` (Graph: `GET` `https://graph.microsoft.com/v1.0/groups?$filter=displayName eq '@{encodeUriComponent(replace(outputs('Group_query'), '''', ''''''))}'&$select=id,displayName,description,securityEnabled&$top=5`) → `No group with that name` (Condition: `empty(body('HTTP_Find_group_by_name')?['value'])` is equal to `true`; **If yes:** `Fail name not found` with ErrorMessage `concat('No group named ', outputs('Group_query'), ' was found. Check the exact name, or enter the group''s Object ID.')` → `Stop name not found`) → `Several groups with that name` (Condition: `length(body('HTTP_Find_group_by_name')?['value'])` is greater than `1`; **If yes:** `Fail name ambiguous` with ErrorMessage `concat(string(length(body('HTTP_Find_group_by_name')?['value'])), ' groups are named ', outputs('Group_query'), '. Enter the Object ID of the one you mean.')` → `Stop name ambiguous`) → `Set group from name` (Set variable `varGroup` = `first(body('HTTP_Find_group_by_name')?['value'])`) |
+| 6.3 | `Group id` | Compose | Inputs `variables('varGroup')?['id']` |
+| 6.4 | `HTTP Check membership` | Graph | `POST` `https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups`; Body `{"groupIds": ["@{outputs('Group_id')}"]}` (transitive: nested membership counts) |
+| 6.5 | `HTTP Group owners` | Graph | `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Group_id')}/owners/microsoft.graph.user?$select=id,userPrincipalName` |
+| 6.6 | `Member or owner` | Condition | `or(not(empty(body('HTTP_Check_membership')?['value'])), contains(string(body('HTTP_Group_owners')?['value']), body('HTTP_Get_requester')?['id']))` is equal to `true`. **If no:** `Fail not member` (ErrorMessage `concat('You are neither a member nor an owner of ', variables('varGroup')?['displayName'], '. Ask one of its owners to add you, or pick another group.')`) → `Stop not member` |
+| 6.7 | `Security enabled` | Condition | Left `variables('varGroup')?['securityEnabled']`; is equal to; right **fx** `true`. **If no:** `Fail not security` (ErrorMessage `concat(variables('varGroup')?['displayName'], ' is not a security group. Only security-enabled groups can be used for owning teams and app roles.')`) → `Stop not security` |
+| 6.8 | `HTTP Group members` | Graph | `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Group_id')}/transitiveMembers/microsoft.graph.user?$select=userPrincipalName&$top=999` |
+| 6.9 | `Select member upns` / `Select owner upns` | Select ×2 | From `body('HTTP_Group_members')?['value']` / `body('HTTP_Group_owners')?['value']`; Map in text mode `toLower(item()?['userPrincipalName'])` |
+| 6.10 | `Get catalog row` | SharePoint – Get items | List `EntraCatalogGroups`; Filter Query `GroupId eq '@{outputs('Group_id')}'`; Top Count `1` |
+| 6.11 | `Row missing` | Condition | `empty(body('Get_catalog_row')?['value'])` is equal to `true`. **If yes:** `Create catalog row` (Create item, fields below). **If no:** `Update catalog row` (Update item, Id `first(body('Get_catalog_row')?['value'])?['ID']`, fields below) |
+| 6.12 | `Mark completed` | Update item | Id, Title; **Status Value**: pick `Completed`; CompletedAt `utcNow()`; TargetDisplayName `variables('varGroup')?['displayName']`; TargetObjectId `outputs('Group_id')`; ResultJson `string(setProperty(setProperty(json('{}'), 'groupId', outputs('Group_id')), 'groupDisplayName', variables('varGroup')?['displayName']))` |
+| 7 | `Catch` | Scope, **Run after** `Try`: has failed + has timed out | `Failed actions` (Filter array: From `result('Try')`; `item()?['status']` is equal to `Failed`) → `Error text` (Compose: `concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-04 run history'))`) → `Mark failed` (Update item: Status `Failed`, ErrorMessage `outputs('Error_text')`) |
 
-Catalog row fields (5.11):
+Every *Fail …* action is a SharePoint **Update item** on EntraRequests (Id `int(triggerOutputs()?['body/ID'])`, Title `triggerOutputs()?['body/Title']`, **Status Value** `Failed`, ErrorMessage as given) followed by a **Terminate** with Status **Failed**. The app shows that ErrorMessage to the user.
+
+Catalog row fields (6.11):
 
 | Column | Value (fx) |
 |---|---|
-| Title | `body('HTTP_Get_group')?['displayName']` |
-| GroupId | `body('HTTP_Get_group')?['id']` |
-| Description | `body('HTTP_Get_group')?['description']` |
-| AppCatId | `if(contains(coalesce(body('HTTP_Get_group')?['description'], ''), '[appCatID='), first(split(last(split(body('HTTP_Get_group')?['description'], '[appCatID=')), ';')), '')` |
+| Title | `variables('varGroup')?['displayName']` |
+| GroupId | `outputs('Group_id')` |
+| Description | `variables('varGroup')?['description']` |
+| AppCatId | `if(contains(coalesce(variables('varGroup')?['description'], ''), '[appCatID='), first(split(last(split(variables('varGroup')?['description'], '[appCatID=')), ';')), '')` |
 | MemberUpns | `concat(';', join(body('Select_member_upns'), ';'), ';')` |
 | OwnerUpns | `concat(';', join(body('Select_owner_upns'), ';'), ';')` |
 | LastSynced | `utcNow()` |
@@ -502,10 +485,9 @@ Catalog row fields (5.11):
 |---|---|
 | requester id | `GET /users/{upn}?$select=id` |
 | team membership | `POST /users/{id}/checkMemberGroups {"groupIds":[…]}` |
-| new group | `POST /groups` (owners@odata.bind / members@odata.bind) |
+| find a group | `GET /groups/{id}` or `GET /groups?$filter=displayName eq '…'` (ER-04) |
 | new app | `POST /applications` (tags, notes, appRoles, web/spa, optionalClaims, groupMembershipClaims, api.requestedAccessTokenVersion=2) |
 | App ID URI + scopes | `PATCH /applications/{id}` (identifierUris, api.oauth2PermissionScopes) |
-| owners | `POST /applications/{id}/owners/$ref` |
 | enterprise app | `POST /servicePrincipals` (retried for ~60 s while the new app replicates) |
 | role assignment | `POST /servicePrincipals/{spId}/appRoleAssignedTo {principalId, resourceId, appRoleId}` |
 | catalog | `GET /applications?$filter=tags/any(...)`, `GET /groups/{id}/transitiveMembers`, `GET …/owners` |

@@ -36,14 +36,14 @@ SRC = PA / "src"
 DIST = PA / "dist"
 APP_NAME = "Entra Self-Service"
 FILE_STEM = "EntraSelfService"
-SCREENS = ["scrHome", "scrNewApp", "scrNewGroup", "scrAddGroup", "scrAppChange", "scrMyRequests"]
+SCREENS = ["scrHome", "scrNewApp", "scrAddGroup", "scrAppChange", "scrMyRequests"]
 APP_ID = "6f0c3a1e-2b7d-4e55-9a10-5c3e0e1d0a01"   # stable, so re-opening keeps the same app identity
 
 # Control versions as used by current Studio builds (doc version 1.349 sample apps).
 VERSIONS = {
     "Label": "2.5.1", "Classic/Button": "2.2.0", "Classic/TextInput": "2.3.2", "Classic/DropDown": "2.3.1",
     "Classic/ComboBox": "2.4.0", "Classic/CheckBox": "2.1.0", "Classic/Radio": "2.3.0", "Classic/Toggle": "2.1.0",
-    "Classic/Icon": "2.5.0", "Rectangle": "2.3.0", "HtmlViewer": "2.1.0", "Gallery": "2.15.0", "GroupContainer": "1.5.0",
+    "Classic/Icon": "2.5.0", "Rectangle": "2.3.0", "HtmlViewer": "2.1.0", "Gallery": "2.15.0", "GroupContainer": "1.5.0", "Timer": "2.1.0",
 }
 
 HEADER_COMMENT = """# ************************************************************************************************

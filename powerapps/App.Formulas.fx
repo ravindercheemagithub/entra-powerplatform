@@ -54,15 +54,17 @@ gOperations = Table(
     { Key: "addAppRoles", Title: "App roles", Subtitle: "Add User / Admin or custom app roles, each with the group that will hold it.", Badge: "" },
     { Key: "assignGroups", Title: "Role assignments", Subtitle: "Grant Entra groups an app role so the group owners manage who has access.", Badge: "" },
     { Key: "createSP", Title: "Enterprise application", Subtitle: "Create the service principal for an existing app registration.", Badge: "" },
-    { Key: "group", Title: "Security group", Subtitle: "Create a security group you own, stamped with your appCatID.", Badge: "" },
-    { Key: "onboardGroup", Title: "Add existing group", Subtitle: "Make a group you already belong to selectable here. No approval needed.", Badge: "" },
+    { Key: "onboardGroup", Title: "Add existing group", Subtitle: "Make a group you belong to selectable as an owning team or role group. No approval needed.", Badge: "" },
     { Key: "myRequests", Title: "My requests", Subtitle: "Track approvals and see exactly what was created.", Badge: "" }
 );
 
+// App environment codes for the naming convention <appCatID>-<env>-<BoR short name>-<free text>.
+gEnvironments = ["P – Production", "Q – QA", "D – Development", "L – Lab", "U – UAT", "F – Performance", "T – Dev integration testing", "S – System integration testing"];
+
 gSteps = Table(
-    { Step: 1, Title: "Basics", Hint: "Name, owner team, justification" },
+    { Step: 1, Title: "Basics", Hint: "Name, environment, owning team" },
     { Step: 2, Title: "Expose an API & claims", Hint: "App ID URI, scopes, token claims" },
-    { Step: 3, Title: "App roles & groups", Hint: "Roles and the groups that hold them" },
-    { Step: 4, Title: "Enterprise app & owners", Hint: "Service principal, owners, tags" },
+    { Step: 3, Title: "App roles & groups", Hint: "Roles and the existing groups that hold them" },
+    { Step: 4, Title: "Enterprise app & sign-in", Hint: "Service principal, assignment, account types" },
     { Step: 5, Title: "Review + submit", Hint: "Check and send for approval" }
 );

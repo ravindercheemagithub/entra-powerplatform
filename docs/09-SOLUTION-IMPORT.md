@@ -1,6 +1,6 @@
 # 9. Import the flows as a solution
 
-Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_1_3_0.zip`](../solution/dist/EntraSelfService_1_1_3_0.zip) (version 1.1.3) is an **unmanaged** solution containing:
+Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_2_0_0.zip`](../solution/dist/EntraSelfService_1_2_0_0.zip) (version 1.2) is an **unmanaged** solution containing:
 
 | Component | What it is |
 |---|---|
@@ -8,7 +8,7 @@ Instead of building the flows by hand from doc 04, import them. [`solution/dist/
 | **ER-01 Approvals** | lock, manager approval, Entra team approval |
 | **ER-02 Execute** | applies approved requests in Entra through Microsoft Graph |
 | **ER-03 Catalog sync** | hourly refresh of the catalog lists |
-| **ER-04 Onboard group** | adds an existing group to the catalog when the requester is a member or owner (no approval) |
+| **ER-04 Onboard group** | finds an existing group by name or Object ID and adds it to the catalog when the requester is a member or owner (no approval) |
 | 5 connection references | SharePoint, Office 365 Users, Approvals, Office 365 Outlook, HTTP with Microsoft Entra ID |
 | Environment variable **SharePoint site URL** (`esp_SiteUrl`) | the site that holds the lists |
 
@@ -35,7 +35,7 @@ Import **as the account that should own the flows** (your account while testing,
 
 ## 9.2 Download the zip
 
-On GitHub open [`solution/dist/EntraSelfService_1_1_3_0.zip`](../solution/dist/EntraSelfService_1_1_3_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
+On GitHub open [`solution/dist/EntraSelfService_1_2_0_0.zip`](../solution/dist/EntraSelfService_1_2_0_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
 
 ## 9.3 Import
 
@@ -86,6 +86,14 @@ Open each flow once in the designer and check it has no errors before turning it
 | SharePoint actions fail with *List not found* | The site URL variable is wrong, or SP-00 hasn't created the lists yet |
 
 ## 9.6 Updating
+
+**1.2:** groups are no longer created by the platform, and app registrations get no owners.
+- ER-02 requires an existing owning team and existing role groups.
+- ER-04 finds the group to add by **name or Object ID**.
+- Expose API retries while the new app replicates.
+- The enterprise app's *Assignment required* comes from the request.
+
+Import over 1.1.x and re-import the app (`EntraSelfService.msapp`). The old `createGroup` choice in RequestType can stay; nothing uses it.
 
 **1.1.3:** fixes **404 on HTTP Add owner** (and the same risk on role assignments): ER-02 now waits 15 s after creating the app and retries owners and role assignments up to 6 times, 10 s apart, while new objects replicate. Import over 1.1.2.
 

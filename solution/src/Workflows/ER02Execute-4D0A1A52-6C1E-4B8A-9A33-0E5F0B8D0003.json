@@ -328,12 +328,12 @@
             ]
           }
         },
-        "Init_varOwnerOk": {
+        "Init_varExposeOk": {
           "type": "InitializeVariable",
           "inputs": {
             "variables": [
               {
-                "name": "varOwnerOk",
+                "name": "varExposeOk",
                 "type": "string",
                 "value": "no"
               }
@@ -357,7 +357,7 @@
             ]
           },
           "runAfter": {
-            "Init_varOwnerOk": [
+            "Init_varExposeOk": [
               "Succeeded"
             ]
           }
@@ -627,230 +627,185 @@
                     "Do_createAppRegistration": {
                       "type": "Scope",
                       "actions": {
-                        "Team_is_new": {
+                        "Owning_team_missing": {
                           "type": "If",
                           "expression": {
                             "and": [
                               {
                                 "equals": [
-                                  "@outputs('Payload')?['owningGroup']?['mode']",
-                                  "new"
+                                  "@empty(outputs('Payload')?['owningGroup']?['id'])",
+                                  true
                                 ]
                               }
                             ]
                           },
                           "actions": {
-                            "Select_team_owner_binds": {
-                              "type": "Select",
-                              "inputs": {
-                                "from": "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['owningGroup']?['ownerIds']), json('[]'), split(outputs('Payload')?['owningGroup']?['ownerIds'], ';')))",
-                                "select": "@concat('https://graph.microsoft.com/v1.0/directoryObjects/', item())"
-                              },
-                              "runAfter": {}
-                            },
-                            "HTTP_Create_team_group": {
-                              "type": "OpenApiConnection",
-                              "inputs": {
-                                "host": {
-                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                                  "connectionName": "shared_webcontents",
-                                  "operationId": "InvokeHttp"
-                                },
-                                "parameters": {
-                                  "request/method": "POST",
-                                  "request/url": "https://graph.microsoft.com/v1.0/groups",
-                                  "request/headers": {
-                                    "Content-Type": "application/json"
-                                  },
-                                  "request/body": "{\n  \"displayName\": \"@{outputs('Payload')?['owningGroup']?['displayName']}\",\n  \"description\": \"@{concat(coalesce(outputs('Payload')?['owningGroup']?['description'], 'Owning team'), outputs('Group_meta'))}\",\n  \"mailEnabled\": false,\n  \"mailNickname\": \"@{concat('erg-', substring(replace(guid(), '-', ''), 0, 12))}\",\n  \"securityEnabled\": true,\n  \"groupTypes\": [],\n  \"owners@odata.bind\": @{body('Select_team_owner_binds')},\n  \"members@odata.bind\": [\"https://graph.microsoft.com/v1.0/directoryObjects/@{body('HTTP_Get_requester')?['id']}\"]\n}"
-                                },
-                                "authentication": "@parameters('$authentication')"
-                              },
-                              "runAfter": {
-                                "Select_team_owner_binds": [
-                                  "Succeeded"
-                                ]
-                              }
-                            },
-                            "Set_team_id_(new)": {
-                              "type": "SetVariable",
-                              "inputs": {
-                                "name": "varTeamGroupId",
-                                "value": "@body('HTTP_Create_team_group')?['id']"
-                              },
-                              "runAfter": {
-                                "HTTP_Create_team_group": [
-                                  "Succeeded"
-                                ]
-                              }
-                            },
-                            "Set_team_name_(new)": {
-                              "type": "SetVariable",
-                              "inputs": {
-                                "name": "varTeamGroupName",
-                                "value": "@body('HTTP_Create_team_group')?['displayName']"
-                              },
-                              "runAfter": {
-                                "Set_team_id_(new)": [
-                                  "Succeeded"
-                                ]
-                              }
-                            },
-                            "Catalog_new_team": {
+                            "Fail_no_team": {
                               "type": "OpenApiConnection",
                               "inputs": {
                                 "host": {
                                   "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
                                   "connectionName": "shared_sharepointonline",
-                                  "operationId": "PostItem"
+                                  "operationId": "PatchItem"
                                 },
                                 "parameters": {
                                   "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                                  "table": "EntraCatalogGroups",
-                                  "item/Title": "@body('HTTP_Create_team_group')?['displayName']",
-                                  "item/GroupId": "@body('HTTP_Create_team_group')?['id']",
-                                  "item/AppCatId": "@triggerOutputs()?['body/AppCatId']",
-                                  "item/Description": "@body('HTTP_Create_team_group')?['description']",
-                                  "item/OwnerUpns": "@concat(';', outputs('Requester'), ';')",
-                                  "item/MemberUpns": "@concat(';', outputs('Requester'), ';')",
-                                  "item/LastSynced": "@utcNow()"
+                                  "table": "EntraRequests",
+                                  "id": "@int(triggerOutputs()?['body/ID'])",
+                                  "item/Title": "@triggerOutputs()?['body/Title']",
+                                  "item/Status/Value": "Failed",
+                                  "item/ErrorMessage": "The request has no owning team. Choose an existing group you are a member of."
                                 },
                                 "authentication": "@parameters('$authentication')"
                               },
+                              "runAfter": {}
+                            },
+                            "Stop_no_team": {
+                              "type": "Terminate",
+                              "inputs": {
+                                "runStatus": "Failed",
+                                "runError": {
+                                  "code": "NoOwningTeam",
+                                  "message": "The request has no owning team. Choose an existing group you are a member of."
+                                }
+                              },
                               "runAfter": {
-                                "Set_team_name_(new)": [
+                                "Fail_no_team": [
                                   "Succeeded"
                                 ]
                               }
                             }
                           },
                           "else": {
+                            "actions": {}
+                          },
+                          "runAfter": {}
+                        },
+                        "HTTP_Check_team_membership": {
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                              "connectionName": "shared_webcontents",
+                              "operationId": "InvokeHttp"
+                            },
+                            "parameters": {
+                              "request/method": "POST",
+                              "request/url": "https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups",
+                              "request/headers": {
+                                "Content-Type": "application/json"
+                              },
+                              "request/body": "{\"groupIds\": [\"@{outputs('Payload')?['owningGroup']?['id']}\"]}"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          },
+                          "runAfter": {
+                            "Owning_team_missing": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Is_team_member": {
+                          "type": "If",
+                          "expression": {
+                            "and": [
+                              {
+                                "greater": [
+                                  "@length(body('HTTP_Check_team_membership')?['value'])",
+                                  0
+                                ]
+                              }
+                            ]
+                          },
+                          "actions": {},
+                          "else": {
                             "actions": {
-                              "HTTP_Check_team_membership": {
+                              "Fail_not_team_member": {
                                 "type": "OpenApiConnection",
                                 "inputs": {
                                   "host": {
-                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                                    "connectionName": "shared_webcontents",
-                                    "operationId": "InvokeHttp"
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                    "connectionName": "shared_sharepointonline",
+                                    "operationId": "PatchItem"
                                   },
                                   "parameters": {
-                                    "request/method": "POST",
-                                    "request/url": "https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups",
-                                    "request/headers": {
-                                      "Content-Type": "application/json"
-                                    },
-                                    "request/body": "{\"groupIds\": [\"@{outputs('Payload')?['owningGroup']?['id']}\"]}"
+                                    "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                                    "table": "EntraRequests",
+                                    "id": "@int(triggerOutputs()?['body/ID'])",
+                                    "item/Title": "@triggerOutputs()?['body/Title']",
+                                    "item/Status/Value": "Failed",
+                                    "item/ErrorMessage": "You are not a member of the owning team."
                                   },
                                   "authentication": "@parameters('$authentication')"
                                 },
                                 "runAfter": {}
                               },
-                              "Is_team_member": {
-                                "type": "If",
-                                "expression": {
-                                  "and": [
-                                    {
-                                      "greater": [
-                                        "@length(body('HTTP_Check_team_membership')?['value'])",
-                                        0
-                                      ]
-                                    }
-                                  ]
-                                },
-                                "actions": {},
-                                "else": {
-                                  "actions": {
-                                    "Fail_not_team_member": {
-                                      "type": "OpenApiConnection",
-                                      "inputs": {
-                                        "host": {
-                                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
-                                          "connectionName": "shared_sharepointonline",
-                                          "operationId": "PatchItem"
-                                        },
-                                        "parameters": {
-                                          "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                                          "table": "EntraRequests",
-                                          "id": "@int(triggerOutputs()?['body/ID'])",
-                                          "item/Title": "@triggerOutputs()?['body/Title']",
-                                          "item/Status/Value": "Failed",
-                                          "item/ErrorMessage": "You are not a member of the owning team."
-                                        },
-                                        "authentication": "@parameters('$authentication')"
-                                      },
-                                      "runAfter": {}
-                                    },
-                                    "Stop_not_team_member": {
-                                      "type": "Terminate",
-                                      "inputs": {
-                                        "runStatus": "Failed",
-                                        "runError": {
-                                          "code": "NotTeamMember",
-                                          "message": "You are not a member of the owning team."
-                                        }
-                                      },
-                                      "runAfter": {
-                                        "Fail_not_team_member": [
-                                          "Succeeded"
-                                        ]
-                                      }
-                                    }
+                              "Stop_not_team_member": {
+                                "type": "Terminate",
+                                "inputs": {
+                                  "runStatus": "Failed",
+                                  "runError": {
+                                    "code": "NotTeamMember",
+                                    "message": "You are not a member of the owning team."
                                   }
                                 },
                                 "runAfter": {
-                                  "HTTP_Check_team_membership": [
-                                    "Succeeded"
-                                  ]
-                                }
-                              },
-                              "HTTP_Get_team_group": {
-                                "type": "OpenApiConnection",
-                                "inputs": {
-                                  "host": {
-                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                                    "connectionName": "shared_webcontents",
-                                    "operationId": "InvokeHttp"
-                                  },
-                                  "parameters": {
-                                    "request/method": "GET",
-                                    "request/url": "https://graph.microsoft.com/v1.0/groups/@{outputs('Payload')?['owningGroup']?['id']}?$select=id,displayName"
-                                  },
-                                  "authentication": "@parameters('$authentication')"
-                                },
-                                "runAfter": {
-                                  "Is_team_member": [
-                                    "Succeeded"
-                                  ]
-                                }
-                              },
-                              "Set_team_id": {
-                                "type": "SetVariable",
-                                "inputs": {
-                                  "name": "varTeamGroupId",
-                                  "value": "@body('HTTP_Get_team_group')?['id']"
-                                },
-                                "runAfter": {
-                                  "HTTP_Get_team_group": [
-                                    "Succeeded"
-                                  ]
-                                }
-                              },
-                              "Set_team_name": {
-                                "type": "SetVariable",
-                                "inputs": {
-                                  "name": "varTeamGroupName",
-                                  "value": "@body('HTTP_Get_team_group')?['displayName']"
-                                },
-                                "runAfter": {
-                                  "Set_team_id": [
+                                  "Fail_not_team_member": [
                                     "Succeeded"
                                   ]
                                 }
                               }
                             }
                           },
-                          "runAfter": {}
+                          "runAfter": {
+                            "HTTP_Check_team_membership": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "HTTP_Get_team_group": {
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                              "connectionName": "shared_webcontents",
+                              "operationId": "InvokeHttp"
+                            },
+                            "parameters": {
+                              "request/method": "GET",
+                              "request/url": "https://graph.microsoft.com/v1.0/groups/@{outputs('Payload')?['owningGroup']?['id']}?$select=id,displayName"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          },
+                          "runAfter": {
+                            "Is_team_member": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Set_team_id": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "varTeamGroupId",
+                            "value": "@body('HTTP_Get_team_group')?['id']"
+                          },
+                          "runAfter": {
+                            "HTTP_Get_team_group": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Set_team_name": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "varTeamGroupName",
+                            "value": "@body('HTTP_Get_team_group')?['displayName']"
+                          },
+                          "runAfter": {
+                            "Set_team_id": [
+                              "Succeeded"
+                            ]
+                          }
                         },
                         "Select_app_roles": {
                           "type": "Select",
@@ -866,7 +821,7 @@
                             }
                           },
                           "runAfter": {
-                            "Team_is_new": [
+                            "Set_team_name": [
                               "Succeeded"
                             ]
                           }
@@ -948,7 +903,7 @@
                         },
                         "App_tags": {
                           "type": "Compose",
-                          "inputs": "@union(outputs('Base_tags'), createArray(concat('team:', variables('varTeamGroupId')), concat('teamName:', variables('varTeamGroupName'))), body('Select_optional_tags'))",
+                          "inputs": "@union(outputs('Base_tags'), createArray(concat('team:', variables('varTeamGroupId')), concat('teamName:', variables('varTeamGroupName'))), if(empty(outputs('Payload')?['appEnv']), json('[]'), createArray(concat('appEnv:', outputs('Payload')?['appEnv']))), if(empty(outputs('Payload')?['borShortName']), json('[]'), createArray(concat('borShortName:', outputs('Payload')?['borShortName']))), body('Select_optional_tags'))",
                           "runAfter": {
                             "Select_optional_tags": [
                               "Succeeded"
@@ -1006,57 +961,23 @@
                             ]
                           },
                           "actions": {
-                            "HTTP_Expose_API": {
-                              "type": "OpenApiConnection",
-                              "inputs": {
-                                "host": {
-                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                                  "connectionName": "shared_webcontents",
-                                  "operationId": "InvokeHttp"
-                                },
-                                "parameters": {
-                                  "request/method": "PATCH",
-                                  "request/url": "https://graph.microsoft.com/v1.0/applications/@{body('HTTP_Create_application')?['id']}",
-                                  "request/headers": {
-                                    "Content-Type": "application/json"
-                                  },
-                                  "request/body": "{\n  \"identifierUris\": [\"@{replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId'])}\"],\n  \"api\": {\n    \"requestedAccessTokenVersion\": 2,\n    \"oauth2PermissionScopes\": @{body('Select_scopes')}\n  }\n}"
-                                },
-                                "authentication": "@parameters('$authentication')"
-                              },
-                              "runAfter": {}
-                            }
-                          },
-                          "else": {
-                            "actions": {}
-                          },
-                          "runAfter": {
-                            "Wait_for_app_replication": [
-                              "Succeeded"
-                            ]
-                          }
-                        },
-                        "Apply_to_each_owner": {
-                          "type": "Foreach",
-                          "foreach": "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['additionalOwnerIds']), json('[]'), split(outputs('Payload')?['additionalOwnerIds'], ';')))",
-                          "actions": {
-                            "Reset_varOwnerOk": {
+                            "Reset_varExposeOk": {
                               "type": "SetVariable",
                               "inputs": {
-                                "name": "varOwnerOk",
+                                "name": "varExposeOk",
                                 "value": "no"
                               },
                               "runAfter": {}
                             },
-                            "Until_HTTP_Add_owner": {
+                            "Until_HTTP_Expose_API": {
                               "type": "Until",
-                              "expression": "@equals(variables('varOwnerOk'), 'yes')",
+                              "expression": "@equals(variables('varExposeOk'), 'yes')",
                               "limit": {
                                 "count": 6,
                                 "timeout": "PT10M"
                               },
                               "actions": {
-                                "HTTP_Add_owner": {
+                                "HTTP_Expose_API": {
                                   "type": "OpenApiConnection",
                                   "inputs": {
                                     "host": {
@@ -1065,12 +986,12 @@
                                       "operationId": "InvokeHttp"
                                     },
                                     "parameters": {
-                                      "request/method": "POST",
-                                      "request/url": "https://graph.microsoft.com/v1.0/applications/@{body('HTTP_Create_application')?['id']}/owners/$ref",
+                                      "request/method": "PATCH",
+                                      "request/url": "https://graph.microsoft.com/v1.0/applications/@{body('HTTP_Create_application')?['id']}",
                                       "request/headers": {
                                         "Content-Type": "application/json"
                                       },
-                                      "request/body": "{\n  \"@odata.id\": \"https://graph.microsoft.com/v1.0/directoryObjects/@{items('Apply_to_each_owner')}\"\n}"
+                                      "request/body": "{\n  \"identifierUris\": [\"@{replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId'])}\"],\n  \"api\": {\n    \"requestedAccessTokenVersion\": 2,\n    \"oauth2PermissionScopes\": @{body('Select_scopes')}\n  }\n}"
                                     },
                                     "authentication": "@parameters('$authentication')",
                                     "retryPolicy": {
@@ -1079,23 +1000,23 @@
                                   },
                                   "runAfter": {}
                                 },
-                                "HTTP_Add_owner_ok": {
+                                "HTTP_Expose_API_ok": {
                                   "type": "If",
                                   "expression": {
                                     "and": [
                                       {
                                         "equals": [
-                                          "@or(equals(outputs('HTTP_Add_owner')?['statusCode'], 204), contains(string(outputs('HTTP_Add_owner')?['body']), 'already exist'))",
+                                          "@or(equals(outputs('HTTP_Expose_API')?['statusCode'], 204), contains(string(outputs('HTTP_Expose_API')?['body']), 'already exist'))",
                                           true
                                         ]
                                       }
                                     ]
                                   },
                                   "actions": {
-                                    "Set_varOwnerOk": {
+                                    "Set_varExposeOk": {
                                       "type": "SetVariable",
                                       "inputs": {
-                                        "name": "varOwnerOk",
+                                        "name": "varExposeOk",
                                         "value": "yes"
                                       },
                                       "runAfter": {}
@@ -1103,7 +1024,7 @@
                                   },
                                   "else": {
                                     "actions": {
-                                      "HTTP_Add_owner_retry_delay": {
+                                      "HTTP_Expose_API_retry_delay": {
                                         "type": "Wait",
                                         "inputs": {
                                           "interval": {
@@ -1116,7 +1037,7 @@
                                     }
                                   },
                                   "runAfter": {
-                                    "HTTP_Add_owner": [
+                                    "HTTP_Expose_API": [
                                       "Succeeded",
                                       "Failed"
                                     ]
@@ -1124,25 +1045,25 @@
                                 }
                               },
                               "runAfter": {
-                                "Reset_varOwnerOk": [
+                                "Reset_varExposeOk": [
                                   "Succeeded"
                                 ]
                               }
                             },
-                            "HTTP_Add_owner_gave_up": {
+                            "HTTP_Expose_API_gave_up": {
                               "type": "If",
                               "expression": {
                                 "and": [
                                   {
                                     "equals": [
-                                      "@variables('varOwnerOk')",
+                                      "@variables('varExposeOk')",
                                       "no"
                                     ]
                                   }
                                 ]
                               },
                               "actions": {
-                                "Fail_add_owner": {
+                                "Fail_expose_API": {
                                   "type": "OpenApiConnection",
                                   "inputs": {
                                     "host": {
@@ -1156,23 +1077,23 @@
                                       "id": "@int(triggerOutputs()?['body/ID'])",
                                       "item/Title": "@triggerOutputs()?['body/Title']",
                                       "item/Status/Value": "Failed",
-                                      "item/ErrorMessage": "@concat('Could not add owner ', items('Apply_to_each_owner'), ' to the new app registration (object id ', body('HTTP_Create_application')?['id'], ') after 6 attempts. Delete that app in Entra before retrying.')"
+                                      "item/ErrorMessage": "@concat('Could not set the Application ID URI and scopes on the new app registration (object id ', body('HTTP_Create_application')?['id'], ') after 6 attempts. Delete that app in Entra before retrying.')"
                                     },
                                     "authentication": "@parameters('$authentication')"
                                   },
                                   "runAfter": {}
                                 },
-                                "Stop_add_owner": {
+                                "Stop_expose_API": {
                                   "type": "Terminate",
                                   "inputs": {
                                     "runStatus": "Failed",
                                     "runError": {
                                       "code": "GraphRetryExhausted",
-                                      "message": "@concat('Could not add owner ', items('Apply_to_each_owner'), ' to the new app registration (object id ', body('HTTP_Create_application')?['id'], ') after 6 attempts. Delete that app in Entra before retrying.')"
+                                      "message": "@concat('Could not set the Application ID URI and scopes on the new app registration (object id ', body('HTTP_Create_application')?['id'], ') after 6 attempts. Delete that app in Entra before retrying.')"
                                     }
                                   },
                                   "runAfter": {
-                                    "Fail_add_owner": [
+                                    "Fail_expose_API": [
                                       "Succeeded"
                                     ]
                                   }
@@ -1182,19 +1103,17 @@
                                 "actions": {}
                               },
                               "runAfter": {
-                                "Until_HTTP_Add_owner": [
+                                "Until_HTTP_Expose_API": [
                                   "Succeeded"
                                 ]
                               }
                             }
                           },
-                          "runtimeConfiguration": {
-                            "concurrency": {
-                              "repetitions": 1
-                            }
+                          "else": {
+                            "actions": {}
                           },
                           "runAfter": {
-                            "Expose_API": [
+                            "Wait_for_app_replication": [
                               "Succeeded"
                             ]
                           }
@@ -1244,7 +1163,7 @@
                                       "request/headers": {
                                         "Content-Type": "application/json"
                                       },
-                                      "request/body": "{\n  \"appId\": \"@{body('HTTP_Create_application')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},\n  \"notes\": \"@{concat('appCatID=', triggerOutputs()?['body/AppCatId'], '; requestId=', triggerOutputs()?['body/Title'], '; createdBy=', outputs('Requester'), '; managedBy=', body('Get_settings')?['ManagedByTag'])}\",\n  \"tags\": @{union(outputs('App_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
+                                      "request/body": "{\n  \"accountEnabled\": true,\n  \"appId\": \"@{body('HTTP_Create_application')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},\n  \"notes\": \"@{concat('appCatID=', triggerOutputs()?['body/AppCatId'], '; requestId=', triggerOutputs()?['body/Title'], '; createdBy=', outputs('Requester'), '; managedBy=', body('Get_settings')?['ManagedByTag'])}\",\n  \"tags\": @{union(outputs('App_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
                                     },
                                     "authentication": "@parameters('$authentication')",
                                     "retryPolicy": {
@@ -1308,7 +1227,7 @@
                             "actions": {}
                           },
                           "runAfter": {
-                            "Apply_to_each_owner": [
+                            "Expose_API": [
                               "Succeeded"
                             ]
                           }
@@ -1409,109 +1328,12 @@
                               "item/AppRolesJson": "@string(body('HTTP_Create_application')?['appRoles'])",
                               "item/ScopesJson": "@string(body('Select_scopes'))",
                               "item/TeamMemberUpns": "@concat(';', outputs('Requester'), ';')",
-                              "item/OwnerUpns": "@concat(';', outputs('Requester'), ';')",
                               "item/LastSynced": "@utcNow()"
                             },
                             "authentication": "@parameters('$authentication')"
                           },
                           "runAfter": {
                             "Result_create_app": [
-                              "Succeeded"
-                            ]
-                          }
-                        }
-                      },
-                      "runAfter": {}
-                    }
-                  }
-                },
-                "Case_createGroup": {
-                  "case": "createGroup",
-                  "actions": {
-                    "Do_createGroup": {
-                      "type": "Scope",
-                      "actions": {
-                        "Select_group_owner_binds": {
-                          "type": "Select",
-                          "inputs": {
-                            "from": "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['ownerIds']), json('[]'), split(outputs('Payload')?['ownerIds'], ';')))",
-                            "select": "@concat('https://graph.microsoft.com/v1.0/directoryObjects/', item())"
-                          },
-                          "runAfter": {}
-                        },
-                        "Select_group_member_binds": {
-                          "type": "Select",
-                          "inputs": {
-                            "from": "@if(empty(outputs('Payload')?['memberIds']), json('[]'), split(outputs('Payload')?['memberIds'], ';'))",
-                            "select": "@concat('https://graph.microsoft.com/v1.0/directoryObjects/', item())"
-                          },
-                          "runAfter": {
-                            "Select_group_owner_binds": [
-                              "Succeeded"
-                            ]
-                          }
-                        },
-                        "HTTP_Create_group": {
-                          "type": "OpenApiConnection",
-                          "inputs": {
-                            "host": {
-                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                              "connectionName": "shared_webcontents",
-                              "operationId": "InvokeHttp"
-                            },
-                            "parameters": {
-                              "request/method": "POST",
-                              "request/url": "https://graph.microsoft.com/v1.0/groups",
-                              "request/headers": {
-                                "Content-Type": "application/json"
-                              },
-                              "request/body": "{\n  \"displayName\": \"@{outputs('Payload')?['displayName']}\",\n  \"description\": \"@{concat(coalesce(outputs('Payload')?['description'], 'Security group'), outputs('Group_meta'))}\",\n  \"mailEnabled\": false,\n  \"mailNickname\": \"@{concat('erg-', substring(replace(guid(), '-', ''), 0, 12))}\",\n  \"securityEnabled\": true,\n  \"groupTypes\": [],\n  \"owners@odata.bind\": @{body('Select_group_owner_binds')},\n  \"members@odata.bind\": @{body('Select_group_member_binds')}\n}"
-                            },
-                            "authentication": "@parameters('$authentication')"
-                          },
-                          "runAfter": {
-                            "Select_group_member_binds": [
-                              "Succeeded"
-                            ]
-                          }
-                        },
-                        "Catalog_group": {
-                          "type": "OpenApiConnection",
-                          "inputs": {
-                            "host": {
-                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
-                              "connectionName": "shared_sharepointonline",
-                              "operationId": "PostItem"
-                            },
-                            "parameters": {
-                              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                              "table": "EntraCatalogGroups",
-                              "item/Title": "@body('HTTP_Create_group')?['displayName']",
-                              "item/GroupId": "@body('HTTP_Create_group')?['id']",
-                              "item/AppCatId": "@triggerOutputs()?['body/AppCatId']",
-                              "item/Description": "@body('HTTP_Create_group')?['description']",
-                              "item/OwnerUpns": "@concat(';', outputs('Requester'), ';')",
-                              "item/LastSynced": "@utcNow()"
-                            },
-                            "authentication": "@parameters('$authentication')"
-                          },
-                          "runAfter": {
-                            "HTTP_Create_group": [
-                              "Succeeded"
-                            ]
-                          }
-                        },
-                        "Result_create_group": {
-                          "type": "SetVariable",
-                          "inputs": {
-                            "name": "varResult",
-                            "value": {
-                              "groupId": "@{body('HTTP_Create_group')?['id']}",
-                              "groupDisplayName": "@{body('HTTP_Create_group')?['displayName']}"
-                            }
-                          },
-                          "runAfter": {
-                            "Catalog_group": [
                               "Succeeded"
                             ]
                           }
@@ -1717,7 +1539,7 @@
                                   "request/headers": {
                                     "Content-Type": "application/json"
                                   },
-                                  "request/body": "{\n  \"appId\": \"@{body('HTTP_Get_target_app')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},\n  \"tags\": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
+                                  "request/body": "{\n  \"accountEnabled\": true,\n  \"appId\": \"@{body('HTTP_Get_target_app')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},\n  \"tags\": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
                                 },
                                 "authentication": "@parameters('$authentication')"
                               },
@@ -1827,7 +1649,7 @@
                                   "request/headers": {
                                     "Content-Type": "application/json"
                                   },
-                                  "request/body": "{\n  \"appId\": \"@{body('HTTP_Get_target_app')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},\n  \"tags\": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
+                                  "request/body": "{\n  \"accountEnabled\": true,\n  \"appId\": \"@{body('HTTP_Get_target_app')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},\n  \"tags\": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
                                 },
                                 "authentication": "@parameters('$authentication')"
                               },
@@ -1973,7 +1795,7 @@
                               "request/headers": {
                                 "Content-Type": "application/json"
                               },
-                              "request/body": "{\n  \"appId\": \"@{body('HTTP_Get_target_app')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},\n  \"tags\": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
+                              "request/body": "{\n  \"accountEnabled\": true,\n  \"appId\": \"@{body('HTTP_Get_target_app')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},\n  \"tags\": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
                             },
                             "authentication": "@parameters('$authentication')"
                           },
@@ -2053,117 +1875,71 @@
               "type": "Foreach",
               "foreach": "@variables('varAssignTodo')",
               "actions": {
-                "Group_is_new": {
+                "Group_id_missing": {
                   "type": "If",
                   "expression": {
                     "and": [
                       {
                         "equals": [
-                          "@items('Apply_to_each_assignment')?['mode']",
-                          "new"
+                          "@empty(items('Apply_to_each_assignment')?['id'])",
+                          true
                         ]
                       }
                     ]
                   },
                   "actions": {
-                    "Select_role_group_owner_binds": {
-                      "type": "Select",
-                      "inputs": {
-                        "from": "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(items('Apply_to_each_assignment')?['ownerIds']), json('[]'), split(items('Apply_to_each_assignment')?['ownerIds'], ';')))",
-                        "select": "@concat('https://graph.microsoft.com/v1.0/directoryObjects/', item())"
-                      },
-                      "runAfter": {}
-                    },
-                    "HTTP_Create_role_group": {
-                      "type": "OpenApiConnection",
-                      "inputs": {
-                        "host": {
-                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                          "connectionName": "shared_webcontents",
-                          "operationId": "InvokeHttp"
-                        },
-                        "parameters": {
-                          "request/method": "POST",
-                          "request/url": "https://graph.microsoft.com/v1.0/groups",
-                          "request/headers": {
-                            "Content-Type": "application/json"
-                          },
-                          "request/body": "{\n  \"displayName\": \"@{items('Apply_to_each_assignment')?['displayName']}\",\n  \"description\": \"@{concat(if(empty(items('Apply_to_each_assignment')?['description']), concat('Members hold the ', items('Apply_to_each_assignment')?['roleValue'], ' role'), items('Apply_to_each_assignment')?['description']), outputs('Group_meta'))}\",\n  \"mailEnabled\": false,\n  \"mailNickname\": \"@{concat('erg-', substring(replace(guid(), '-', ''), 0, 12))}\",\n  \"securityEnabled\": true,\n  \"groupTypes\": [],\n  \"owners@odata.bind\": @{body('Select_role_group_owner_binds')}\n}"
-                        },
-                        "authentication": "@parameters('$authentication')"
-                      },
-                      "runAfter": {
-                        "Select_role_group_owner_binds": [
-                          "Succeeded"
-                        ]
-                      }
-                    },
-                    "Set_group_id_(new)": {
-                      "type": "SetVariable",
-                      "inputs": {
-                        "name": "varGroupId",
-                        "value": "@body('HTTP_Create_role_group')?['id']"
-                      },
-                      "runAfter": {
-                        "HTTP_Create_role_group": [
-                          "Succeeded"
-                        ]
-                      }
-                    },
-                    "Catalog_role_group": {
+                    "Fail_no_group_id": {
                       "type": "OpenApiConnection",
                       "inputs": {
                         "host": {
                           "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
                           "connectionName": "shared_sharepointonline",
-                          "operationId": "PostItem"
+                          "operationId": "PatchItem"
                         },
                         "parameters": {
                           "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                          "table": "EntraCatalogGroups",
-                          "item/Title": "@body('HTTP_Create_role_group')?['displayName']",
-                          "item/GroupId": "@body('HTTP_Create_role_group')?['id']",
-                          "item/AppCatId": "@triggerOutputs()?['body/AppCatId']",
-                          "item/Description": "@body('HTTP_Create_role_group')?['description']",
-                          "item/OwnerUpns": "@concat(';', outputs('Requester'), ';')",
-                          "item/LastSynced": "@utcNow()"
+                          "table": "EntraRequests",
+                          "id": "@int(triggerOutputs()?['body/ID'])",
+                          "item/Title": "@triggerOutputs()?['body/Title']",
+                          "item/Status/Value": "Failed",
+                          "item/ErrorMessage": "@concat('Group ', items('Apply_to_each_assignment')?['displayName'], ' has no Object ID. Requests can only use existing groups: add it with Add existing group and pick it again.')"
                         },
                         "authentication": "@parameters('$authentication')"
                       },
-                      "runAfter": {
-                        "Set_group_id_(new)": [
-                          "Succeeded"
-                        ]
-                      }
+                      "runAfter": {}
                     },
-                    "Wait_for_group_replication": {
-                      "type": "Wait",
+                    "Stop_no_group_id": {
+                      "type": "Terminate",
                       "inputs": {
-                        "interval": {
-                          "count": 15,
-                          "unit": "Second"
+                        "runStatus": "Failed",
+                        "runError": {
+                          "code": "NoGroupId",
+                          "message": "@concat('Group ', items('Apply_to_each_assignment')?['displayName'], ' has no Object ID. Requests can only use existing groups: add it with Add existing group and pick it again.')"
                         }
                       },
                       "runAfter": {
-                        "Catalog_role_group": [
+                        "Fail_no_group_id": [
                           "Succeeded"
                         ]
                       }
                     }
                   },
                   "else": {
-                    "actions": {
-                      "Set_group_id": {
-                        "type": "SetVariable",
-                        "inputs": {
-                          "name": "varGroupId",
-                          "value": "@items('Apply_to_each_assignment')?['id']"
-                        },
-                        "runAfter": {}
-                      }
-                    }
+                    "actions": {}
                   },
                   "runAfter": {}
+                },
+                "Set_group_id": {
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "varGroupId",
+                    "value": "@items('Apply_to_each_assignment')?['id']"
+                  },
+                  "runAfter": {
+                    "Group_id_missing": [
+                      "Succeeded"
+                    ]
+                  }
                 },
                 "Reset_varAssignOk": {
                   "type": "SetVariable",
@@ -2172,7 +1948,7 @@
                     "value": "no"
                   },
                   "runAfter": {
-                    "Group_is_new": [
+                    "Set_group_id": [
                       "Succeeded"
                     ]
                   }
@@ -2443,7 +2219,7 @@
             "Failed_actions": {
               "type": "Query",
               "inputs": {
-                "from": "@union(result('Do_createAppRegistration'), result('Do_createGroup'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Try'))",
+                "from": "@union(result('Do_createAppRegistration'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Try'))",
                 "where": "@equals(item()?['status'], 'Failed')"
               },
               "runAfter": {}

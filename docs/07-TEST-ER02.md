@@ -14,6 +14,7 @@ How to read a run (which steps ran, which failed, inputs and outputs): see [6.6 
 | `EntraSettings.ManagedByTag` | set, e.g. `entra-pp` (doc: [why](02-SHAREPOINT.md#entrasettings-exactly-one-item-id-1)) |
 | Licence for group assignment | Assigning groups to app roles needs **Microsoft Entra ID P1 or P2** in the tenant |
 | ER-02 is **on** | flow page → **Turn on** |
+| Existing test groups | Groups are not created by this platform. Have **three security groups** you (the requester) are a **member** of, e.g. `grp-pp-team`, `grp-pp-users`, `grp-pp-admins`, and note their **Object IDs** (Entra → Groups → the group → Object ID). The payloads below use them as `<TEAM_ID>`, `<USERS_ID>` and `<ADMINS_ID>`. |
 
 ## 7.2 Two ways to start ER-02
 
@@ -35,100 +36,94 @@ How to read a run (which steps ran, which failed, inputs and outputs): see [6.6 
 | PayloadJson | the payload |
 | **ApprovedPayloadJson** | **the same payload**: ER-02 executes only this column |
 
-With the shortcut the requester (*Created By*) is the flow account, so the flow account becomes owner of what it creates. That is fine for testing. Use path A at least once to test with a real requester.
+With the shortcut the requester (*Created By*) is the flow account, so the **flow account** must be a member of `<TEAM_ID>`. Use path A at least once to test with a real requester.
 
-## 7.3 Test 1: a security group (smallest request)
+Replace every `<…_ID>` in a payload with the real Object ID before pasting, in **both** payload columns.
 
-RequestType `createGroup`, TargetDisplayName `grp-pp-t2-group`:
+## 7.3 Test 1: a minimal app registration
+
+RequestType `createAppRegistration`, TargetDisplayName `APP-1234-D-PPTEST-pp-t2-app`. The display name follows the naming convention `<appCatID>-<env>-<BoR short name>-<free text>`.
 
 ```json
-{"displayName":"grp-pp-t2-group","description":"ER-02 test group","ownerIds":"","memberIds":""}
+{"displayName":"APP-1234-D-PPTEST-pp-t2-app","appEnv":"D","borShortName":"PPTEST","nameText":"pp-t2-app","description":"ER-02 test","signInAudience":"AzureADMyOrg","owningGroup":{"mode":"existing","id":"<TEAM_ID>","displayName":"grp-pp-team"},"redirectUrisWeb":"","redirectUrisSpa":"","exposeApi":{"enabled":false,"identifierUriTemplate":"api://{appId}","scopes":[]},"optionalClaimsIdToken":"","optionalClaimsAccessToken":"","groupMembershipClaims":"None","appRoles":[],"createServicePrincipal":true,"appRoleAssignmentRequired":true,"tags":""}
 ```
 
 | Where | Expected |
 |---|---|
-| The item | Status **InProgress**, then **Completed**; CompletedAt set; ResultJson `{"groupId":"…","groupDisplayName":"grp-pp-t2-group",…}` |
-| Requester's inbox | *Your Entra request REQ-T2-0001 is complete*, with the group ID |
-| Entra → **Groups** → grp-pp-t2-group | Security group; **Owners**: the requester; description ends with `[appCatID=APP-1234; requestId=REQ-T2-0001; createdBy=…; managedBy=entra-pp]` |
-| `EntraCatalogGroups` | New row with Title, GroupId, AppCatId, OwnerUpns `;requester;` |
+| The item | Status **InProgress**, then **Completed**; ResultJson has applicationObjectId, appId, servicePrincipalId, teamGroupId |
+| Requester's inbox | *Your Entra request REQ-T2-0001 is complete*, with the IDs |
+| Entra → **App registrations** → the app | Created with the full display name; **Owners: none** (the platform adds no owners) |
+| → **Manifest** (or Graph Explorer) | `tags` include `appCatID:APP-1234`, `appEnv:D`, `borShortName:PPTEST`, `team:<TEAM_ID>`, `teamName:grp-pp-team`, `createdBy:…`, `managedBy:entra-pp`, `requestId:REQ-T2-…`; `notes` = `appCatID=…; requestId=…; createdBy=…; managedBy=…` |
+| Entra → **Enterprise applications** → the app | Created for the same **Application (client) ID**; **Properties → Assignment required: Yes** (from the payload's `appRoleAssignmentRequired`); **Users and groups**: grp-pp-team with **Default Access** |
+| Entra → **Groups** | **No new groups** |
+| `EntraCatalogApps` | New row with ObjectId, AppId, AppCatId, TeamGroupId/Name, ServicePrincipalId |
 
-## 7.4 Test 2 and 3: app registrations
+## 7.4 Test 2: API scope and two roles held by existing groups
 
-**Test 2, minimal** (RequestType `createAppRegistration`, TargetDisplayName `pp-t2-app`):
-
-```json
-{"displayName":"pp-t2-app","description":"ER-02 test","signInAudience":"AzureADMyOrg","owningGroup":{"mode":"new","id":"","displayName":"grp-pp-t2-team","description":"","ownerIds":""},"redirectUrisWeb":"","redirectUrisSpa":"","exposeApi":{"enabled":false,"identifierUriTemplate":"api://{appId}","scopes":[]},"optionalClaimsIdToken":"","optionalClaimsAccessToken":"","groupMembershipClaims":"None","appRoles":[],"createServicePrincipal":true,"appRoleAssignmentRequired":true,"additionalOwnerIds":"","tags":""}
-```
-
-**Test 3, with an API scope and two roles with new groups** (RequestType `createAppRegistration`, TargetDisplayName `pp-t2-orders-api`):
+RequestType `createAppRegistration`, TargetDisplayName `APP-1234-D-PPTEST-pp-t2-orders-api`:
 
 ```json
-{"displayName":"pp-t2-orders-api","description":"Orders API (ER-02 test)","signInAudience":"AzureADMyOrg","owningGroup":{"mode":"new","id":"","displayName":"grp-pp-t2-orders-team","description":"","ownerIds":""},"redirectUrisWeb":"","redirectUrisSpa":"https://localhost:3000","exposeApi":{"enabled":true,"identifierUriTemplate":"api://{appId}","scopes":[{"value":"access_as_user","type":"User","adminConsentDisplayName":"Access pp-t2-orders-api","adminConsentDescription":"Allows the app to call pp-t2-orders-api as the signed-in user."}]},"optionalClaimsIdToken":"email","optionalClaimsAccessToken":"","groupMembershipClaims":"None","appRoles":[{"value":"OrdersApi.User","displayName":"pp-t2-orders-api User","description":"Can use pp-t2-orders-api","allowedMemberTypes":"User","assignGroups":[{"mode":"new","id":"","displayName":"grp-pp-t2-orders-users","description":"","ownerIds":""}]},{"value":"OrdersApi.Admin","displayName":"pp-t2-orders-api Admin","description":"Can administer pp-t2-orders-api","allowedMemberTypes":"User","assignGroups":[{"mode":"new","id":"","displayName":"grp-pp-t2-orders-admins","description":"","ownerIds":""}]}],"createServicePrincipal":true,"appRoleAssignmentRequired":true,"additionalOwnerIds":"","tags":"costCentre=CC-0000"}
+{"displayName":"APP-1234-D-PPTEST-pp-t2-orders-api","appEnv":"D","borShortName":"PPTEST","nameText":"pp-t2-orders-api","description":"Orders API (ER-02 test)","signInAudience":"AzureADMyOrg","owningGroup":{"mode":"existing","id":"<TEAM_ID>","displayName":"grp-pp-team"},"redirectUrisWeb":"","redirectUrisSpa":"https://localhost:3000","exposeApi":{"enabled":true,"identifierUriTemplate":"api://{appId}","scopes":[{"value":"access_as_user","type":"User","adminConsentDisplayName":"Access pp-t2-orders-api","adminConsentDescription":"Allows the app to call pp-t2-orders-api as the signed-in user."}]},"optionalClaimsIdToken":"email","optionalClaimsAccessToken":"","groupMembershipClaims":"None","appRoles":[{"value":"OrdersApi.User","displayName":"pp-t2-orders-api User","description":"Can use pp-t2-orders-api","allowedMemberTypes":"User","assignGroups":[{"mode":"existing","id":"<USERS_ID>","displayName":"grp-pp-users"}]},{"value":"OrdersApi.Admin","displayName":"pp-t2-orders-api Admin","description":"Can administer pp-t2-orders-api","allowedMemberTypes":"User","assignGroups":[{"mode":"existing","id":"<ADMINS_ID>","displayName":"grp-pp-admins"}]}],"createServicePrincipal":true,"appRoleAssignmentRequired":true,"tags":"costCentre=CC-0000"}
 ```
+
+Expected, in addition to test 1:
 
 | Where | Expected |
 |---|---|
-| The item | **Completed**; ResultJson has applicationObjectId, appId, identifierUri (test 3), servicePrincipalId, teamGroupId, assignmentsText (test 3: `grp-pp-t2-orders-users -> OrdersApi.User; grp-pp-t2-orders-admins -> OrdersApi.Admin`) |
-| Entra → **App registrations** → the app → **Overview** | Created; **Owners** = the requester |
-| → **Manifest** (or Graph Explorer) | `tags` include `appCatID:APP-1234`, `team:<group id>`, `teamName:grp-pp-t2-…-team`, `createdBy:…`, `managedBy:entra-pp`, `requestId:REQ-T2-…` (test 3 also `costCentre:CC-0000`); `notes` = `appCatID=…; requestId=…; createdBy=…; managedBy=…` |
-| → **Expose an API** (test 3) | Application ID URI `api://<appId>`; scope `access_as_user` |
-| → **App roles** (test 3) | OrdersApi.User and OrdersApi.Admin |
-| → **Authentication** (test 3) | SPA redirect URI `https://localhost:3000` |
-| Entra → **Enterprise applications** → the app → **Properties** | **Assignment required: Yes** |
-| → **Users and groups** | Test 2: the team group with **Default Access**. Test 3: grp-pp-t2-orders-users → OrdersApi.User, grp-pp-t2-orders-admins → OrdersApi.Admin |
-| Entra → **Groups** | The team group (requester is owner and member) and, for test 3, the two role groups (requester is owner); descriptions end with the `[appCatID=…]` stamp |
-| `EntraCatalogApps` | New row with ObjectId, AppId, AppCatId, TeamGroupId/Name, ServicePrincipalId, AppRolesJson |
-| `EntraCatalogGroups` | Rows for each new group |
+| The item | ResultJson includes identifierUri and `assignmentsText` = `grp-pp-users -> OrdersApi.User; grp-pp-admins -> OrdersApi.Admin` |
+| The run | `Wait for app replication` (15 s) after `HTTP Create application`; `Until HTTP Expose API` succeeds on the first or a later attempt |
+| App registration → **Expose an API** | Application ID URI `api://<appId>`; scope `access_as_user` |
+| → **App roles** | OrdersApi.User and OrdersApi.Admin |
+| → **Authentication** | SPA redirect URI `https://localhost:3000` |
+| Enterprise app → **Users and groups** | grp-pp-users → OrdersApi.User, grp-pp-admins → OrdersApi.Admin |
 
-## 7.5 Tests 4 to 7: changes to an existing app
+## 7.5 Tests 3 to 6: changes to an existing app
 
-These need **TargetObjectId** = the **Object ID** of an app created in test 2 or 3 (Entra → App registrations → the app → Overview → *Object ID*), and **AppCatId** = that app's appCatID (`APP-1234`). The requester must be in the app's team group or an owner of the app: with path B that is the flow account, which owns the apps it created.
+These need **TargetObjectId** = the **Object ID** of the app from test 1 (Entra → App registrations → the app → Overview → *Object ID*), and **AppCatId** = `APP-1234`. The requester must be a member of the app's team group (`grp-pp-team`). Replace `<OBJECT_ID>` in the payload with that Object ID.
 
-Replace `<objectId>` in the payload with the same Object ID.
-
-**Test 4, expose an API** on pp-t2-app (RequestType `exposeApi`, TargetDisplayName `pp-t2-app`):
+**Test 3, expose an API** (RequestType `exposeApi`):
 
 ```json
-{"applicationObjectId":"<objectId>","applicationDisplayName":"pp-t2-app","identifierUriTemplate":"api://{appId}","scopes":[{"value":"access_as_user","type":"User","adminConsentDisplayName":"Access pp-t2-app","adminConsentDescription":"Allows the app to call pp-t2-app as the signed-in user."}]}
+{"applicationObjectId":"<OBJECT_ID>","applicationDisplayName":"APP-1234-D-PPTEST-pp-t2-app","identifierUriTemplate":"api://{appId}","scopes":[{"value":"access_as_user","type":"User","adminConsentDisplayName":"Access pp-t2-app","adminConsentDescription":"Allows the app to call pp-t2-app as the signed-in user."}]}
 ```
 
-Expected: Expose an API shows `api://<appId>` and `access_as_user`; tags now include a new `lastUpdatedTimestamp` and `requestId`.
+Expected: Expose an API shows `api://<appId>` and `access_as_user`.
 
-**Test 5, add app roles** with a new group (RequestType `addAppRoles`, TargetDisplayName `pp-t2-app`):
+**Test 4, add an app role held by an existing group** (RequestType `addAppRoles`):
 
 ```json
-{"applicationObjectId":"<objectId>","applicationDisplayName":"pp-t2-app","appRoles":[{"value":"PpT2.Reader","displayName":"pp-t2-app Reader","description":"Read access","allowedMemberTypes":"User","assignGroups":[{"mode":"new","id":"","displayName":"grp-pp-t2-readers","description":"","ownerIds":""}]}]}
+{"applicationObjectId":"<OBJECT_ID>","applicationDisplayName":"APP-1234-D-PPTEST-pp-t2-app","appRoles":[{"value":"PpT2.Reader","displayName":"pp-t2-app Reader","description":"Read access","allowedMemberTypes":"User","assignGroups":[{"mode":"existing","id":"<USERS_ID>","displayName":"grp-pp-users"}]}]}
 ```
 
-Expected: App roles shows PpT2.Reader next to any existing roles; enterprise app → Users and groups shows grp-pp-t2-readers → PpT2.Reader.
+Expected: App roles shows PpT2.Reader; enterprise app → Users and groups shows grp-pp-users → PpT2.Reader.
 
-**Test 6, assign an existing group to an existing role** (RequestType `assignGroupsToAppRoles`, TargetDisplayName `pp-t2-app`). You need:
-- `<roleId>`: the role's ID. Entra → App registrations → pp-t2-app → **Manifest** → `appRoles` → the `id` of PpT2.Reader; or the `AppRolesJson` column in EntraCatalogApps.
-- `<groupId>`: the Object ID of an existing security group, e.g. grp-pp-t2-group from test 1.
+**Test 5, assign another existing group to that role** (RequestType `assignGroupsToAppRoles`). `<ROLE_ID>` is the role's `id` (App registration → **Manifest** → `appRoles`, or the `AppRolesJson` column in EntraCatalogApps):
 
 ```json
-{"applicationObjectId":"<objectId>","applicationDisplayName":"pp-t2-app","assignments":[{"appRoleId":"<roleId>","appRoleValue":"PpT2.Reader","mode":"existing","id":"<groupId>","displayName":"grp-pp-t2-group","description":"","ownerIds":""}]}
+{"applicationObjectId":"<OBJECT_ID>","applicationDisplayName":"APP-1234-D-PPTEST-pp-t2-app","assignments":[{"appRoleId":"<ROLE_ID>","appRoleValue":"PpT2.Reader","mode":"existing","id":"<ADMINS_ID>","displayName":"grp-pp-admins"}]}
 ```
 
-Expected: enterprise app → Users and groups shows grp-pp-t2-group → PpT2.Reader; ResultJson `assignmentsText` = `grp-pp-t2-group -> PpT2.Reader`.
+Expected: enterprise app → Users and groups shows grp-pp-admins → PpT2.Reader.
 
-**Test 7, create an enterprise app** for an app that has none. First run test 2 again with `"createServicePrincipal":false` and a new name (e.g. `pp-t2-nosp`), then use its Object ID (RequestType `createServicePrincipal`, TargetDisplayName `pp-t2-nosp`):
+**Test 6, create an enterprise app** for an app that has none. First run test 1 again with `"createServicePrincipal":false` and the free text `pp-t2-nosp`, then use its Object ID (RequestType `createServicePrincipal`):
 
 ```json
-{"applicationObjectId":"<objectId>","applicationDisplayName":"pp-t2-nosp","appRoleAssignmentRequired":true}
+{"applicationObjectId":"<OBJECT_ID>","applicationDisplayName":"APP-1234-D-PPTEST-pp-t2-nosp","appRoleAssignmentRequired":true}
 ```
 
-Expected: Enterprise applications now lists pp-t2-nosp with Assignment required = Yes. Running the same request again fails with *This app already has an enterprise application.*
+Expected: Enterprise applications lists the app, created for its appId, with Assignment required = Yes. Running the same request again fails with *This app already has an enterprise application.*
 
 ## 7.6 Negative tests (nothing must be created)
 
 | Test | How | Expected |
 |---|---|---|
-| Hand-edited status | As a site owner who is **not** the flow account, set an item's Status to Approved (with both decisions Approved) | ER-02 run status **Cancelled** at `Approved by the flow`; the item stays as it was; nothing in Entra |
-| Not your app | Path A: a requester who is neither in the app's team group nor an owner submits test 4 for pp-t2-app | Status **Failed**, ErrorMessage *The app is not owned by any of your groups, or its appCatID differs.* |
-| Wrong appCatID | Test 4 with AppCatId `APP-9999` | Status **Failed** with the same message |
-| Not in owning team | Test 2 with `"owningGroup":{"mode":"existing","id":"<a group the requester is not in>",…}` | Status **Failed**, *You are not a member of the owning team.* |
-| Graph rejects the request | Test 2 with `"signInAudience":"NotAValue"` | Status **Failed**; ErrorMessage starts with `HTTP_Create_application:` and Graph's message; requester and Entra team get *… failed*; ResultJson shows what was created before the failure (here the team group) |
+| Hand-edited status | As a site owner who is **not** the flow account, set an item's Status to Approved (with both decisions Approved) | ER-02 run status **Cancelled** at `Approved by the flow`; nothing in Entra |
+| Not your app | Path A: a requester who is not in the app's team group submits test 3 | Status **Failed**, *The app is not owned by any of your groups, or its appCatID differs.* |
+| Wrong appCatID | Test 3 with AppCatId `APP-9999` | Status **Failed** with the same message |
+| Not in owning team | Test 1 with `<TEAM_ID>` = a group the requester is not a member of | Status **Failed**, *You are not a member of the owning team.* |
+| No owning team | Test 1 with `"owningGroup":{"mode":"existing","id":"","displayName":""}` | Status **Failed**, *The request has no owning team…* |
+| Old-style new group | Test 2 with a role group `{"mode":"new","id":"","displayName":"grp-x"}` | Status **Failed**, *Group grp-x has no Object ID. Requests can only use existing groups…* (the app registration was created first; delete it) |
+| Graph rejects the request | Test 1 with `"signInAudience":"NotAValue"` | Status **Failed**; ErrorMessage starts with `HTTP_Create_application:` and Graph's message; nothing created |
 
 ## 7.7 Troubleshooting
 
@@ -139,7 +134,7 @@ Expected: Enterprise applications now lists pp-t2-nosp with Assignment required 
 | `HTTP …` 401 / 403 | Connection uses the wrong auth type (must be *Client Certificate Auth*), certificate mismatch, or admin consent missing for a permission |
 | `body('HTTP_…')?['id']` empty, later steps fail | The connector returned the body as text; see doc 04, *Check how responses come back* |
 | `HTTP Create SP` fails 6 times | The new app had not replicated after ~70 s; rare, re-run |
-| `HTTP Assign role` 400 *Permission being assigned was not found* | Role ID wrong (test 6) or the role does not allow `User` members |
+| `HTTP Assign role` 400 *Permission being assigned was not found* | Role ID wrong (test 5) or the role does not allow `User` members |
 | `HTTP Assign role` 403 / licence error | Tenant has no Entra ID P1/P2 for group assignment |
 | Flow checker warns *"Your flow may have a circular loop"* on Mark in progress, Mark completed, Mark failed and the Fail … actions | Expected. ER-02 updates the list it is triggered by, but it only starts when Status = Approved and it only ever writes InProgress, Completed or Failed, so its own updates never start another run. The warnings don't stop the flow from saving or running. |
 | Status stuck **InProgress** | The run is still going (open it), or it was cancelled manually; check run history |
@@ -148,5 +143,5 @@ Expected: Enterprise applications now lists pp-t2-nosp with Assignment required 
 
 Done by you in Entra (the flows never delete anything):
 1. **App registrations** → each `pp-t2-…` app → **Delete**. This also removes its enterprise app. Optionally **Deleted applications** → **Delete permanently**.
-2. **Groups** → each `grp-pp-t2-…` group → **Delete**.
+2. Groups: nothing to delete; the platform never creates groups. Keep `grp-pp-team`, `grp-pp-users` and `grp-pp-admins` for the next test.
 3. SharePoint: delete the test items in `EntraRequests` and the test rows in `EntraCatalogApps` / `EntraCatalogGroups`.

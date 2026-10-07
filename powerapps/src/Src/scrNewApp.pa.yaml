@@ -8,18 +8,19 @@ Screens:
       Fill: =gTheme.Bg
       OnVisible: |-
         =Refresh(EntraCatalogGroups);
+        If(IsBlank(varStep), Set(varStep, 1); Set(varMaxStep, 1));
         If(varResetNewApp,
             Set(varResetNewApp, false);
             Set(varStep, 1);
             Set(varMaxStep, 1);
-            Set(varNewTeam, { Mode: "", GroupId: "", DisplayName: "", Description: "", OwnerIds: "" });
+            Set(varStepError, "");
             Clear(colScopes); Clear(colRoles); Clear(colRoleGroups);
-            Reset(txtAppName_NewApp); Reset(txtAppCatId_NewApp); Reset(radAudience_NewApp); Reset(cmbTeam_NewApp);
+            Reset(txtAppName_NewApp); Reset(txtAppCatId_NewApp); Reset(ddEnv_NewApp); Reset(txtBorShort_NewApp); Reset(cmbTeam_NewApp);
             Reset(txtJustification_NewApp); Reset(txtDescription_NewApp); Reset(ddPlatform_NewApp); Reset(txtRedirect_NewApp);
-            Reset(txtTicket_NewApp); Reset(chkExpose_NewApp); Reset(radUri_NewApp); Reset(txtCustomUri_NewApp);
+            Reset(chkExpose_NewApp); Reset(radUri_NewApp); Reset(txtCustomUri_NewApp);
             Reset(chkIdEmail_NewApp); Reset(chkIdUpn_NewApp); Reset(chkIdGiven_NewApp); Reset(chkIdFamily_NewApp);
             Reset(chkAtEmail_NewApp); Reset(chkAtUpn_NewApp); Reset(chkAtIdtyp_NewApp); Reset(ddGroupsClaim_NewApp);
-            Reset(tglCreateSp_NewApp); Reset(tglAssign_NewApp); Reset(cmbOwners_NewApp); Reset(txtTags_NewApp)
+            Reset(tglCreateSp_NewApp); Reset(tglAssign_NewApp); Reset(radAudience_NewApp); Reset(txtTags_NewApp); Reset(txtTicket_NewApp)
         )
     Children:
     - cntRoot_NewApp:
@@ -106,7 +107,7 @@ Screens:
         - lblSubtitle_NewApp:
             Control: Label@2.5.1
             Properties:
-              Text: ="App registration, Application ID URI, scopes, app roles, groups and enterprise app — in one request."
+              Text: ="App registration, Application ID URI, scopes, app roles, role assignments and enterprise app — in one request."
               X: =24
               Y: =112
               Width: =Parent.Width - 48
@@ -141,7 +142,7 @@ Screens:
               WrapCount: =1
               ShowScrollbar: =true
               BorderThickness: =0
-              OnSelect: =If(ThisItem.Step <= varMaxStep, Set(varStep, ThisItem.Step))
+              OnSelect: =If(ThisItem.Step <= Coalesce(varMaxStep, 1), Set(varStepError, ""); Set(varStep, ThisItem.Step))
             Children:
             - recStepSel_NewApp:
                 Control: Rectangle@2.3.0
@@ -238,7 +239,7 @@ Screens:
               Fill: =RGBA(0, 0, 0, 0)
               BorderThickness: =0
               DropShadow: =DropShadow.None
-              Visible: =varStep = 1
+              Visible: =Coalesce(varStep, 1) = 1
             Children:
             - lblS1_NewAppHead:
                 Control: Label@2.5.1
@@ -268,62 +269,11 @@ Screens:
                   FontWeight: =FontWeight.Normal
                   PaddingLeft: =0
                   PaddingRight: =0
-            - lblName_NewApp:
-                Control: Label@2.5.1
-                Properties:
-                  Text: ="Display name *"
-                  X: =0
-                  Y: =64
-                  Width: =(Parent.Width - 24) / 2
-                  Height: =20
-                  Size: =10
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Text
-                  FontWeight: =FontWeight.Semibold
-                  PaddingLeft: =0
-                  PaddingRight: =0
-            - txtAppName_NewApp:
-                Control: Classic/TextInput@2.3.2
-                Properties:
-                  Default: =""
-                  HintText: ="orders-api"
-                  X: =0
-                  Y: =86
-                  Width: =(Parent.Width - 24) / 2
-                  Height: =36
-                  Size: =11
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Text
-                  Fill: =gTheme.Card
-                  BorderColor: =gTheme.Border
-                  BorderThickness: =1
-                  HoverBorderColor: =gTheme.Primary
-                  FocusedBorderColor: =gTheme.Primary
-                  FocusedBorderThickness: =2
-                  PaddingLeft: =10
-                  RadiusTopLeft: =4
-                  RadiusTopRight: =4
-                  RadiusBottomLeft: =4
-                  RadiusBottomRight: =4
-            - hntName_NewApp:
-                Control: Label@2.5.1
-                Properties:
-                  Text: ="Shown in the Entra admin center and on consent screens."
-                  X: =0
-                  Y: =124
-                  Width: =(Parent.Width - 24) / 2
-                  Height: =20
-                  Size: =9
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Muted
-                  FontWeight: =FontWeight.Normal
-                  PaddingLeft: =0
-                  PaddingRight: =0
             - lblAppCat_NewApp:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="appCatID *"
-                  X: =(Parent.Width + 24) / 2
+                  Text: ="App BoR ID (appCatID) *"
+                  X: =0
                   Y: =64
                   Width: =(Parent.Width - 24) / 2
                   Height: =20
@@ -338,7 +288,7 @@ Screens:
                 Properties:
                   Default: =Coalesce(First(Filter(gMyGroups, !IsBlank(AppCatId))).AppCatId, "")
                   HintText: ="APPCAT-001"
-                  X: =(Parent.Width + 24) / 2
+                  X: =0
                   Y: =86
                   Width: =(Parent.Width - 24) / 2
                   Height: =36
@@ -359,7 +309,55 @@ Screens:
             - hntAppCat_NewApp:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="Your application catalogue id. Stamped on every object this request creates."
+                  Text: ="Book of record id of the application. Stamped on every object this request creates."
+                  X: =0
+                  Y: =124
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =20
+                  Size: =9
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - lblEnv_NewApp:
+                Control: Label@2.5.1
+                Properties:
+                  Text: ="App environment *"
+                  X: =(Parent.Width + 24) / 2
+                  Y: =64
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - ddEnv_NewApp:
+                Control: Classic/DropDown@2.3.1
+                Properties:
+                  Items: =gEnvironments
+                  Default: ="D – Development"
+                  X: =(Parent.Width + 24) / 2
+                  Y: =86
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  ChevronBackground: =gTheme.Card
+                  ChevronFill: =gTheme.Muted
+                  HoverFill: =gTheme.PrimaryLight
+                  SelectionFill: =gTheme.Primary
+                  PaddingLeft: =10
+            - hntEnv_NewApp:
+                Control: Label@2.5.1
+                Properties:
+                  Text: ="P production · Q QA · D development · L lab · U UAT · F performance · T dev integration · S system integration"
                   X: =(Parent.Width + 24) / 2
                   Y: =124
                   Width: =(Parent.Width - 24) / 2
@@ -370,10 +368,10 @@ Screens:
                   FontWeight: =FontWeight.Normal
                   PaddingLeft: =0
                   PaddingRight: =0
-            - lblAudience_NewApp:
+            - lblBorShort_NewApp:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="Supported account types"
+                  Text: ="App BoR short name *"
                   X: =0
                   Y: =154
                   Width: =(Parent.Width - 24) / 2
@@ -384,11 +382,11 @@ Screens:
                   FontWeight: =FontWeight.Semibold
                   PaddingLeft: =0
                   PaddingRight: =0
-            - radAudience_NewApp:
-                Control: Classic/Radio@2.3.0
+            - txtBorShort_NewApp:
+                Control: Classic/TextInput@2.3.2
                 Properties:
-                  Items: =["Single tenant", "Multitenant"]
-                  Default: ="Single tenant"
+                  Default: =""
+                  HintText: ="ORDERS"
                   X: =0
                   Y: =176
                   Width: =(Parent.Width - 24) / 2
@@ -396,16 +394,23 @@ Screens:
                   Size: =11
                   Font: =Font.'Segoe UI'
                   Color: =gTheme.Text
-                  RadioSize: =18
-                  RadioSelectionFill: =gTheme.Primary
-                  RadioBorderColor: =gTheme.Muted
-                  Layout: =Layout.Horizontal
-            - hntAudience_NewApp:
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  HoverBorderColor: =gTheme.Primary
+                  FocusedBorderColor: =gTheme.Primary
+                  FocusedBorderThickness: =2
+                  PaddingLeft: =10
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+            - hntBorShort_NewApp:
                 Control: Label@2.5.1
                 Properties:
-                  Text: '="Single tenant: only accounts in this organization (recommended)."'
+                  Text: '="Short name of the application in the book of record: 2–20 letters or digits."'
                   X: =0
-                  Y: =212
+                  Y: =214
                   Width: =(Parent.Width - 24) / 2
                   Height: =20
                   Size: =9
@@ -451,61 +456,13 @@ Screens:
                   ChevronFill: =gTheme.Muted
                   SelectionFill: =gTheme.Primary
                   HoverFill: =gTheme.PrimaryLight
-                  Visible: =varNewTeam.Mode <> "new"
-                  OnChange: '=Set(varNewTeam, {Mode: "", GroupId: "", DisplayName: "", Description: "", OwnerIds: ""})'
-            - lblNewTeam_NewApp:
-                Control: Label@2.5.1
-                Properties:
-                  Text: '="New team group: " & varNewTeam.DisplayName & "  (created when approved)"'
-                  X: =(Parent.Width + 24) / 2
-                  Y: =176
-                  Width: =(Parent.Width - 24) / 2 - 40
-                  Height: =36
-                  Size: =10
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Primary
-                  FontWeight: =FontWeight.Semibold
-                  PaddingLeft: =10
-                  PaddingRight: =0
-                  Fill: =gTheme.PrimaryLight
-                  Visible: =varNewTeam.Mode = "new"
-            - icoClearTeam_NewApp:
-                Control: Classic/Icon@2.5.0
-                Properties:
-                  Icon: =Icon.Cancel
-                  X: =(Parent.Width + 24) / 2 + (Parent.Width - 24) / 2 - 32
-                  Y: =182
-                  Width: =24
-                  Height: =24
-                  Color: =gTheme.Muted
-                  PaddingTop: =2
-                  PaddingBottom: =2
-                  PaddingLeft: =2
-                  PaddingRight: =2
-                  OnSelect: '=Set(varNewTeam, {Mode: "", GroupId: "", DisplayName: "", Description: "", OwnerIds: ""})'
-                  Visible: =varNewTeam.Mode = "new"
-            - lnkNewTeam_NewApp:
-                Control: Label@2.5.1
-                Properties:
-                  Text: ="＋ Create new team group"
-                  X: =(Parent.Width + 24) / 2
-                  Y: =214
-                  Width: =260
-                  Height: =24
-                  Size: =11
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Primary
-                  FontWeight: =FontWeight.Semibold
-                  PaddingLeft: =0
-                  PaddingRight: =0
-                  OnSelect: =Set(varGroupMode, "inline-team"); Set(varGroupSuggest, "team-" & Lower(Substitute(Trim(txtAppName_NewApp.Text), " ", "-"))); Navigate(scrNewGroup, ScreenTransition.Fade)
             - lnkAddExisting_NewApp:
                 Control: Label@2.5.1
                 Properties:
                   Text: ="Group not listed? Add an existing group"
-                  X: =(Parent.Width + 24) / 2 + 262
+                  X: =(Parent.Width + 24) / 2
                   Y: =214
-                  Width: =(Parent.Width - 24) / 2 - 262
+                  Width: =(Parent.Width - 24) / 2
                   Height: =24
                   Size: =11
                   Font: =Font.'Segoe UI'
@@ -514,12 +471,81 @@ Screens:
                   PaddingLeft: =0
                   PaddingRight: =0
                   OnSelect: =Navigate(scrAddGroup, ScreenTransition.Fade)
+            - lblName_NewApp:
+                Control: Label@2.5.1
+                Properties:
+                  Text: ="Display name *"
+                  X: =0
+                  Y: =248
+                  Width: =Parent.Width
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - lblNamePrefix_NewApp:
+                Control: Label@2.5.1
+                Properties:
+                  Text: =Upper(Trim(txtAppCatId_NewApp.Text)) & "-" & Left(ddEnv_NewApp.Selected.Value, 1) & "-" & Trim(txtBorShort_NewApp.Text) & "-"
+                  X: =0
+                  Y: =270
+                  Width: =300
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =10
+                  PaddingRight: =0
+                  Fill: =gTheme.Bg
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  Tooltip: ="Built from the fields above; it can't be edited here."
+            - txtAppName_NewApp:
+                Control: Classic/TextInput@2.3.2
+                Properties:
+                  Default: =""
+                  HintText: ="free text, e.g. orders-api"
+                  X: =308
+                  Y: =270
+                  Width: =Parent.Width - 308
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  HoverBorderColor: =gTheme.Primary
+                  FocusedBorderColor: =gTheme.Primary
+                  FocusedBorderThickness: =2
+                  PaddingLeft: =10
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+            - hntName_NewApp:
+                Control: Label@2.5.1
+                Properties:
+                  Text: '="Full name: " & lblFullName_NewApp.Text & "   ·   shown in the Entra admin center and on consent screens"'
+                  X: =0
+                  Y: =308
+                  Width: =Parent.Width
+                  Height: =20
+                  Size: =9
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
             - lblJust_NewApp:
                 Control: Label@2.5.1
                 Properties:
                   Text: ="Business justification *"
                   X: =0
-                  Y: =248
+                  Y: =338
                   Width: =(Parent.Width - 24) / 2
                   Height: =20
                   Size: =10
@@ -534,9 +560,9 @@ Screens:
                   Default: =""
                   HintText: ="Why is this needed, and for which service? Your manager and the Entra ID team read this."
                   X: =0
-                  Y: =270
+                  Y: =360
                   Width: =(Parent.Width - 24) / 2
-                  Height: =76
+                  Height: =64
                   Size: =11
                   Font: =Font.'Segoe UI'
                   Color: =gTheme.Text
@@ -557,7 +583,7 @@ Screens:
                 Properties:
                   Text: ="Description"
                   X: =(Parent.Width + 24) / 2
-                  Y: =248
+                  Y: =338
                   Width: =(Parent.Width - 24) / 2
                   Height: =20
                   Size: =10
@@ -572,9 +598,9 @@ Screens:
                   Default: =""
                   HintText: ="Optional"
                   X: =(Parent.Width + 24) / 2
-                  Y: =270
+                  Y: =360
                   Width: =(Parent.Width - 24) / 2
-                  Height: =76
+                  Height: =64
                   Size: =11
                   Font: =Font.'Segoe UI'
                   Color: =gTheme.Text
@@ -595,7 +621,7 @@ Screens:
                 Properties:
                   Text: ="Redirect URI platform"
                   X: =0
-                  Y: =362
+                  Y: =436
                   Width: =(Parent.Width - 24) / 2
                   Height: =20
                   Size: =10
@@ -610,7 +636,7 @@ Screens:
                   Items: =["None", "Web", "Single-page app"]
                   Default: ="None"
                   X: =0
-                  Y: =384
+                  Y: =458
                   Width: =(Parent.Width - 24) / 2
                   Height: =36
                   Size: =11
@@ -629,7 +655,7 @@ Screens:
                 Properties:
                   Text: ="Redirect URI(s)"
                   X: =(Parent.Width + 24) / 2
-                  Y: =362
+                  Y: =436
                   Width: =(Parent.Width - 24) / 2
                   Height: =20
                   Size: =10
@@ -644,44 +670,6 @@ Screens:
                   Default: =""
                   HintText: ="https://app.contoso.com/signin-oidc   (separate several with ;)"
                   X: =(Parent.Width + 24) / 2
-                  Y: =384
-                  Width: =(Parent.Width - 24) / 2
-                  Height: =36
-                  Size: =11
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Text
-                  Fill: =gTheme.Card
-                  BorderColor: =gTheme.Border
-                  BorderThickness: =1
-                  HoverBorderColor: =gTheme.Primary
-                  FocusedBorderColor: =gTheme.Primary
-                  FocusedBorderThickness: =2
-                  PaddingLeft: =10
-                  RadiusTopLeft: =4
-                  RadiusTopRight: =4
-                  RadiusBottomLeft: =4
-                  RadiusBottomRight: =4
-                  DisplayMode: =If(ddPlatform_NewApp.Selected.Value = "None", DisplayMode.Disabled, DisplayMode.Edit)
-            - lblTicket_NewApp:
-                Control: Label@2.5.1
-                Properties:
-                  Text: ="Change ticket"
-                  X: =0
-                  Y: =436
-                  Width: =(Parent.Width - 24) / 2
-                  Height: =20
-                  Size: =10
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Text
-                  FontWeight: =FontWeight.Semibold
-                  PaddingLeft: =0
-                  PaddingRight: =0
-            - txtTicket_NewApp:
-                Control: Classic/TextInput@2.3.2
-                Properties:
-                  Default: =""
-                  HintText: ="Optional, e.g. CHG0012345"
-                  X: =0
                   Y: =458
                   Width: =(Parent.Width - 24) / 2
                   Height: =36
@@ -699,6 +687,7 @@ Screens:
                   RadiusTopRight: =4
                   RadiusBottomLeft: =4
                   RadiusBottomRight: =4
+                  DisplayMode: =If(ddPlatform_NewApp.Selected.Value = "None", DisplayMode.Disabled, DisplayMode.Edit)
         - cntStep2_NewApp:
             Control: GroupContainer@1.5.0
             Variant: ManualLayout
@@ -710,7 +699,7 @@ Screens:
               Fill: =RGBA(0, 0, 0, 0)
               BorderThickness: =0
               DropShadow: =DropShadow.None
-              Visible: =varStep = 2
+              Visible: =Coalesce(varStep, 1) = 2
             Children:
             - lblS2_NewAppHead:
                 Control: Label@2.5.1
@@ -1274,7 +1263,7 @@ Screens:
               Fill: =RGBA(0, 0, 0, 0)
               BorderThickness: =0
               DropShadow: =DropShadow.None
-              Visible: =varStep = 3
+              Visible: =Coalesce(varStep, 1) = 3
             Children:
             - lblS3_NewAppHead:
                 Control: Label@2.5.1
@@ -1293,7 +1282,7 @@ Screens:
             - lblS3_NewAppSub:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="Roles appear in the token's roles claim. Give each role a group — the group's owners then manage access without another request."
+                  Text: ="Roles appear in the token's roles claim. Give each role an existing group — the group's owners then manage access without another request."
                   X: =0
                   Y: =28
                   Width: =Parent.Width
@@ -1307,23 +1296,21 @@ Screens:
             - btnStdRoles_NewApp:
                 Control: Classic/Button@2.2.0
                 Properties:
-                  Text: ="＋ User + Admin roles with groups"
+                  Text: ="＋ User + Admin roles"
                   OnSelect: |-
                     =With({n: Trim(txtAppName_NewApp.Text)},
-                        With({p: Concat(Split(Substitute(n, " ", "-"), "-"), Upper(Left(Value, 1)) & Mid(Value, 2)), sl: Lower(Substitute(n, " ", "-")), k1: Text(GUID()), k2: Text(GUID())},
+                        With({p: Concat(Split(Substitute(n, " ", "-"), "-"), Upper(Left(Value, 1)) & Mid(Value, 2))},
                             If(CountRows(Filter(colRoles, Value = p & ".User")) = 0,
-                                Collect(colRoles, {Key: k1, Value: p & ".User", DisplayName: n & " User", Description: "Standard users of " & n, Members: "Users/Groups"});
-                                Collect(colRoleGroups, {RoleKey: k1, Mode: "new", GroupId: "", DisplayName: "grp-" & sl & "-users", Description: "Members hold the " & p & ".User role", OwnerIds: ""})
+                                Collect(colRoles, {Key: Text(GUID()), Value: p & ".User", DisplayName: lblFullName_NewApp.Text & " User", Description: "Standard users of " & lblFullName_NewApp.Text, Members: "Users/Groups"})
                             );
                             If(CountRows(Filter(colRoles, Value = p & ".Admin")) = 0,
-                                Collect(colRoles, {Key: k2, Value: p & ".Admin", DisplayName: n & " Admin", Description: "Administrators of " & n, Members: "Users/Groups"});
-                                Collect(colRoleGroups, {RoleKey: k2, Mode: "new", GroupId: "", DisplayName: "grp-" & sl & "-admins", Description: "Members hold the " & p & ".Admin role", OwnerIds: ""})
+                                Collect(colRoles, {Key: Text(GUID()), Value: p & ".Admin", DisplayName: lblFullName_NewApp.Text & " Admin", Description: "Administrators of " & lblFullName_NewApp.Text, Members: "Users/Groups"})
                             )
                         )
                     )
                   X: =0
                   Y: =60
-                  Width: =290
+                  Width: =230
                   Height: =34
                   Size: =11
                   Font: =Font.'Segoe UI'
@@ -1345,7 +1332,7 @@ Screens:
                 Properties:
                   Text: ="＋ Custom role"
                   OnSelect: '=Collect(colRoles, {Key: Text(GUID()), Value: "", DisplayName: "", Description: "", Members: "Users/Groups"})'
-                  X: =300
+                  X: =240
                   Y: =60
                   Width: =150
                   Height: =34
@@ -1555,7 +1542,7 @@ Screens:
                 - lblRoleGroups_NewApp:
                     Control: Label@2.5.1
                     Properties:
-                      Text: =Coalesce(Concat(Filter(colRoleGroups, RoleKey = ThisItem.Key), DisplayName & If(Mode = "new", " (new)", ""), ",  "), "None — nobody holds this role yet")
+                      Text: =Coalesce(Concat(Filter(colRoleGroups, RoleKey = ThisItem.Key), DisplayName, ",  "), "None — nobody holds this role yet")
                       X: =72
                       Y: =98
                       Width: =Parent.TemplateWidth - 560
@@ -1590,10 +1577,10 @@ Screens:
                       SelectionFill: =gTheme.Primary
                       HoverFill: =gTheme.PrimaryLight
                       OnChange: '=If(!IsBlank(Self.Selected.GroupId) && CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key && GroupId = Self.Selected.GroupId)) = 0, Collect(colRoleGroups, {RoleKey: ThisItem.Key, Mode: "existing", GroupId: Self.Selected.GroupId, DisplayName: Self.Selected.Title, Description: "", OwnerIds: ""})); Reset(Self)'
-                - lnkRoleNewGroup_NewApp:
+                - lnkRoleAddGroup_NewApp:
                     Control: Label@2.5.1
                     Properties:
-                      Text: ="＋ Create new group"
+                      Text: ="Group not listed?"
                       X: =Parent.TemplateWidth - 260
                       Y: =98
                       Width: =180
@@ -1604,7 +1591,7 @@ Screens:
                       FontWeight: =FontWeight.Semibold
                       PaddingLeft: =0
                       PaddingRight: =0
-                      OnSelect: =Set(varGroupMode, "inline-role"); Set(varGroupForRole, ThisItem.Key); Set(varGroupSuggest, "grp-" & Lower(Substitute(ThisItem.Value, ".", "-"))); Navigate(scrNewGroup, ScreenTransition.Fade)
+                      OnSelect: =Navigate(scrAddGroup, ScreenTransition.Fade)
                 - icoRoleClear_NewApp:
                     Control: Classic/Icon@2.5.0
                     Properties:
@@ -1624,7 +1611,7 @@ Screens:
             - lblNoRoles_NewApp:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="No app roles yet. Most applications want a User and an Admin role — add both, each with its own new group, in one click."
+                  Text: ="No app roles yet. Most applications want a User and an Admin role — add both in one click, then pick the existing group that should hold each role."
                   X: =12
                   Y: =140
                   Width: =Parent.Width - 24
@@ -1648,12 +1635,12 @@ Screens:
               Fill: =RGBA(0, 0, 0, 0)
               BorderThickness: =0
               DropShadow: =DropShadow.None
-              Visible: =varStep = 4
+              Visible: =Coalesce(varStep, 1) = 4
             Children:
             - lblS4_NewAppHead:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="Enterprise application & ownership"
+                  Text: ="Enterprise application & sign-in"
                   X: =0
                   Y: =0
                   Width: =Parent.Width
@@ -1711,7 +1698,7 @@ Screens:
             - hntCreateSp_NewApp:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="Required for role assignments — always created when any role has groups."
+                  Text: ="Created for this app registration (same appId). Required for role assignments — always created when any role has groups."
                   X: =0
                   Y: =122
                   Width: =Parent.Width
@@ -1725,10 +1712,10 @@ Screens:
             - lblAssign_NewApp:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="Assignment required"
+                  Text: ="Assignment required (appRoleAssignmentRequired)"
                   X: =0
                   Y: =156
-                  Width: =400
+                  Width: =500
                   Height: =20
                   Size: =10
                   Font: =Font.'Segoe UI'
@@ -1754,7 +1741,7 @@ Screens:
             - hntAssign_NewApp:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="Only users in an assigned group can sign in or get tokens. Recommended."
+                  Text: '="Yes: only users in an assigned group can sign in or get tokens (recommended). No: any user in the tenant can."'
                   X: =0
                   Y: =214
                   Width: =Parent.Width
@@ -1765,10 +1752,10 @@ Screens:
                   FontWeight: =FontWeight.Normal
                   PaddingLeft: =0
                   PaddingRight: =0
-            - lblOwners_NewApp:
+            - lblAudience_NewApp:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="Additional owners"
+                  Text: ="Supported account types"
                   X: =0
                   Y: =248
                   Width: =(Parent.Width - 24) / 2
@@ -1779,15 +1766,11 @@ Screens:
                   FontWeight: =FontWeight.Semibold
                   PaddingLeft: =0
                   PaddingRight: =0
-            - cmbOwners_NewApp:
-                Control: Classic/ComboBox@2.4.0
+            - radAudience_NewApp:
+                Control: Classic/Radio@2.3.0
                 Properties:
-                  Items: '=Office365Users.SearchUserV2({searchTerm: Self.SearchText, top: 15, isSearchTermRequired: false}).value'
-                  DisplayFields: =["DisplayName", "Mail"]
-                  SearchFields: =["DisplayName"]
-                  SelectMultiple: =true
-                  IsSearchable: =true
-                  InputTextPlaceholder: ="Search people"
+                  Items: =["Single tenant", "Multitenant"]
+                  Default: ="Single tenant"
                   X: =0
                   Y: =270
                   Width: =(Parent.Width - 24) / 2
@@ -1795,19 +1778,16 @@ Screens:
                   Size: =11
                   Font: =Font.'Segoe UI'
                   Color: =gTheme.Text
-                  Fill: =gTheme.Card
-                  BorderColor: =gTheme.Border
-                  BorderThickness: =1
-                  ChevronBackground: =gTheme.Card
-                  ChevronFill: =gTheme.Muted
-                  SelectionFill: =gTheme.Primary
-                  HoverFill: =gTheme.PrimaryLight
-            - hntOwners_NewApp:
+                  RadioSize: =18
+                  RadioSelectionFill: =gTheme.Primary
+                  RadioBorderColor: =gTheme.Muted
+                  Layout: =Layout.Horizontal
+            - hntAudience_NewApp:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="You are always an owner. Owners can manage the app registration in the Entra admin center."
+                  Text: '="Single tenant: only accounts in this organization (recommended)."'
                   X: =0
-                  Y: =308
+                  Y: =306
                   Width: =(Parent.Width - 24) / 2
                   Height: =20
                   Size: =9
@@ -1821,7 +1801,7 @@ Screens:
                 Properties:
                   Text: ="Optional tags"
                   X: =0
-                  Y: =342
+                  Y: =340
                   Width: =Parent.Width
                   Height: =20
                   Size: =10
@@ -1836,7 +1816,7 @@ Screens:
                   Default: =""
                   HintText: ="costCentre=CC-4410; project=atlas"
                   X: =0
-                  Y: =364
+                  Y: =362
                   Width: =Parent.Width
                   Height: =36
                   Size: =11
@@ -1856,9 +1836,9 @@ Screens:
             - hntTags_NewApp:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="appCatID, team, createdBy, requestId and the other platform tags are added automatically."
+                  Text: ="appCatID, team, appEnv, createdBy, requestId and the other platform tags are added automatically."
                   X: =0
-                  Y: =402
+                  Y: =400
                   Width: =Parent.Width
                   Height: =20
                   Size: =9
@@ -1867,6 +1847,43 @@ Screens:
                   FontWeight: =FontWeight.Normal
                   PaddingLeft: =0
                   PaddingRight: =0
+            - lblTicket_NewApp:
+                Control: Label@2.5.1
+                Properties:
+                  Text: ="Change ticket"
+                  X: =0
+                  Y: =434
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - txtTicket_NewApp:
+                Control: Classic/TextInput@2.3.2
+                Properties:
+                  Default: =""
+                  HintText: ="Optional, e.g. CHG0012345"
+                  X: =0
+                  Y: =456
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  HoverBorderColor: =gTheme.Primary
+                  FocusedBorderColor: =gTheme.Primary
+                  FocusedBorderThickness: =2
+                  PaddingLeft: =10
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
         - cntStep5_NewApp:
             Control: GroupContainer@1.5.0
             Variant: ManualLayout
@@ -1878,7 +1895,7 @@ Screens:
               Fill: =RGBA(0, 0, 0, 0)
               BorderThickness: =0
               DropShadow: =DropShadow.None
-              Visible: =varStep = 5
+              Visible: =Coalesce(varStep, 1) = 5
             Children:
             - lblS5_NewAppHead:
                 Control: Label@2.5.1
@@ -1912,24 +1929,24 @@ Screens:
                 Control: HtmlViewer@2.1.0
                 Properties:
                   HtmlText: |-
-                    =With({team: If(varNewTeam.Mode = "new", varNewTeam, {Mode: "existing", GroupId: cmbTeam_NewApp.Selected.GroupId, DisplayName: cmbTeam_NewApp.Selected.Title, Description: "", OwnerIds: ""})},
+                    =With({team: {Mode: "existing", GroupId: cmbTeam_NewApp.Selected.GroupId, DisplayName: cmbTeam_NewApp.Selected.Title, Description: "", OwnerIds: ""}},
                     "<div style='font-family:Segoe UI, sans-serif; font-size:13px; color:#323130; line-height:1.5'>" &
                     "<table style='border-collapse:collapse; width:100%'>" &
-                    "<tr><td style='color:#605e5c; width:220px; padding:4px 0'>Display name</td><td><b>" & Trim(txtAppName_NewApp.Text) & "</b></td></tr>" &
-                    "<tr><td style='color:#605e5c; padding:4px 0'>appCatID</td><td>" & Upper(Trim(txtAppCatId_NewApp.Text)) & "</td></tr>" &
+                    "<tr><td style='color:#605e5c; width:220px; padding:4px 0'>Display name</td><td><b>" & lblFullName_NewApp.Text & "</b></td></tr>" &
+                    "<tr><td style='color:#605e5c; padding:4px 0'>appCatID · environment · BoR short name</td><td>" & Upper(Trim(txtAppCatId_NewApp.Text)) & " · " & ddEnv_NewApp.Selected.Value & " · " & Trim(txtBorShort_NewApp.Text) & "</td></tr>" &
+                    "<tr><td style='color:#605e5c; padding:4px 0'>Owning team</td><td>" & team.DisplayName & "</td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0'>Account types</td><td>" & radAudience_NewApp.Selected.Value & "</td></tr>" &
-                    "<tr><td style='color:#605e5c; padding:4px 0'>Owning team</td><td>" & team.DisplayName & If(team.Mode = "new", " <i>(new group)</i>", "") & "</td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0'>Redirect URIs</td><td>" & If(ddPlatform_NewApp.Selected.Value = "None", "none", ddPlatform_NewApp.Selected.Value & ": " & txtRedirect_NewApp.Text) & "</td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0'>Expose an API</td><td>" & If(chkExpose_NewApp.Value, If(radUri_NewApp.Selected.Value = "Custom", txtCustomUri_NewApp.Text, "api://{appId}") & If(CountRows(colScopes) > 0, " — scopes: " & Concat(colScopes, Value, ", "), ""), "no") & "</td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0'>Groups claim</td><td>" & ddGroupsClaim_NewApp.Selected.Value & "</td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0; vertical-align:top'>App roles</td><td>" &
                         If(CountRows(colRoles) = 0, "none", "<ul style='margin:0; padding-left:18px'>" &
-                            Concat(ForAll(colRoles As r, {t: "<li><b>" & r.Value & "</b> → " & Coalesce(Concat(Filter(colRoleGroups, RoleKey = r.Key), DisplayName & If(Mode = "new", " <i>(new)</i>", ""), ", "), "<i>no groups</i>") & "</li>"}), t) & "</ul>") & "</td></tr>" &
-                    "<tr><td style='color:#605e5c; padding:4px 0'>Enterprise app</td><td>" & If(tglCreateSp_NewApp.Value || CountRows(colRoleGroups) > 0, "yes" & If(tglAssign_NewApp.Value, ", assignment required", ""), "no") & "</td></tr>" &
-                    "<tr><td style='color:#605e5c; padding:4px 0'>Additional owners</td><td>" & Coalesce(Concat(cmbOwners_NewApp.SelectedItems, DisplayName, ", "), "none") & "</td></tr>" &
+                            Concat(ForAll(colRoles As r, {t: "<li><b>" & r.Value & "</b> → " & Coalesce(Concat(Filter(colRoleGroups, RoleKey = r.Key), DisplayName, ", "), "<i>no groups</i>") & "</li>"}), t) & "</ul>") & "</td></tr>" &
+                    "<tr><td style='color:#605e5c; padding:4px 0'>Enterprise app</td><td>" & If(tglCreateSp_NewApp.Value || CountRows(colRoleGroups) > 0, "yes" & If(tglAssign_NewApp.Value, ", assignment required", ", assignment not required"), "no") & "</td></tr>" &
+                    "<tr><td style='color:#605e5c; padding:4px 0'>Owners</td><td>none (access is managed through the owning team and role groups)</td></tr>" &
                     "</table>" &
                     "<p style='margin-top:14px; padding:10px 12px; background:#ebf3fc; border-left:3px solid #0f6cbd'><b>What happens next</b><br>" &
-                    "1. Your manager approves in Outlook / Teams.  2. The Entra ID team approves.  3. The app registration, roles, groups and enterprise app are created automatically and appear under My requests.</p>" &
+                    "1. Your manager approves in Outlook / Teams.  2. The Entra ID team approves.  3. The app registration, roles, role assignments and enterprise app are created automatically and appear under My requests.</p>" &
                     "</div>"
                     )
                   X: =0
@@ -1956,7 +1973,8 @@ Screens:
               OnSelect: |-
                 =With({err: lblErrAll_NewApp.Text},
                     If(!IsBlank(err),
-                        Notify(err, NotificationType.Warning),
+                        Set(varStepError, err); Notify(err, NotificationType.Warning),
+                        Set(varStepError, "");
                         Set(varReqId, "REQ-" & Text(Now(), "yymm") & "-" & Upper(Left(Substitute(Text(GUID()), "-", ""), 6)));
                         IfError(
                             Patch(EntraRequests, Defaults(EntraRequests), {
@@ -1964,15 +1982,18 @@ Screens:
                                 RequestType: {Value: "createAppRegistration"},
                                 Status: {Value: "Submitted"},
                                 AppCatId: Upper(Trim(txtAppCatId_NewApp.Text)),
-                                TargetDisplayName: Trim(txtAppName_NewApp.Text),
+                                TargetDisplayName: lblFullName_NewApp.Text,
                                 Justification: Trim(txtJustification_NewApp.Text),
                                 TicketReference: Trim(txtTicket_NewApp.Text),
-                                PayloadJson: With({team: If(varNewTeam.Mode = "new", varNewTeam, {Mode: "existing", GroupId: cmbTeam_NewApp.Selected.GroupId, DisplayName: cmbTeam_NewApp.Selected.Title, Description: "", OwnerIds: ""})},
+                                PayloadJson: With({team: {Mode: "existing", GroupId: cmbTeam_NewApp.Selected.GroupId, DisplayName: cmbTeam_NewApp.Selected.Title, Description: "", OwnerIds: ""}},
                                 JSON({
-                                    displayName: Trim(txtAppName_NewApp.Text),
+                                    displayName: lblFullName_NewApp.Text,
+                                    appEnv: Left(ddEnv_NewApp.Selected.Value, 1),
+                                    borShortName: Trim(txtBorShort_NewApp.Text),
+                                    nameText: Trim(txtAppName_NewApp.Text),
                                     description: Substitute(Substitute(Substitute(Substitute(Trim(txtDescription_NewApp.Text), Char(13), ""), Char(10), " "), """", "'"), "\", "/"),
                                     signInAudience: If(radAudience_NewApp.Selected.Value = "Multitenant", "AzureADMultipleOrgs", "AzureADMyOrg"),
-                                    owningGroup: {mode: team.Mode, id: team.GroupId, displayName: team.DisplayName, description: team.Description, ownerIds: team.OwnerIds},
+                                    owningGroup: {mode: "existing", id: team.GroupId, displayName: team.DisplayName},
                                     redirectUrisWeb: If(ddPlatform_NewApp.Selected.Value = "Web", Trim(txtRedirect_NewApp.Text), ""),
                                     redirectUrisSpa: If(ddPlatform_NewApp.Selected.Value = "Single-page app", Trim(txtRedirect_NewApp.Text), ""),
                                     exposeApi: {
@@ -1986,11 +2007,10 @@ Screens:
                                     appRoles: ForAll(colRoles As r, {
                                         value: r.Value, displayName: r.DisplayName, description: r.Description,
                                         allowedMemberTypes: Switch(r.Members, "Applications", "Application", "Both", "User,Application", "User"),
-                                        assignGroups: ForAll(Filter(colRoleGroups, RoleKey = r.Key) As g, {mode: g.Mode, id: g.GroupId, displayName: g.DisplayName, description: g.Description, ownerIds: g.OwnerIds})
+                                        assignGroups: ForAll(Filter(colRoleGroups, RoleKey = r.Key) As g, {mode: "existing", id: g.GroupId, displayName: g.DisplayName})
                                     }),
                                     createServicePrincipal: tglCreateSp_NewApp.Value || CountRows(colRoleGroups) > 0,
                                     appRoleAssignmentRequired: tglAssign_NewApp.Value,
-                                    additionalOwnerIds: Concat(cmbOwners_NewApp.SelectedItems, Id, ";"),
                                     tags: Trim(txtTags_NewApp.Text)
                                 }, JSONFormat.Compact)
                                 )
@@ -2025,10 +2045,15 @@ Screens:
             Properties:
               Text: ="Next  ›"
               OnSelect: |-
-                =With({err: Switch(varStep, 1, lblErr1_NewApp.Text, 2, lblErr2_NewApp.Text, 3, lblErr3_NewApp.Text, "")},
-                    If(IsBlank(err),
-                        Set(varStep, Min(varStep + 1, 5)); Set(varMaxStep, Max(varMaxStep, varStep)),
-                        Notify(err, NotificationType.Warning)
+                =With({cur: Coalesce(varStep, 1)},
+                    With({err: Switch(cur, 1, lblErr1_NewApp.Text, 2, lblErr2_NewApp.Text, 3, lblErr3_NewApp.Text, "")},
+                        If(IsBlank(err),
+                            Set(varStepError, "");
+                            Set(varStep, Min(cur + 1, 5));
+                            Set(varMaxStep, Max(Coalesce(varMaxStep, 1), Min(cur + 1, 5))),
+                            Set(varStepError, err);
+                            Notify(err, NotificationType.Warning)
+                        )
                     )
                 )
               X: =500
@@ -2050,12 +2075,12 @@ Screens:
               BorderThickness: =1
               HoverColor: =gTheme.PrimaryHover
               HoverBorderColor: =gTheme.PrimaryHover
-              Visible: =varStep < 5
+              Visible: =Coalesce(varStep, 1) < 5
         - btnBack_NewApp:
             Control: Classic/Button@2.2.0
             Properties:
               Text: ="‹  Previous"
-              OnSelect: =Set(varStep, Max(1, varStep - 1))
+              OnSelect: =Set(varStepError, ""); Set(varStep, Max(1, Coalesce(varStep, 1) - 1))
               X: =630
               Y: =Parent.Height - 50
               Width: =120
@@ -2075,12 +2100,12 @@ Screens:
               BorderThickness: =1
               HoverColor: =gTheme.Text
               HoverBorderColor: =gTheme.Muted
-              Visible: =varStep > 1
+              Visible: =Coalesce(varStep, 1) > 1
         - btnCancel_NewApp:
             Control: Classic/Button@2.2.0
             Properties:
               Text: ="Cancel"
-              OnSelect: =Set(varResetNewApp, true); Navigate(scrHome, ScreenTransition.Fade)
+              OnSelect: =Set(varStepError, ""); Set(varResetNewApp, true); Navigate(scrHome, ScreenTransition.Fade)
               X: =Parent.Width - 144
               Y: =Parent.Height - 50
               Width: =120
@@ -2103,7 +2128,7 @@ Screens:
         - lblStepOf_NewApp:
             Control: Label@2.5.1
             Properties:
-              Text: ="Step " & varStep & " of 5"
+              Text: ="Step " & Coalesce(varStep, 1) & " of 5"
               X: =24
               Y: =Parent.Height - 50
               Width: =200
@@ -2114,15 +2139,48 @@ Screens:
               FontWeight: =FontWeight.Normal
               PaddingLeft: =0
               PaddingRight: =0
+        - lblStepError_NewApp:
+            Control: Label@2.5.1
+            Properties:
+              Text: =varStepError
+              X: =764
+              Y: =Parent.Height - 58
+              Width: =Parent.Width - 764 - 160
+              Height: =52
+              Size: =10
+              Font: =Font.'Segoe UI'
+              Color: =gTheme.Danger
+              FontWeight: =FontWeight.Semibold
+              PaddingLeft: =0
+              PaddingRight: =0
+              Wrap: =true
+              VerticalAlign: =VerticalAlign.Middle
+              Visible: =!IsBlank(varStepError)
+        - lblFullName_NewApp:
+            Control: Label@2.5.1
+            Properties:
+              Text: =Upper(Trim(txtAppCatId_NewApp.Text)) & "-" & Left(ddEnv_NewApp.Selected.Value, 1) & "-" & Trim(txtBorShort_NewApp.Text) & "-" & Trim(txtAppName_NewApp.Text)
+              X: =0
+              Y: =0
+              Width: =10
+              Height: =10
+              Size: =11
+              Font: =Font.'Segoe UI'
+              Color: =gTheme.Text
+              FontWeight: =FontWeight.Normal
+              PaddingLeft: =0
+              PaddingRight: =0
+              Visible: =false
         - lblErr1_NewApp:
             Control: Label@2.5.1
             Properties:
               Text: |-
                 =Coalesce(
-                    If(Len(Trim(txtAppName_NewApp.Text)) < 3, "Display name is required (3+ characters)."),
-                    If(!IsMatch(Trim(txtAppName_NewApp.Text), "^[^""\\]{1,120}$"), "Display name cannot contain double quotes or backslashes (max 120 characters)."),
-                    If(!IsMatch(Upper(Trim(txtAppCatId_NewApp.Text)), gAppCatPattern), "appCatID looks like APPCAT-001."),
-                    If(varNewTeam.Mode <> "new" && IsBlank(cmbTeam_NewApp.Selected.GroupId), "Choose the owning team, or create a new team group."),
+                    If(!IsMatch(Upper(Trim(txtAppCatId_NewApp.Text)), gAppCatPattern), "App BoR ID (appCatID) looks like APPCAT-001."),
+                    If(!IsMatch(Trim(txtBorShort_NewApp.Text), "^[A-Za-z0-9]{2,20}$"), "App BoR short name: 2–20 letters or digits, no spaces."),
+                    If(!IsMatch(Trim(txtAppName_NewApp.Text), "^[A-Za-z0-9][A-Za-z0-9 ._-]{1,79}$"), "Display name: enter the free-text part after the prefix (2–80 letters, digits, spaces, . _ -)."),
+                    If(Len(lblFullName_NewApp.Text) > 120, "The full display name is longer than 120 characters; shorten the free-text part."),
+                    If(IsBlank(cmbTeam_NewApp.Selected.GroupId), "Choose the owning team. Not listed? Use 'Group not listed? Add an existing group'."),
                     If(Len(Trim(txtJustification_NewApp.Text)) < 10, "Business justification is required (10+ characters)."),
                     If(ddPlatform_NewApp.Selected.Value <> "None" && !IsMatch(Trim(txtRedirect_NewApp.Text), "^\S+$"), "Redirect URIs: no spaces; separate several with ;")
                 )

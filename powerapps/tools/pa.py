@@ -218,3 +218,11 @@ def status_badge(name, status_expr, x, y, w=150, h=24):
 
 def slug(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9]", "", s)
+
+
+def timer(name, on_end, start, duration=3000, **extra):
+    """Invisible repeating timer: polls the request list while a flow processes a request."""
+    props = {"Duration": duration, "Repeat": "true", "AutoStart": "false", "Start": start, "OnTimerEnd": on_end,
+             "Visible": "false", "X": 0, "Y": 0, "Width": 10, "Height": 10}
+    props.update(extra)
+    return node(name, "Timer", props)

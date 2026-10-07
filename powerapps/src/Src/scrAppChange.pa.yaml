@@ -901,7 +901,7 @@ Screens:
                     - lblRoleGroups_Change:
                         Control: Label@2.5.1
                         Properties:
-                          Text: =Coalesce(Concat(Filter(colRoleGroups, RoleKey = ThisItem.Key), DisplayName & If(Mode = "new", " (new)", ""), ",  "), "None — nobody holds this role yet")
+                          Text: =Coalesce(Concat(Filter(colRoleGroups, RoleKey = ThisItem.Key), DisplayName, ",  "), "None — nobody holds this role yet")
                           X: =72
                           Y: =98
                           Width: =Parent.TemplateWidth - 560
@@ -936,10 +936,10 @@ Screens:
                           SelectionFill: =gTheme.Primary
                           HoverFill: =gTheme.PrimaryLight
                           OnChange: '=If(!IsBlank(Self.Selected.GroupId) && CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key && GroupId = Self.Selected.GroupId)) = 0, Collect(colRoleGroups, {RoleKey: ThisItem.Key, Mode: "existing", GroupId: Self.Selected.GroupId, DisplayName: Self.Selected.Title, Description: "", OwnerIds: ""})); Reset(Self)'
-                    - lnkRoleNewGroup_Change:
+                    - lnkRoleAddGroup_Change:
                         Control: Label@2.5.1
                         Properties:
-                          Text: ="＋ Create new group"
+                          Text: ="Group not listed?"
                           X: =Parent.TemplateWidth - 260
                           Y: =98
                           Width: =180
@@ -950,7 +950,7 @@ Screens:
                           FontWeight: =FontWeight.Semibold
                           PaddingLeft: =0
                           PaddingRight: =0
-                          OnSelect: =Set(varGroupMode, "inline-role"); Set(varGroupForRole, ThisItem.Key); Set(varGroupSuggest, "grp-" & Lower(Substitute(ThisItem.Value, ".", "-"))); Navigate(scrNewGroup, ScreenTransition.Fade)
+                          OnSelect: =Navigate(scrAddGroup, ScreenTransition.Fade)
                     - icoRoleClear_Change:
                         Control: Classic/Icon@2.5.0
                         Properties:
@@ -1073,13 +1073,13 @@ Screens:
                       PressedFill: =gTheme.PrimaryHover
                       BorderThickness: =0
                       HoverColor: =RGBA(255, 255, 255, 1)
-                - lnkNewGroup_Change:
+                - lnkAddGroup_Change:
                     Control: Label@2.5.1
                     Properties:
-                      Text: ="＋ Create new group"
+                      Text: ="Group not listed? Add an existing group"
                       X: =665
                       Y: =28
-                      Width: =180
+                      Width: =300
                       Height: =24
                       Size: =11
                       Font: =Font.'Segoe UI'
@@ -1087,7 +1087,7 @@ Screens:
                       FontWeight: =FontWeight.Semibold
                       PaddingLeft: =0
                       PaddingRight: =0
-                      OnSelect: =If(IsBlank(ddRole_Change.Selected.Id), Notify("Choose the app role first.", NotificationType.Information), Set(varGroupMode, "inline-assign"); Set(varAssignRole, ddRole_Change.Selected); Set(varGroupSuggest, "grp-" & Lower(Substitute(ddRole_Change.Selected.Value, ".", "-"))); Navigate(scrNewGroup, ScreenTransition.Fade))
+                      OnSelect: =Navigate(scrAddGroup, ScreenTransition.Fade)
                 - galAssign_Change:
                     Control: Gallery@2.15.0
                     Variant: Vertical
@@ -1106,7 +1106,7 @@ Screens:
                     - lblAssignRow_Change:
                         Control: Label@2.5.1
                         Properties:
-                          Text: =ThisItem.RoleValue & "   →   " & ThisItem.DisplayName & If(ThisItem.Mode = "new", "   (new group)", "")
+                          Text: =ThisItem.RoleValue & "   →   " & ThisItem.DisplayName
                           X: =8
                           Y: =8
                           Width: =Parent.TemplateWidth - 56

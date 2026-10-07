@@ -65,7 +65,7 @@ def visible(props: dict, state: dict) -> bool:
     v = str(props.get("Visible", "=true")).lstrip("=")
     if v == "false":
         return False
-    m = re.fullmatch(r"varStep = (\d)", v)
+    m = re.fullmatch(r"(?:Coalesce\(varStep, 1\)|varStep) = (\d)", v)
     if m:
         return int(m.group(1)) == state.get("step", 1)
     m = re.fullmatch(r'varOp = "(\w+)"', v)
@@ -143,7 +143,7 @@ def screen(name: str, state: dict) -> str:
 def main() -> None:
     parts = [screen("scrHome", {})]
     parts += [screen("scrNewApp", {"step": n}) for n in range(1, 6)]
-    parts += [screen("scrNewGroup", {}), screen("scrAddGroup", {})]
+    parts += [screen("scrAddGroup", {})]
     parts += [screen("scrAppChange", {"op": op, "app": True}) for op in ("exposeApi", "addAppRoles", "assignGroups", "createSP")]
     parts += [screen("scrMyRequests", {})]
     doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Layout preview</title><style>

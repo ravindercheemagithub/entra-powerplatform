@@ -67,7 +67,7 @@ For comparison, the Azure Function / App Service variants need no Power Platform
 | SharePoint lists | **PnP PowerShell script** | `sharepoint/provision.ps1` creates all lists, columns, indexes, permissions and the settings item |
 | Entra app registration | **az CLI script** | `entra/setup.sh` |
 | Power Apps screens | **Power Apps YAML ("paste code")** | Each `powerapps/screens/*.pa.yaml` is one root container: copy it, select the screen in Studio, Ctrl+V. `App.Formulas.fx`, `App.OnStart.fx` and `Screens.OnVisible.fx` are pasted into their properties. |
-| Power Automate flows | **Built by hand from the guide** (no hand-made importable package; see below) | Step-by-step guide with every action name, setting and expression. Each HTTP body is a file in `powerautomate/actions/` to paste in. |
+| Power Automate flows | **Import the solution** `solution/dist/*.zip` (doc 09), or build by hand from the guide | Step-by-step guide with every action name, setting and expression. Each HTTP body is a file in `powerautomate/actions/` to paste in. |
 
 Power Automate's importable formats are a solution `.zip` or a legacy package `.zip`. Both are produced by an *export*, and they embed environment-specific connection references. A hand-written package is fragile and can't be tested without your environment. The reliable route is to build each flow once from the guide, then **export it as a solution** to move it between environments.
 
@@ -75,12 +75,12 @@ Power Automate's importable formats are a solution `.zip` or a legacy package `.
 
 - **Home**: a card per operation, plus your recent requests.
 - **Register an application**, an Azure-portal-style wizard. Submit / Next / Cancel are always at the bottom; only Basics is required.
-  1. **Basics**: name, appCatID, account types, owning team (or "Create new team group"), justification, description, redirect URI.
+  1. **Basics**: appCatID (App BoR ID), environment (P/Q/D/L/U/F/T/S), BoR short name, display name `<appCatID>-<env>-<BoR short name>-<free text>` (the prefix can't be edited), owning team (an existing group you are a member of), justification, description, redirect URI.
   2. **Expose an API & claims**: Application ID URI (default `api://{appId}` or custom), scopes (one-click `access_as_user`), optional ID/access-token claims, groups claim.
-  3. **App roles & groups**: one click for User + Admin roles, each with a new group. Custom roles. Each role can get an existing group, or a new one via "Create new group".
-  4. **Enterprise app & owners**: create the service principal, assignment required, additional owners, optional tags.
+  3. **App roles & groups**: one click for User + Admin roles; custom roles; each role is held by **existing** groups.
+  4. **Enterprise app & sign-in**: create the service principal (for the same appId), assignment required, account types, optional tags, change ticket.
   5. **Review + submit**.
-- **Security group**: as its own request, or inline from the wizard ("Create new group" returns to the wizard with the group added).
+- **No group creation and no owners.** Groups are created outside this app; **Add existing group** makes one selectable (by name or Object ID, if you are a member or owner). App registrations get no owners; access goes through the owning team and role groups.
 - **Expose an API / App roles / Role assignments / Enterprise application** on apps *your groups own* (from the catalog).
 - **My requests**: approval stages, the IDs that were created, and errors.
 

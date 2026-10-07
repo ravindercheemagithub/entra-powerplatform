@@ -10,25 +10,22 @@ Refresh(EntraRequests)
 
 // ===== scrNewApp.OnVisible
 // Resets only when arriving from Home / after submit -- returning from the
-// "Create new group" screen keeps everything that was typed.
+// "Add an existing group" screen keeps everything that was typed.
 Refresh(EntraCatalogGroups);
+If(IsBlank(varStep), Set(varStep, 1); Set(varMaxStep, 1));
 If(varResetNewApp,
     Set(varResetNewApp, false);
     Set(varStep, 1);
     Set(varMaxStep, 1);
-    Set(varNewTeam, { Mode: "", GroupId: "", DisplayName: "", Description: "", OwnerIds: "" });
+    Set(varStepError, "");
     Clear(colScopes); Clear(colRoles); Clear(colRoleGroups);
-    Reset(txtAppName_NewApp); Reset(txtAppCatId_NewApp); Reset(radAudience_NewApp); Reset(cmbTeam_NewApp);
+    Reset(txtAppName_NewApp); Reset(txtAppCatId_NewApp); Reset(ddEnv_NewApp); Reset(txtBorShort_NewApp); Reset(cmbTeam_NewApp);
     Reset(txtJustification_NewApp); Reset(txtDescription_NewApp); Reset(ddPlatform_NewApp); Reset(txtRedirect_NewApp);
-    Reset(txtTicket_NewApp); Reset(chkExpose_NewApp); Reset(radUri_NewApp); Reset(txtCustomUri_NewApp);
+    Reset(chkExpose_NewApp); Reset(radUri_NewApp); Reset(txtCustomUri_NewApp);
     Reset(chkIdEmail_NewApp); Reset(chkIdUpn_NewApp); Reset(chkIdGiven_NewApp); Reset(chkIdFamily_NewApp);
     Reset(chkAtEmail_NewApp); Reset(chkAtUpn_NewApp); Reset(chkAtIdtyp_NewApp); Reset(ddGroupsClaim_NewApp);
-    Reset(tglCreateSp_NewApp); Reset(tglAssign_NewApp); Reset(cmbOwners_NewApp); Reset(txtTags_NewApp)
+    Reset(tglCreateSp_NewApp); Reset(tglAssign_NewApp); Reset(radAudience_NewApp); Reset(txtTags_NewApp); Reset(txtTicket_NewApp)
 )
-
-// ===== scrNewGroup.OnVisible
-Reset(txtGroupName_Group); Reset(txtGroupDesc_Group); Reset(txtGroupAppCat_Group);
-Reset(cmbGroupOwners_Group); Reset(cmbGroupMembers_Group); Reset(txtGroupJust_Group)
 
 // ===== scrAddGroup.OnVisible
 Refresh(EntraRequests); Refresh(EntraCatalogGroups)
