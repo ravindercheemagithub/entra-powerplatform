@@ -188,7 +188,7 @@ Trigger **Settings**:
 | 6 | `Requester` | Compose | Inputs `toLower(last(split(triggerOutputs()?['body/Author/Claims'], '\|')))` (the requester's UPN) |
 | 7 | `Payload` | Compose | Inputs `json(triggerOutputs()?['body/ApprovedPayloadJson'])` |
 | 8 | `Now` | Compose | Inputs `utcNow()` |
-| 9 | Eight variables | Variables – Initialize variable ×8 | One action per row, named `Init <name>`: `varTeamGroupId` String (empty); `varTeamGroupName` String (empty); `varSpId` String (empty); `varGroupId` String (empty); `varRoleId` String (empty); `varAssignTodo` Array, Value *plain text* `[]`; `varAssignments` Array, Value `[]`; `varResult` Object, Value `{}` |
+| 9 | Ten variables | Variables – Initialize variable ×10 | One action per row, named `Init <name>`: `varTeamGroupId` String (empty); `varTeamGroupName` String (empty); `varSpId` String (empty); `varGroupId` String (empty); `varRoleId` String (empty); `varAssignTodo` Array, Value *plain text* `[]`; `varAssignments` Array, Value `[]`; `varResult` Object, Value `{}`; `varOwnerOk` String, Value `no`; `varAssignOk` String, Value `no` (ten variables in total) |
 | 10 | `Try` | Control – Scope | Everything in the next sections goes **inside** this scope |
 | 11 | `Catch` | Control – Scope | After `Try` (not inside it). See [Catch](#catch-scope). |
 
@@ -243,8 +243,9 @@ Trigger **Settings**:
 | 7 | `Select optional tags` | Select | From `body('Filter_optional_tags')`; Map in text mode `concat(trim(first(split(item(), '='))), ':', trim(last(split(item(), '='))))` |
 | 8 | `App tags` | Compose | Inputs `union(outputs('Base_tags'), createArray(concat('team:', variables('varTeamGroupId')), concat('teamName:', variables('varTeamGroupName'))), body('Select_optional_tags'))` |
 | 9 | `HTTP Create application` | Graph | `POST` `https://graph.microsoft.com/v1.0/applications`; Body [`HTTP_Create_application.json`](../powerautomate/actions/HTTP_Create_application.json) |
+| 9b | `Wait for app replication` | Schedule – Delay | Count `15`, Unit **Second**. A new app takes a few seconds to replicate; calls against it before that return 404. |
 | 10 | `Expose API` | Condition | `equals(outputs('Payload')?['exposeApi']?['enabled'], true)` is equal to `true`. **If yes:** `HTTP Expose API` (Graph: `PATCH` `https://graph.microsoft.com/v1.0/applications/@{body('HTTP_Create_application')?['id']}`; Body [`HTTP_Expose_API.json`](../powerautomate/actions/HTTP_Expose_API.json)). **If no:** leave empty. |
-| 11 | `Apply to each owner` | Control – Apply to each (concurrency 1) | Select an output from previous steps `union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['additionalOwnerIds']), json('[]'), split(outputs('Payload')?['additionalOwnerIds'], ';')))`. Inside: `HTTP Add owner` (Graph: `POST` `https://graph.microsoft.com/v1.0/applications/@{body('HTTP_Create_application')?['id']}/owners/$ref`; Body [`HTTP_Add_owner.json`](../powerautomate/actions/HTTP_Add_owner.json)) |
+| 11 | `Apply to each owner` | Control – Apply to each (concurrency 1) | Select an output from previous steps `union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['additionalOwnerIds']), json('[]'), split(outputs('Payload')?['additionalOwnerIds'], ';')))`. Inside: the **retry pattern** below with call `HTTP Add owner` (Graph: `POST` `https://graph.microsoft.com/v1.0/applications/@{body('HTTP_Create_application')?['id']}/owners/$ref`; Body [`HTTP_Add_owner.json`](../powerautomate/actions/HTTP_Add_owner.json)), success status `204`, flag `varOwnerOk`, failure message `concat('Could not add owner ', items('Apply_to_each_owner'), ' to the new app registration (object id ', body('HTTP_Create_application')?['id'], ') after 6 attempts. Delete that app in Entra before retrying.')` |
 | 12 | `Create SP` | Condition | `equals(outputs('Payload')?['createServicePrincipal'], true)` is equal to `true`. **If yes:** 12.1–12.2. **If no:** leave empty. |
 | 12.1 | *If yes:* `Wait for replication` | Schedule – Delay | Count `10`, Unit **Second** |
 | 12.2 | *If yes:* `Do until SP` | Control – Do until | Loop until: `empty(variables('varSpId'))` is equal to `false`. Change limits: Count `6`, Timeout `PT10M`. Inside, in order: **(a)** `HTTP Create SP` (Graph: `POST` `https://graph.microsoft.com/v1.0/servicePrincipals`; Body [`HTTP_Create_SP.json`](../powerautomate/actions/HTTP_Create_SP.json); Settings → Retry policy **None**). **(b)** `SP created` (Condition: `outputs('HTTP_Create_SP')?['statusCode']` is equal to *plain text* `201`; **Run after** `HTTP Create SP`: **is successful** + **has failed**). *If yes:* `Set SP id` (Set variable `varSpId` = `body('HTTP_Create_SP')?['id']`). *If no:* `Retry delay` (Delay 10 seconds). |
@@ -324,11 +325,25 @@ Step 13 `Queue new role assignment` Value (text with tokens):
 | | *If yes:* `Catalog role group` | SharePoint – Create item | List `EntraCatalogGroups`; Title `body('HTTP_Create_role_group')?['displayName']`; GroupId `body('HTTP_Create_role_group')?['id']`; AppCatId `triggerOutputs()?['body/AppCatId']`; Description `body('HTTP_Create_role_group')?['description']`; OwnerUpns `concat(';', outputs('Requester'), ';')`; LastSynced `utcNow()` |
 | | *If yes:* `Wait for group replication` | Delay | Count `15`, Unit **Second** |
 | | *If no:* `Set group id` | Set variable | Name `varGroupId`; Value `items('Apply_to_each_assignment')?['id']` |
-| 1.2 | `HTTP Assign role` | Graph | `POST` `https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}/appRoleAssignedTo`; Body [`HTTP_Assign_role.json`](../powerautomate/actions/HTTP_Assign_role.json); Settings → Retry policy **Exponential interval**, Count `4`, Interval `PT10S` |
+| 1.2 | `HTTP Assign role` | retry pattern | The **retry pattern** below with call `HTTP Assign role` (Graph: `POST` `https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}/appRoleAssignedTo`; Body [`HTTP_Assign_role.json`](../powerautomate/actions/HTTP_Assign_role.json)), success status `201`, flag `varAssignOk`, failure message `concat('Could not assign ', items('Apply_to_each_assignment')?['displayName'], ' to role ', items('Apply_to_each_assignment')?['roleValue'], ' after 6 attempts. ResultJson of this request lists what was created.')` |
 | 1.3 | `Record assignment` | Append to array variable | Name `varAssignments`; Value `concat(items('Apply_to_each_assignment')?['displayName'], ' -> ', items('Apply_to_each_assignment')?['roleValue'])` |
 | 2 | `Default access` | Condition | `and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId'))))` is equal to `true`. **If yes:** `HTTP Assign default access` (Graph: `POST` `https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}/appRoleAssignedTo`; Body [`HTTP_Assign_default_access.json`](../powerautomate/actions/HTTP_Assign_default_access.json)). With assignment required and no roles, the owning team gets Default Access so someone can sign in. |
 | 3 | `Mark completed` | SharePoint – Update item | List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `Completed`; CompletedAt `utcNow()`; ResultJson `string(setProperty(variables('varResult'), 'assignmentsText', join(variables('varAssignments'), '; ')))` |
 | 4 | `Mail completed` | Send an email (V2) | To `triggerOutputs()?['body/Author/Email']`; Subject `concat('Your Entra request ', triggerOutputs()?['body/Title'], ' is complete')`; Body: [completed email body](#er-02-completed-email-body) |
+
+### Retry pattern (owners and role assignments)
+
+Right after an app, enterprise app or group is created, Graph can answer **404** or **400** for a few seconds, until the object has replicated. Power Automate's retry policy only retries 408, 429 and 5xx errors, so ER-02 retries these two calls itself. For a call `<Call>` with success status `<status>` and flag variable `<flag>`:
+
+| Action | Type | Configuration |
+|---|---|---|
+| `Reset <flag>` | Set variable | Name `<flag>`; Value *plain text* `no` |
+| `Until <Call>` | Control – Do until | Loop until `variables('<flag>')` is equal to *plain text* `yes`; Change limits: Count `6`, Timeout `PT10M`. Inside: the next two actions |
+| `<Call>` | Graph | As given in the step; Settings → Retry policy **None** |
+| `<Call> ok` | Condition, **Run after** `<Call>`: is successful + has failed | `or(equals(outputs('<Call_with_underscores>')?['statusCode'], <status>), contains(string(outputs('<Call_with_underscores>')?['body']), 'already exist'))` is equal to `true`. **If yes:** `Set <flag>` (Set variable `<flag>` = `yes`). **If no:** `<Call> retry delay` (Delay 10 seconds) |
+| `<Call> gave up` | Condition, after the Do until | `variables('<flag>')` is equal to *plain text* `no`. **If yes:** `Fail …` (Update item: Status `Failed`, ErrorMessage = the step's failure message) → `Stop …` (Terminate: **Failed**, Code `GraphRetryExhausted`) |
+
+"Already exists" counts as success, so re-running a request doesn't fail on owners or assignments that are already there.
 
 ### Catch scope
 

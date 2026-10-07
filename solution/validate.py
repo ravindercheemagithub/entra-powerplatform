@@ -56,6 +56,8 @@ for f in sorted(glob.glob('src/Workflows/*.json')):
     all_actions = {}; loops = {}
     def collect(acts, parents):
         for k, a in acts.items():
+            if k in all_actions:
+                errors.append(f"{flow}: action name {k!r} is used more than once in the flow")
             all_actions[k] = (a, parents)
             if a['type'] in ('Foreach',): loops[k] = parents
             for sub in [a.get('actions', {}), a.get('else', {}).get('actions', {})] + [c['actions'] for c in a.get('cases', {}).values()] + [a.get('default', {}).get('actions', {})]:

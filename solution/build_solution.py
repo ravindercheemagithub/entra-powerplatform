@@ -31,7 +31,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.1.2.0"
+VERSION = "1.1.3.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -409,6 +409,26 @@ def fail_item(seq: Seq, fail_name, stop_name, message, code):
     return seq
 
 
+def graph_until_ok(seq: "Seq", name: str, method: str, url: str, body: str, ok_status: int, flag: str,
+                   fail_name: str, stop_name: str, fail_message: str, attempts: int = 6, delay: int = 10) -> "Seq":
+    """Graph objects take a few seconds to replicate after creation, and calls against them can return
+    404/400 meanwhile. The connector retry policy only retries 408/429/5xx, so retry here: up to
+    `attempts` calls, `delay` seconds apart; 'already exist(s)' counts as success."""
+    k = key(name)
+    seq.set_var(f"Reset {flag}", flag, "no")
+    body_seq = Seq()
+    body_seq.graph(name, method, url, body, retry={"type": "none"})
+    body_seq.cond(f"{name} ok",
+                  is_true(f"@or(equals(outputs('{k}')?['statusCode'], {ok_status}), contains(string(outputs('{k}')?['body']), 'already exist'))"),
+                  yes=Seq().set_var(f"Set {flag}", flag, "yes"),
+                  no=Seq().delay(f"{name} retry delay", delay),
+                  run_after={k: ["Succeeded", "Failed"]})
+    seq.until(f"Until {name}", f"@equals(variables('{flag}'), 'yes')", body_seq, attempts, "PT10M")
+    seq.cond(f"{name} gave up", eq(f"@variables('{flag}')", "no"),
+             yes=fail_item(Seq(), fail_name, stop_name, fail_message, "GraphRetryExhausted"))
+    return seq
+
+
 def queue(role_loop, group_loop, filt):
     return {"roleId": f"@{{first(body('{filt}'))?['id']}}", "roleValue": f"@{{items('{role_loop}')?['value']}}",
             "mode": f"@{{items('{group_loop}')?['mode']}}", "id": f"@{{items('{group_loop}')?['id']}}",
@@ -431,7 +451,8 @@ def er02() -> dict:
     s.compose("Now", "@utcNow()")
     for var, typ, val in [("varTeamGroupId", "string", ""), ("varTeamGroupName", "string", ""), ("varSpId", "string", ""),
                           ("varGroupId", "string", ""), ("varRoleId", "string", ""), ("varAssignTodo", "array", []),
-                          ("varAssignments", "array", []), ("varResult", "object", {})]:
+                          ("varAssignments", "array", []), ("varResult", "object", {}),
+                          ("varOwnerOk", "string", "no"), ("varAssignOk", "string", "no")]:
         s.init_var(f"Init {var}", var, typ, val)
 
     t = Seq()  # Try
@@ -484,9 +505,12 @@ def er02() -> dict:
     c1.select("Select optional tags", "@body('Filter_optional_tags')", "@concat(trim(first(split(item(), '='))), ':', trim(last(split(item(), '='))))")
     c1.compose("App tags", "@union(outputs('Base_tags'), createArray(concat('team:', variables('varTeamGroupId')), concat('teamName:', variables('varTeamGroupName'))), body('Select_optional_tags'))")
     c1.graph("HTTP Create application", "POST", f"{GRAPH}/applications", body_file("HTTP_Create_application"))
+    c1.delay("Wait for app replication", 15)
     expose = Seq().graph("HTTP Expose API", "PATCH", f"{GRAPH}/applications/@{{body('HTTP_Create_application')?['id']}}", body_file("HTTP_Expose_API"))
     c1.cond("Expose API", is_true("@equals(outputs('Payload')?['exposeApi']?['enabled'], true)"), yes=expose)
-    owner = Seq().graph("HTTP Add owner", "POST", f"{GRAPH}/applications/@{{body('HTTP_Create_application')?['id']}}/owners/$ref", body_file("HTTP_Add_owner"))
+    owner = graph_until_ok(Seq(), "HTTP Add owner", "POST", f"{GRAPH}/applications/@{{body('HTTP_Create_application')?['id']}}/owners/$ref",
+                           body_file("HTTP_Add_owner"), 204, "varOwnerOk", "Fail add owner", "Stop add owner",
+                           "@concat('Could not add owner ', items('Apply_to_each_owner'), ' to the new app registration (object id ', body('HTTP_Create_application')?['id'], ') after 6 attempts. Delete that app in Entra before retrying.')")
     c1.foreach("Apply to each owner", "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['additionalOwnerIds']), json('[]'), split(outputs('Payload')?['additionalOwnerIds'], ';')))", owner)
     sp_try = Seq()
     sp_try.graph("HTTP Create SP", "POST", f"{GRAPH}/servicePrincipals", body_file("HTTP_Create_SP"), retry={"type": "none"})
@@ -596,8 +620,9 @@ def er02() -> dict:
     oldg = Seq().set_var("Set group id", "varGroupId", "@items('Apply_to_each_assignment')?['id']")
     each = Seq()
     each.cond("Group is new", eq("@items('Apply_to_each_assignment')?['mode']", "new"), yes=newg, no=oldg)
-    each.graph("HTTP Assign role", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo",
-               body_file("HTTP_Assign_role"), retry={"type": "exponential", "count": 4, "interval": "PT10S"})
+    graph_until_ok(each, "HTTP Assign role", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo",
+                   body_file("HTTP_Assign_role"), 201, "varAssignOk", "Fail assign role", "Stop assign role",
+                   "@concat('Could not assign ', items('Apply_to_each_assignment')?['displayName'], ' to role ', items('Apply_to_each_assignment')?['roleValue'], ' after 6 attempts. ResultJson of this request lists what was created.')")
     each.append_var("Record assignment", "varAssignments", "@concat(items('Apply_to_each_assignment')?['displayName'], ' -> ', items('Apply_to_each_assignment')?['roleValue'])")
     t.foreach("Apply to each assignment", "@variables('varAssignTodo')", each)
     default = Seq().graph("HTTP Assign default access", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo", body_file("HTTP_Assign_default_access"))
