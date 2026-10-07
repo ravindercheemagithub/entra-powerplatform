@@ -534,7 +534,7 @@
                 },
                 "Updated_tags": {
                   "type": "Compose",
-                  "inputs": "@union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId']), concat('managedBy:', body('Get_settings')?['ManagedByTag'])), createArray()))",
+                  "inputs": "@union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId']), concat('managedBy:', body('Get_settings')?['ManagedByTag'])), json('[]')))",
                   "runAfter": {
                     "Requester_may_change": [
                       "Succeeded"
@@ -609,7 +609,7 @@
                             "Select_team_owner_binds": {
                               "type": "Select",
                               "inputs": {
-                                "from": "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['owningGroup']?['ownerIds']), createArray(), split(outputs('Payload')?['owningGroup']?['ownerIds'], ';')))",
+                                "from": "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['owningGroup']?['ownerIds']), json('[]'), split(outputs('Payload')?['owningGroup']?['ownerIds'], ';')))",
                                 "select": "@concat('https://graph.microsoft.com/v1.0/directoryObjects/', item())"
                               },
                               "runAfter": {}
@@ -821,7 +821,7 @@
                         "Select_app_roles": {
                           "type": "Select",
                           "inputs": {
-                            "from": "@coalesce(outputs('Payload')?['appRoles'], createArray())",
+                            "from": "@coalesce(outputs('Payload')?['appRoles'], json('[]'))",
                             "select": {
                               "id": "@guid()",
                               "value": "@item()?['value']",
@@ -840,7 +840,7 @@
                         "Select_scopes": {
                           "type": "Select",
                           "inputs": {
-                            "from": "@if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), coalesce(outputs('Payload')?['exposeApi']?['scopes'], createArray()), createArray())",
+                            "from": "@if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), coalesce(outputs('Payload')?['exposeApi']?['scopes'], json('[]')), json('[]'))",
                             "select": {
                               "id": "@guid()",
                               "value": "@item()?['value']",
@@ -861,7 +861,7 @@
                         "Select_id_token_claims": {
                           "type": "Select",
                           "inputs": {
-                            "from": "@if(empty(outputs('Payload')?['optionalClaimsIdToken']), createArray(), split(outputs('Payload')?['optionalClaimsIdToken'], ','))",
+                            "from": "@if(empty(outputs('Payload')?['optionalClaimsIdToken']), json('[]'), split(outputs('Payload')?['optionalClaimsIdToken'], ','))",
                             "select": {
                               "name": "@item()",
                               "essential": false
@@ -876,7 +876,7 @@
                         "Select_access_token_claims": {
                           "type": "Select",
                           "inputs": {
-                            "from": "@if(empty(outputs('Payload')?['optionalClaimsAccessToken']), createArray(), split(outputs('Payload')?['optionalClaimsAccessToken'], ','))",
+                            "from": "@if(empty(outputs('Payload')?['optionalClaimsAccessToken']), json('[]'), split(outputs('Payload')?['optionalClaimsAccessToken'], ','))",
                             "select": {
                               "name": "@item()",
                               "essential": false
@@ -935,7 +935,7 @@
                               "request/headers": {
                                 "Content-Type": "application/json"
                               },
-                              "request/body": "{\n  \"displayName\": \"@{outputs('Payload')?['displayName']}\",\n  \"description\": \"@{outputs('Payload')?['description']}\",\n  \"signInAudience\": \"@{outputs('Payload')?['signInAudience']}\",\n  \"notes\": \"@{concat('appCatID=', triggerOutputs()?['body/AppCatId'], '; requestId=', triggerOutputs()?['body/Title'], '; createdBy=', outputs('Requester'), '; managedBy=', body('Get_settings')?['ManagedByTag'])}\",\n  \"tags\": @{outputs('App_tags')},\n  \"appRoles\": @{body('Select_app_roles')},\n  \"api\": { \"requestedAccessTokenVersion\": 2 },\n  \"web\": { \"redirectUris\": @{if(empty(outputs('Payload')?['redirectUrisWeb']), createArray(), split(outputs('Payload')?['redirectUrisWeb'], ';'))} },\n  \"spa\": { \"redirectUris\": @{if(empty(outputs('Payload')?['redirectUrisSpa']), createArray(), split(outputs('Payload')?['redirectUrisSpa'], ';'))} },\n  \"groupMembershipClaims\": \"@{outputs('Payload')?['groupMembershipClaims']}\",\n  \"optionalClaims\": {\n    \"idToken\": @{body('Select_id_token_claims')},\n    \"accessToken\": @{body('Select_access_token_claims')},\n    \"saml2Token\": []\n  }\n}"
+                              "request/body": "{\n  \"displayName\": \"@{outputs('Payload')?['displayName']}\",\n  \"description\": \"@{outputs('Payload')?['description']}\",\n  \"signInAudience\": \"@{outputs('Payload')?['signInAudience']}\",\n  \"notes\": \"@{concat('appCatID=', triggerOutputs()?['body/AppCatId'], '; requestId=', triggerOutputs()?['body/Title'], '; createdBy=', outputs('Requester'), '; managedBy=', body('Get_settings')?['ManagedByTag'])}\",\n  \"tags\": @{outputs('App_tags')},\n  \"appRoles\": @{body('Select_app_roles')},\n  \"api\": { \"requestedAccessTokenVersion\": 2 },\n  \"web\": { \"redirectUris\": @{if(empty(outputs('Payload')?['redirectUrisWeb']), json('[]'), split(outputs('Payload')?['redirectUrisWeb'], ';'))} },\n  \"spa\": { \"redirectUris\": @{if(empty(outputs('Payload')?['redirectUrisSpa']), json('[]'), split(outputs('Payload')?['redirectUrisSpa'], ';'))} },\n  \"groupMembershipClaims\": \"@{outputs('Payload')?['groupMembershipClaims']}\",\n  \"optionalClaims\": {\n    \"idToken\": @{body('Select_id_token_claims')},\n    \"accessToken\": @{body('Select_access_token_claims')},\n    \"saml2Token\": []\n  }\n}"
                             },
                             "authentication": "@parameters('$authentication')"
                           },
@@ -990,7 +990,7 @@
                         },
                         "Apply_to_each_owner": {
                           "type": "Foreach",
-                          "foreach": "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['additionalOwnerIds']), createArray(), split(outputs('Payload')?['additionalOwnerIds'], ';')))",
+                          "foreach": "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['additionalOwnerIds']), json('[]'), split(outputs('Payload')?['additionalOwnerIds'], ';')))",
                           "actions": {
                             "HTTP_Add_owner": {
                               "type": "OpenApiConnection",
@@ -1140,7 +1140,7 @@
                         },
                         "For_each_new_role": {
                           "type": "Foreach",
-                          "foreach": "@coalesce(outputs('Payload')?['appRoles'], createArray())",
+                          "foreach": "@coalesce(outputs('Payload')?['appRoles'], json('[]'))",
                           "actions": {
                             "Filter_created_role": {
                               "type": "Query",
@@ -1152,7 +1152,7 @@
                             },
                             "For_each_new_role_group": {
                               "type": "Foreach",
-                              "foreach": "@coalesce(items('For_each_new_role')?['assignGroups'], createArray())",
+                              "foreach": "@coalesce(items('For_each_new_role')?['assignGroups'], json('[]'))",
                               "actions": {
                                 "Queue_new_role_assignment": {
                                   "type": "AppendToArrayVariable",
@@ -1259,7 +1259,7 @@
                         "Select_group_owner_binds": {
                           "type": "Select",
                           "inputs": {
-                            "from": "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['ownerIds']), createArray(), split(outputs('Payload')?['ownerIds'], ';')))",
+                            "from": "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['ownerIds']), json('[]'), split(outputs('Payload')?['ownerIds'], ';')))",
                             "select": "@concat('https://graph.microsoft.com/v1.0/directoryObjects/', item())"
                           },
                           "runAfter": {}
@@ -1267,7 +1267,7 @@
                         "Select_group_member_binds": {
                           "type": "Select",
                           "inputs": {
-                            "from": "@if(empty(outputs('Payload')?['memberIds']), createArray(), split(outputs('Payload')?['memberIds'], ';'))",
+                            "from": "@if(empty(outputs('Payload')?['memberIds']), json('[]'), split(outputs('Payload')?['memberIds'], ';'))",
                             "select": "@concat('https://graph.microsoft.com/v1.0/directoryObjects/', item())"
                           },
                           "runAfter": {
@@ -1355,7 +1355,7 @@
                         "Select_new_scopes": {
                           "type": "Select",
                           "inputs": {
-                            "from": "@coalesce(outputs('Payload')?['scopes'], createArray())",
+                            "from": "@coalesce(outputs('Payload')?['scopes'], json('[]'))",
                             "select": {
                               "id": "@guid()",
                               "value": "@item()?['value']",
@@ -1383,7 +1383,7 @@
                               "request/headers": {
                                 "Content-Type": "application/json"
                               },
-                              "request/body": "{\n  \"identifierUris\": @{union(coalesce(body('HTTP_Get_target_app')?['identifierUris'], createArray()), createArray(replace(outputs('Payload')?['identifierUriTemplate'], '{appId}', body('HTTP_Get_target_app')?['appId'])))},\n  \"api\": {\n    \"requestedAccessTokenVersion\": 2,\n    \"oauth2PermissionScopes\": @{union(coalesce(body('HTTP_Get_target_app')?['api']?['oauth2PermissionScopes'], createArray()), body('Select_new_scopes'))}\n  },\n  \"tags\": @{outputs('Updated_tags')}\n}"
+                              "request/body": "{\n  \"identifierUris\": @{union(coalesce(body('HTTP_Get_target_app')?['identifierUris'], json('[]')), createArray(replace(outputs('Payload')?['identifierUriTemplate'], '{appId}', body('HTTP_Get_target_app')?['appId'])))},\n  \"api\": {\n    \"requestedAccessTokenVersion\": 2,\n    \"oauth2PermissionScopes\": @{union(coalesce(body('HTTP_Get_target_app')?['api']?['oauth2PermissionScopes'], json('[]')), body('Select_new_scopes'))}\n  },\n  \"tags\": @{outputs('Updated_tags')}\n}"
                             },
                             "authentication": "@parameters('$authentication')"
                           },
@@ -1423,7 +1423,7 @@
                         "Select_new_roles": {
                           "type": "Select",
                           "inputs": {
-                            "from": "@coalesce(outputs('Payload')?['appRoles'], createArray())",
+                            "from": "@coalesce(outputs('Payload')?['appRoles'], json('[]'))",
                             "select": {
                               "id": "@guid()",
                               "value": "@item()?['value']",
@@ -1449,7 +1449,7 @@
                               "request/headers": {
                                 "Content-Type": "application/json"
                               },
-                              "request/body": "{\n  \"appRoles\": @{union(coalesce(body('HTTP_Get_target_app')?['appRoles'], createArray()), body('Select_new_roles'))},\n  \"tags\": @{outputs('Updated_tags')}\n}"
+                              "request/body": "{\n  \"appRoles\": @{union(coalesce(body('HTTP_Get_target_app')?['appRoles'], json('[]')), body('Select_new_roles'))},\n  \"tags\": @{outputs('Updated_tags')}\n}"
                             },
                             "authentication": "@parameters('$authentication')"
                           },
@@ -1461,7 +1461,7 @@
                         },
                         "For_each_added_role": {
                           "type": "Foreach",
-                          "foreach": "@coalesce(outputs('Payload')?['appRoles'], createArray())",
+                          "foreach": "@coalesce(outputs('Payload')?['appRoles'], json('[]'))",
                           "actions": {
                             "Filter_added_role": {
                               "type": "Query",
@@ -1473,7 +1473,7 @@
                             },
                             "For_each_added_role_group": {
                               "type": "Foreach",
-                              "foreach": "@coalesce(items('For_each_added_role')?['assignGroups'], createArray())",
+                              "foreach": "@coalesce(items('For_each_added_role')?['assignGroups'], json('[]'))",
                               "actions": {
                                 "Queue_added_role_assignment": {
                                   "type": "AppendToArrayVariable",
@@ -1600,7 +1600,7 @@
                         "Select_assignment_todo": {
                           "type": "Select",
                           "inputs": {
-                            "from": "@coalesce(outputs('Payload')?['assignments'], createArray())",
+                            "from": "@coalesce(outputs('Payload')?['assignments'], json('[]'))",
                             "select": {
                               "roleId": "@item()?['appRoleId']",
                               "roleValue": "@item()?['appRoleValue']",
@@ -1894,7 +1894,7 @@
                     "Select_role_group_owner_binds": {
                       "type": "Select",
                       "inputs": {
-                        "from": "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(items('Apply_to_each_assignment')?['ownerIds']), createArray(), split(items('Apply_to_each_assignment')?['ownerIds'], ';')))",
+                        "from": "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(items('Apply_to_each_assignment')?['ownerIds']), json('[]'), split(items('Apply_to_each_assignment')?['ownerIds'], ';')))",
                         "select": "@concat('https://graph.microsoft.com/v1.0/directoryObjects/', item())"
                       },
                       "runAfter": {}

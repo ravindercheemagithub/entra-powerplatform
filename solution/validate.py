@@ -81,6 +81,8 @@ for f in sorted(glob.glob('src/Workflows/*.json')):
     for k, (a, parents) in list(all_actions.items()) + [(t, (defn['triggers'][t], [])) for t in triggers]:
         own = {x: y for x, y in a.items() if x not in ('actions', 'else', 'cases', 'default')} if isinstance(a, dict) else a
         for e in expressions(own):
+            if re.search(r"createArray\(\s*\)", e):
+                errors.append(f"{flow}: {k}: createArray() needs at least one argument; use json('[]') for an empty array")
             b = balance(e)
             if b: errors.append(f"{flow}: {k}: {b}: {e[:100]}")
             for fn, ref in re.findall(r"\b(body|outputs|actions|result|items)\('([^']+)'\)", e):

@@ -399,8 +399,8 @@
                       "item/TeamGroupName": "@if(empty(body('Filter_app_team_name')), '', substring(first(body('Filter_app_team_name')), 9))",
                       "item/ServicePrincipalId": "@coalesce(first(body('HTTP_App_SP')?['value'])?['id'], '')",
                       "item/IdentifierUri": "@coalesce(first(items('Apply_to_each_app')?['identifierUris']), '')",
-                      "item/AppRolesJson": "@string(coalesce(items('Apply_to_each_app')?['appRoles'], createArray()))",
-                      "item/ScopesJson": "@string(coalesce(items('Apply_to_each_app')?['api']?['oauth2PermissionScopes'], createArray()))",
+                      "item/AppRolesJson": "@string(coalesce(items('Apply_to_each_app')?['appRoles'], json('[]')))",
+                      "item/ScopesJson": "@string(coalesce(items('Apply_to_each_app')?['api']?['oauth2PermissionScopes'], json('[]')))",
                       "item/TeamMemberUpns": "@variables('varMembers')",
                       "item/OwnerUpns": "@concat(';', join(body('Select_owner_upns'), ';'), ';')",
                       "item/LastSynced": "@utcNow()"
@@ -432,8 +432,8 @@
                         "item/TeamGroupName": "@if(empty(body('Filter_app_team_name')), '', substring(first(body('Filter_app_team_name')), 9))",
                         "item/ServicePrincipalId": "@coalesce(first(body('HTTP_App_SP')?['value'])?['id'], '')",
                         "item/IdentifierUri": "@coalesce(first(items('Apply_to_each_app')?['identifierUris']), '')",
-                        "item/AppRolesJson": "@string(coalesce(items('Apply_to_each_app')?['appRoles'], createArray()))",
-                        "item/ScopesJson": "@string(coalesce(items('Apply_to_each_app')?['api']?['oauth2PermissionScopes'], createArray()))",
+                        "item/AppRolesJson": "@string(coalesce(items('Apply_to_each_app')?['appRoles'], json('[]')))",
+                        "item/ScopesJson": "@string(coalesce(items('Apply_to_each_app')?['api']?['oauth2PermissionScopes'], json('[]')))",
                         "item/TeamMemberUpns": "@variables('varMembers')",
                         "item/OwnerUpns": "@concat(';', join(body('Select_owner_upns'), ';'), ';')",
                         "item/LastSynced": "@utcNow()"

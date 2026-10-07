@@ -1,6 +1,6 @@
 # 9. Import the flows as a solution
 
-Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_1_1_0.zip`](../solution/dist/EntraSelfService_1_1_1_0.zip) (version 1.1.1) is an **unmanaged** solution containing:
+Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_1_2_0.zip`](../solution/dist/EntraSelfService_1_1_2_0.zip) (version 1.1.2) is an **unmanaged** solution containing:
 
 | Component | What it is |
 |---|---|
@@ -35,7 +35,7 @@ Import **as the account that should own the flows** (your account while testing,
 
 ## 9.2 Download the zip
 
-On GitHub open [`solution/dist/EntraSelfService_1_1_1_0.zip`](../solution/dist/EntraSelfService_1_1_1_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
+On GitHub open [`solution/dist/EntraSelfService_1_1_2_0.zip`](../solution/dist/EntraSelfService_1_1_2_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
 
 ## 9.3 Import
 
@@ -86,6 +86,8 @@ Open each flow once in the designer and check it has no errors before turning it
 | SharePoint actions fail with *List not found* | The site URL variable is wrong, or SP-00 hasn't created the lists yet |
 
 ## 9.6 Updating
+
+**1.1.2:** fixes *InvalidTemplate … createArray expects a comma separated list of parameters* (an empty `createArray()` is not valid; replaced by `json('[]')` in 27 places, e.g. `Select team owner binds`). Import over 1.1.1. Publish or discard any unsaved draft of these flows first, or the import fails with *unpublished active row*.
 
 **1.1.1:** removes `?` from every action name (Power Automate rejects it when you save a flow). Import over 1.1. If you edited ER-01's outcome actions for testing, the import overwrites those edits.
 

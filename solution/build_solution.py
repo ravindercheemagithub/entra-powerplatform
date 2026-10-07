@@ -31,7 +31,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.1.1.0"
+VERSION = "1.1.2.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -312,7 +312,7 @@ SUMMARY = ("@concat('**', triggerOutputs()?['body/RequestType/Value'], '** – '
            "'Request: ', triggerOutputs()?['body/Title'], ' · appCatID: ', triggerOutputs()?['body/AppCatId'], decodeUriComponent('%0A%0A'), "
            "'Requested by: ', triggerOutputs()?['body/Author/DisplayName'], ' (', triggerOutputs()?['body/Author/Email'], ')', decodeUriComponent('%0A%0A'), "
            "if(empty(outputs('Payload')?['owningGroup']), '', concat('Owning team: ', outputs('Payload')?['owningGroup']?['displayName'], if(equals(outputs('Payload')?['owningGroup']?['mode'], 'new'), ' (new group)', ''), decodeUriComponent('%0A%0A'))), "
-           "if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), concat('Expose API: ', outputs('Payload')?['exposeApi']?['identifierUriTemplate'], ', ', string(length(coalesce(outputs('Payload')?['exposeApi']?['scopes'], createArray()))), ' scope(s)', decodeUriComponent('%0A%0A')), ''), "
+           "if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), concat('Expose API: ', outputs('Payload')?['exposeApi']?['identifierUriTemplate'], ', ', string(length(coalesce(outputs('Payload')?['exposeApi']?['scopes'], json('[]')))), ' scope(s)', decodeUriComponent('%0A%0A')), ''), "
            "if(empty(body('Select_roles_text')), '', concat(join(body('Select_roles_text'), decodeUriComponent('%0A')), decodeUriComponent('%0A%0A'))), "
            "'Justification: ', triggerOutputs()?['body/Justification'])")
 
@@ -339,8 +339,8 @@ def er01() -> dict:
     s.compose("Manager email", "@if(equals(actions('Get_manager')?['status'], 'Succeeded'), coalesce(body('Get_manager')?['mail'], body('Get_manager')?['userPrincipalName']), body('Get_settings')?['FallbackApproverEmail'])",
               run_after={"Get_manager": ["Succeeded", "Failed"]})
     s.compose("Manager name", "@if(equals(actions('Get_manager')?['status'], 'Succeeded'), body('Get_manager')?['displayName'], 'Fallback approver')")
-    s.select("Select roles text", "@coalesce(outputs('Payload')?['appRoles'], createArray())",
-             "@concat('- App role ', item()?['value'], ' (', string(length(coalesce(item()?['assignGroups'], createArray()))), ' group(s))')")
+    s.select("Select roles text", "@coalesce(outputs('Payload')?['appRoles'], json('[]'))",
+             "@concat('- App role ', item()?['value'], ' (', string(length(coalesce(item()?['assignGroups'], json('[]')))), ' group(s))')")
     s.compose("Summary", SUMMARY)
     s.sp_patch("Update pending manager", "EntraRequests", ID, {
         "Title": TITLE, "Status/Value": "PendingManagerApproval", "ManagerEmail": "@outputs('Manager_email')",
@@ -449,7 +449,7 @@ def er02() -> dict:
     not_owner = fail_item(Seq(), "Fail not owner", "Stop not owner",
                           "The app is not owned by any of your groups, or its appCatID differs.", "NotOwner")
     ta.cond("Requester may change", is_true("@and(or(not(empty(body('HTTP_Check_target_team')?['value'])), contains(string(body('HTTP_Target_owners')?['value']), body('HTTP_Get_requester')?['id'])), or(empty(body('Filter_appcat_tag')), equals(first(body('Filter_appcat_tag')), concat('appCatID:', triggerOutputs()?['body/AppCatId']))))"), no=not_owner)
-    ta.compose("Updated tags", "@union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId']), concat('managedBy:', body('Get_settings')?['ManagedByTag'])), createArray()))")
+    ta.compose("Updated tags", "@union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId']), concat('managedBy:', body('Get_settings')?['ManagedByTag'])), json('[]')))")
     ta.graph("HTTP Find target SP", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{body('HTTP_Get_target_app')?['appId']}}'&$select=id")
     ta.set_var("Set target SP", "varSpId", "@coalesce(first(body('HTTP_Find_target_SP')?['value'])?['id'], '')")
     t.cond("Has target app", eq("@empty(triggerOutputs()?['body/TargetObjectId'])", False), yes=ta)
@@ -457,7 +457,7 @@ def er02() -> dict:
     # -- createAppRegistration
     c1 = Seq()
     new_team = Seq()
-    new_team.select("Select team owner binds", "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['owningGroup']?['ownerIds']), createArray(), split(outputs('Payload')?['owningGroup']?['ownerIds'], ';')))", BINDS)
+    new_team.select("Select team owner binds", "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['owningGroup']?['ownerIds']), json('[]'), split(outputs('Payload')?['owningGroup']?['ownerIds'], ';')))", BINDS)
     new_team.graph("HTTP Create team group", "POST", f"{GRAPH}/groups", body_file("HTTP_Create_team_group"))
     new_team.set_var("Set team id (new)", "varTeamGroupId", "@body('HTTP_Create_team_group')?['id']")
     new_team.set_var("Set team name (new)", "varTeamGroupName", "@body('HTTP_Create_team_group')?['displayName']")
@@ -476,10 +476,10 @@ def er02() -> dict:
     old_team.set_var("Set team id", "varTeamGroupId", "@body('HTTP_Get_team_group')?['id']")
     old_team.set_var("Set team name", "varTeamGroupName", "@body('HTTP_Get_team_group')?['displayName']")
     c1.cond("Team is new", eq("@outputs('Payload')?['owningGroup']?['mode']", "new"), yes=new_team, no=old_team)
-    c1.select("Select app roles", "@coalesce(outputs('Payload')?['appRoles'], createArray())", ROLE_MAP)
-    c1.select("Select scopes", "@if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), coalesce(outputs('Payload')?['exposeApi']?['scopes'], createArray()), createArray())", SCOPE_MAP)
-    c1.select("Select id token claims", "@if(empty(outputs('Payload')?['optionalClaimsIdToken']), createArray(), split(outputs('Payload')?['optionalClaimsIdToken'], ','))", {"name": "@item()", "essential": False})
-    c1.select("Select access token claims", "@if(empty(outputs('Payload')?['optionalClaimsAccessToken']), createArray(), split(outputs('Payload')?['optionalClaimsAccessToken'], ','))", {"name": "@item()", "essential": False})
+    c1.select("Select app roles", "@coalesce(outputs('Payload')?['appRoles'], json('[]'))", ROLE_MAP)
+    c1.select("Select scopes", "@if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), coalesce(outputs('Payload')?['exposeApi']?['scopes'], json('[]')), json('[]'))", SCOPE_MAP)
+    c1.select("Select id token claims", "@if(empty(outputs('Payload')?['optionalClaimsIdToken']), json('[]'), split(outputs('Payload')?['optionalClaimsIdToken'], ','))", {"name": "@item()", "essential": False})
+    c1.select("Select access token claims", "@if(empty(outputs('Payload')?['optionalClaimsAccessToken']), json('[]'), split(outputs('Payload')?['optionalClaimsAccessToken'], ','))", {"name": "@item()", "essential": False})
     c1.filter("Filter optional tags", "@split(coalesce(outputs('Payload')?['tags'], ''), ';')", "@and(contains(item(), '='), greater(length(trim(item())), 2))")
     c1.select("Select optional tags", "@body('Filter_optional_tags')", "@concat(trim(first(split(item(), '='))), ':', trim(last(split(item(), '='))))")
     c1.compose("App tags", "@union(outputs('Base_tags'), createArray(concat('team:', variables('varTeamGroupId')), concat('teamName:', variables('varTeamGroupName'))), body('Select_optional_tags'))")
@@ -487,7 +487,7 @@ def er02() -> dict:
     expose = Seq().graph("HTTP Expose API", "PATCH", f"{GRAPH}/applications/@{{body('HTTP_Create_application')?['id']}}", body_file("HTTP_Expose_API"))
     c1.cond("Expose API", is_true("@equals(outputs('Payload')?['exposeApi']?['enabled'], true)"), yes=expose)
     owner = Seq().graph("HTTP Add owner", "POST", f"{GRAPH}/applications/@{{body('HTTP_Create_application')?['id']}}/owners/$ref", body_file("HTTP_Add_owner"))
-    c1.foreach("Apply to each owner", "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['additionalOwnerIds']), createArray(), split(outputs('Payload')?['additionalOwnerIds'], ';')))", owner)
+    c1.foreach("Apply to each owner", "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['additionalOwnerIds']), json('[]'), split(outputs('Payload')?['additionalOwnerIds'], ';')))", owner)
     sp_try = Seq()
     sp_try.graph("HTTP Create SP", "POST", f"{GRAPH}/servicePrincipals", body_file("HTTP_Create_SP"), retry={"type": "none"})
     sp_try.cond("SP created", eq("@outputs('HTTP_Create_SP')?['statusCode']", 201),
@@ -500,8 +500,8 @@ def er02() -> dict:
     groups = Seq().append_var("Queue new role assignment", "varAssignTodo", queue("For_each_new_role", "For_each_new_role_group", "Filter_created_role"))
     roles = Seq()
     roles.filter("Filter created role", "@body('HTTP_Create_application')?['appRoles']", "@equals(item()?['value'], items('For_each_new_role')?['value'])")
-    roles.foreach("For each new role group", "@coalesce(items('For_each_new_role')?['assignGroups'], createArray())", groups)
-    c1.foreach("For each new role", "@coalesce(outputs('Payload')?['appRoles'], createArray())", roles)
+    roles.foreach("For each new role group", "@coalesce(items('For_each_new_role')?['assignGroups'], json('[]'))", groups)
+    c1.foreach("For each new role", "@coalesce(outputs('Payload')?['appRoles'], json('[]'))", roles)
     c1.set_var("Result create app", "varResult", {
         "applicationObjectId": "@{body('HTTP_Create_application')?['id']}",
         "appId": "@{body('HTTP_Create_application')?['appId']}",
@@ -518,8 +518,8 @@ def er02() -> dict:
 
     # -- createGroup
     c2 = Seq()
-    c2.select("Select group owner binds", "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['ownerIds']), createArray(), split(outputs('Payload')?['ownerIds'], ';')))", BINDS)
-    c2.select("Select group member binds", "@if(empty(outputs('Payload')?['memberIds']), createArray(), split(outputs('Payload')?['memberIds'], ';'))", BINDS)
+    c2.select("Select group owner binds", "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(outputs('Payload')?['ownerIds']), json('[]'), split(outputs('Payload')?['ownerIds'], ';')))", BINDS)
+    c2.select("Select group member binds", "@if(empty(outputs('Payload')?['memberIds']), json('[]'), split(outputs('Payload')?['memberIds'], ';'))", BINDS)
     c2.graph("HTTP Create group", "POST", f"{GRAPH}/groups", body_file("HTTP_Create_group"))
     c2.sp_post("Catalog group", "EntraCatalogGroups", {
         "Title": "@body('HTTP_Create_group')?['displayName']", "GroupId": "@body('HTTP_Create_group')?['id']",
@@ -531,7 +531,7 @@ def er02() -> dict:
     # -- exposeApi
     target = f"{GRAPH}/applications/@{{triggerOutputs()?['body/TargetObjectId']}}"
     c3 = Seq()
-    c3.select("Select new scopes", "@coalesce(outputs('Payload')?['scopes'], createArray())", SCOPE_MAP)
+    c3.select("Select new scopes", "@coalesce(outputs('Payload')?['scopes'], json('[]'))", SCOPE_MAP)
     c3.graph("HTTP Patch expose", "PATCH", target, body_file("HTTP_Patch_expose"))
     c3.set_var("Result expose", "varResult", {
         "applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}", "appId": "@{body('HTTP_Get_target_app')?['appId']}",
@@ -539,13 +539,13 @@ def er02() -> dict:
 
     # -- addAppRoles
     c4 = Seq()
-    c4.select("Select new roles", "@coalesce(outputs('Payload')?['appRoles'], createArray())", ROLE_MAP)
+    c4.select("Select new roles", "@coalesce(outputs('Payload')?['appRoles'], json('[]'))", ROLE_MAP)
     c4.graph("HTTP Patch roles", "PATCH", target, body_file("HTTP_Patch_roles"))
     g4 = Seq().append_var("Queue added role assignment", "varAssignTodo", queue("For_each_added_role", "For_each_added_role_group", "Filter_added_role"))
     r4 = Seq()
     r4.filter("Filter added role", "@body('Select_new_roles')", "@equals(item()?['value'], items('For_each_added_role')?['value'])")
-    r4.foreach("For each added role group", "@coalesce(items('For_each_added_role')?['assignGroups'], createArray())", g4)
-    c4.foreach("For each added role", "@coalesce(outputs('Payload')?['appRoles'], createArray())", r4)
+    r4.foreach("For each added role group", "@coalesce(items('For_each_added_role')?['assignGroups'], json('[]'))", g4)
+    c4.foreach("For each added role", "@coalesce(outputs('Payload')?['appRoles'], json('[]'))", r4)
     sp4 = Seq().graph("HTTP Create SP for roles", "POST", f"{GRAPH}/servicePrincipals", body_file("HTTP_Create_SP_existing"))
     sp4.set_var("Set SP id roles", "varSpId", "@body('HTTP_Create_SP_for_roles')?['id']")
     c4.cond("Needs SP for roles", is_true("@and(greater(length(variables('varAssignTodo')), 0), empty(variables('varSpId')))"), yes=sp4)
@@ -555,7 +555,7 @@ def er02() -> dict:
 
     # -- assignGroupsToAppRoles
     c5 = Seq()
-    c5.select("Select assignment todo", "@coalesce(outputs('Payload')?['assignments'], createArray())", {
+    c5.select("Select assignment todo", "@coalesce(outputs('Payload')?['assignments'], json('[]'))", {
         "roleId": "@item()?['appRoleId']", "roleValue": "@item()?['appRoleValue']", "mode": "@item()?['mode']",
         "id": "@item()?['id']", "displayName": "@item()?['displayName']", "description": "@item()?['description']",
         "ownerIds": "@item()?['ownerIds']"})
@@ -585,7 +585,7 @@ def er02() -> dict:
 
     # -- role assignments, shared
     newg = Seq()
-    newg.select("Select role group owner binds", "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(items('Apply_to_each_assignment')?['ownerIds']), createArray(), split(items('Apply_to_each_assignment')?['ownerIds'], ';')))", BINDS)
+    newg.select("Select role group owner binds", "@union(createArray(body('HTTP_Get_requester')?['id']), if(empty(items('Apply_to_each_assignment')?['ownerIds']), json('[]'), split(items('Apply_to_each_assignment')?['ownerIds'], ';')))", BINDS)
     newg.graph("HTTP Create role group", "POST", f"{GRAPH}/groups", body_file("HTTP_Create_role_group"))
     newg.set_var("Set group id (new)", "varGroupId", "@body('HTTP_Create_role_group')?['id']")
     newg.sp_post("Catalog role group", "EntraCatalogGroups", {
@@ -666,8 +666,8 @@ def er03() -> dict:
         "TeamGroupName": "@if(empty(body('Filter_app_team_name')), '', substring(first(body('Filter_app_team_name')), 9))",
         "ServicePrincipalId": "@coalesce(first(body('HTTP_App_SP')?['value'])?['id'], '')",
         "IdentifierUri": f"@coalesce(first({A}?['identifierUris']), '')",
-        "AppRolesJson": f"@string(coalesce({A}?['appRoles'], createArray()))",
-        "ScopesJson": f"@string(coalesce({A}?['api']?['oauth2PermissionScopes'], createArray()))",
+        "AppRolesJson": f"@string(coalesce({A}?['appRoles'], json('[]')))",
+        "ScopesJson": f"@string(coalesce({A}?['api']?['oauth2PermissionScopes'], json('[]')))",
         "TeamMemberUpns": "@variables('varMembers')",
         "OwnerUpns": "@concat(';', join(body('Select_owner_upns'), ';'), ';')",
         "LastSynced": "@utcNow()"}
