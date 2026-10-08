@@ -62,11 +62,11 @@ def page_glance() -> Page:
     title(p, "Entra self-service on Power Platform &mdash; at a glance",
           "A team asks for an app registration in a Power App; two people approve; a flow creates it in Entra ID.")
     stages = [
-        ("papps", "Ask", "The requester fills in a wizard in the Power App: app name, appCatID, owning team, roles, groups."),
+        ("papps", "Ask", "The requester fills in a wizard: appCatID, environment, BoR short name + name, an existing owning team, roles."),
         ("pauto", "Lock", "Flow ER-01 makes the request read-only, so what gets approved can't change afterwards."),
         ("users", "Approve", "The requester's manager approves, then the Entra ID team. A self-approval counts as a rejection."),
         ("pauto", "Create", "Flow ER-02 calls Microsoft Graph as the platform app and creates everything that was approved."),
-        ("entra", "Stamp", "Every app, enterprise app and group carries the appCatID, request ID and owning team."),
+        ("entra", "Stamp", "Every app and enterprise app carries the appCatID, environment, request ID and owning team."),
     ]
     centres = [170, 430, 690, 950, 1210]
     for i, ((key, head, body), cx) in enumerate(zip(stages, centres), start=1):
@@ -79,10 +79,10 @@ def page_glance() -> Page:
                     style_extra="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;endArrow=blockThin;")
     p.node("<b>Where things live</b><br>" + small(
         "Power Apps canvas app &middot; SharePoint site " + SITE + " (4 lists) &middot; "
-        "3 Power Automate flows &middot; 1 Entra app registration with a certificate"),
+        "4 Power Automate flows &middot; 1 Entra app registration with a certificate"),
         60, 380, 600, 60, fill=GREY_FILL, stroke=GREY)
     p.node("<b>Licences</b><br>" + small(
-        "App and ER-01 use Standard connectors (covered by Microsoft 365). ER-02 and ER-03 use a Premium "
+        "App and ER-01 use Standard connectors (covered by Microsoft 365). ER-02, ER-03 and ER-04 use a Premium "
         "connector: one Power Automate Premium licence for the flow owner."),
         700, 380, 640, 60, fill=GREY_FILL, stroke=GREY)
     p.sticky("<b>Nobody gets Entra admin rights.</b> Requesters, managers and even the flow owner can be "
@@ -129,18 +129,19 @@ def page_context() -> Page:
                    1045, 202, 50, 50, BLUE, font=11)
     conn = p.icon("connector", "HTTP with Microsoft<br>Entra ID (preauthorized)<br>" + small("client certificate"),
                   1042, 410)
+    er4 = p.icon("pauto", "<b>ER-04 Onboard group</b><br>" + small("Premium &middot; no approval<br>trigger: onboardGroup item"), 850, 650)
     p.note(small("Office 365 Users (Get manager) &middot; Outlook (mail) &middot; SharePoint &mdash; "
-                 "all as the flow account"), 805, 760, 340, 40, align="center")
+                 "all as the flow account"), 805, 790, 340, 40, align="center")
 
     # entra
     p.container("Microsoft Entra ID &middot; single tenant", 1220, 110, 460, 760, stroke=PURPLE, fill=PURPLE_FILL)
     graph = p.node("<b>Microsoft Graph</b><br>" + small("graph.microsoft.com/v1.0"), 1250, 410, 180, 56,
                    stroke=PURPLE)
     reg = p.icon("appreg", "<b>Platform app registration</b><br>" + small(APP_REG + "<br>"
-                 "5 Graph application permissions<br>certificate credential"), 1312, 600)
+                 "4 Graph application permissions<br>certificate credential"), 1312, 600)
     o_app = p.icon("appreg", "App registrations<br>" + small("App ID URI &middot; scopes &middot; roles"), 1560, 170)
-    o_sp = p.icon("entapp", "Enterprise apps<br>" + small("assignment required"), 1560, 330)
-    o_grp = p.icon("groups", "Security groups<br>" + small("team + role groups"), 1560, 490)
+    o_sp = p.icon("entapp", "Enterprise apps<br>" + small("from the new appId<br>assignment required: per request"), 1560, 330)
+    o_grp = p.icon("groups", "Security groups<br>" + small("existing only &middot; read, never created"), 1560, 490)
     o_ra = p.icon("roles", "App role<br>assignments", 1560, 650)
 
     # people -> app -> SharePoint
@@ -155,6 +156,7 @@ def page_context() -> Page:
     st.set("style", st.get("style") + "startArrow=blockThin;startFill=1;")
     p.arrow(850, 392, 655, 392, "catalog new app / group", GREEN, above=False)
     p.arrow(850, 528, 655, 528, "upsert both catalog lists", GREEN)
+    p.arrow(850, 668, 655, 540, "onboard an existing group", GREEN, points=[(770, 668), (770, 540)])
     # flows -> approvals -> people
     p.edge(er1, appr, "start and wait", BLUE, entry=(0, 0.5), exit=(1, 0.5))
     p.arrow(1095, 227, 168, 408, "approval: manager first, then the Entra ID team", BLUE, dashed=True,
@@ -163,20 +165,21 @@ def page_context() -> Page:
     # flows -> Graph
     p.arrow(906, 378, 1042, 430, "", PURPLE, points=[(985, 378), (985, 430)])
     p.arrow(906, 528, 1042, 446, "", PURPLE, points=[(985, 528), (985, 446)])
+    p.arrow(906, 678, 1042, 452, "", PURPLE, points=[(1000, 678), (1000, 452)])
     p.edge(conn, graph, "token + Graph call", PURPLE, entry=(0, 0.5), exit=(1, 0.5))
     p.arrow(1098, 452, 1312, 628, "signs in as", PURPLE, dashed=True, points=[(1200, 452), (1200, 628)])
     for tgt_y in (198, 358, 518, 678):
         p.arrow(1430, 438, 1560, tgt_y, "", PURPLE, points=[(1490, 438), (1490, tgt_y)])
-    p.note(small("every object stamped<br><b>appCatID &middot; requestId &middot; managedBy</b>"),
+    p.note(small("apps and enterprise apps stamped<br><b>appCatID &middot; appEnv &middot; requestId &middot; managedBy</b>"),
            1480, 760, 190, 40, align="center", color=PURPLE)
     # admin
     p.arrow(168, 748, 1340, 745, "one-time: create, upload certificate, grant admin consent", PURPLE, dashed=True,
             points=[(220, 748), (220, 940), (1340, 940)])
 
     p.sticky("<b>The Graph permissions belong to the app, not to people.</b> The flow owner can be read-only in "
-             "Entra; ER-02 and ER-03 call Graph through a connection that signs in as the platform app with its "
+             "Entra; ER-02, ER-03 and ER-04 call Graph through a connection that signs in as the platform app with its "
              "certificate.", 40, 970, 620, 70)
-    p.sticky("<b>Anyone who can edit ER-02 or ER-03 can use that connection.</b> Keep the flows in their own "
+    p.sticky("<b>Anyone who can edit ER-02, ER-03 or ER-04 can use that connection.</b> Keep the flows in their own "
              "environment, with only the Entra ID team as co-owners.", 690, 970, 560, 70)
     return p
 
@@ -203,8 +206,8 @@ def page_identity() -> Page:
     # lane 2: flow owner
     p.container("&#9313; The flow owner (connections created by the flow account)", 40, 330, 1520, 200,
                 stroke=BLUE, fill=BLUE_FILL)
-    fa = p.icon("user", "Flow account<br>" + small("owns ER-01/02/03"), 100, 400)
-    f1 = p.icon("pauto", "ER-01 / ER-02 / ER-03", 380, 400)
+    fa = p.icon("user", "Flow account<br>" + small("owns ER-01 to ER-04"), 100, 400)
+    f1 = p.icon("pauto", "ER-01 to ER-04", 380, 400)
     s2 = sp_list(p, "SharePoint<br>" + small("site owner"), 680, 405)
     ap = stencil(p, "mxgraph.office.concepts.email_approved", "Approvals &middot; Outlook<br>"
                  + small("Teams"), 983, 402, 50, 50, BLUE)
@@ -212,19 +215,19 @@ def page_identity() -> Page:
     p.edge(f1, s2, "lock, status, catalog", GREEN, entry=(0, 0.5), exit=(1, 0.5))
     p.arrow(436, 416, 1008, 402, "approvals and mail", BLUE, dashed=True, points=[(436, 378), (1008, 378)])
     p.node("<b>What the flow account needs</b><br>" + small(
-        "Site owner on the SharePoint site (to break inheritance). Power Automate Premium for ER-02/ER-03. "
+        "Site owner on the SharePoint site (to break inheritance). Power Automate Premium for ER-02/03/04. "
         "<b>No Entra role</b>; read-only is fine."), 1180, 380, 350, 110, fill="#FFFFFF", stroke=BLUE)
 
     # lane 3: application
-    p.container("&#9314; The platform app (application permissions, used only by ER-02 / ER-03)", 40, 560, 1520, 300,
+    p.container("&#9314; The platform app (application permissions, used only by ER-02 / ER-03 / ER-04)", 40, 560, 1520, 300,
                 stroke=PURPLE, fill=PURPLE_FILL)
-    f2 = p.icon("pauto", "ER-02 / ER-03", 100, 640)
+    f2 = p.icon("pauto", "ER-02 / ER-03 / ER-04", 100, 640)
     c = p.icon("connector", "HTTP with Microsoft<br>Entra ID (preauthorized)", 380, 640)
     tok = p.icon("entra", "Entra token endpoint<br>" + small("login.microsoftonline.com"), 680, 640)
     g = p.node("<b>Microsoft Graph</b><br>" + small("checks the token's roles"), 940, 640, 180, 56, stroke=PURPLE)
     p.edge(f2, c, "Invoke an HTTP request", PURPLE, entry=(0, 0.5), exit=(1, 0.5))
     p.arrow(436, 656, 680, 656, "&#9312; client credentials, assertion signed with the certificate", PURPLE)
-    p.arrow(680, 682, 436, 682, "&#9313; access token: aud graph &middot; roles = 5 permissions", PURPLE, above=False)
+    p.arrow(680, 682, 436, 682, "&#9313; access token: aud graph &middot; roles = 4 permissions", PURPLE, above=False)
     p.arrow(436, 692, 1030, 696, "&#9314; Graph call with the token", PURPLE,
             points=[(470, 692), (470, 770), (1030, 770)])
     p.node("<b>Connection fields</b><br><font style='font-family:monospace;font-size:10px'>"
@@ -235,8 +238,8 @@ def page_identity() -> Page:
            "Client ID: &lt;appId of the platform app&gt;<br>"
            "Client certificate: .pfx + password</font>", 1160, 600, 380, 140, fill="#FFFFFF", stroke=PURPLE)
     p.note(small("Graph permissions (admin-consented): Application.ReadWrite.All &middot; "
-                 "AppRoleAssignment.ReadWrite.All &middot; Group.ReadWrite.All &middot; Directory.Read.All &middot; "
-                 "User.Read.All"), 380, 800, 760, 30, color=PURPLE)
+                 "AppRoleAssignment.ReadWrite.All &middot; Directory.Read.All &middot; User.Read.All "
+                 "&middot; no group write: groups are created elsewhere"), 380, 800, 760, 30, color=PURPLE)
 
     p.sticky("<b>Don't pick 'Log in with Microsoft Entra ID'</b> on the connection: that calls Graph as the flow "
              "account, and a read-only account gets <i>Insufficient privileges</i>.", 40, 885, 620, 60)
@@ -263,7 +266,7 @@ def page_seq_approvals() -> Page:
     s.msg("req", "app", "fill in the wizard, Submit")
     s.self_msg("app", "validate all sections &middot; build PayloadJson")
     s.msg("app", "sp", "Patch item: Status = Submitted, PayloadJson")
-    s.msg("sp", "er1", "trigger: item created (Status = Submitted)")
+    s.msg("sp", "er1", "trigger: item created (Status = Submitted, not onboardGroup)")
     s.msg("er1", "sp", "break inheritance &middot; Owners Full Control &middot; requester Read")
     s.msg("er1", "sp", "Get locked item")
     s.msg("sp", "er1", "PayloadJson (now read-only for the requester)", ret=True)
@@ -312,24 +315,19 @@ def page_seq_execute() -> Page:
     s.msg("er2", "sp", "Status = InProgress")
     s.msg("er2", "conn", "Invoke an HTTP request")
     s.msg("conn", "tok", "client credentials &middot; certificate assertion")
-    s.msg("tok", "conn", "token: aud graph &middot; 5 roles (cached)", ret=True)
+    s.msg("tok", "conn", "token: aud graph &middot; 4 roles (cached)", ret=True)
     s.msg("conn", "graph", "GET /users/{requester}  &#8594; object id")
-    with s.block("alt  owning team is new", "er2", "cat", color=GREY):
-        s.msg("er2", "graph", "POST /groups  (owners, appCatID in description)")
-        s.msg("er2", "cat", "create EntraCatalogGroups row")
-    with s.block("else  existing team", "er2", "graph", color=GREY):
-        s.msg("er2", "graph", "POST /users/{id}/checkMemberGroups")
-        s.msg("graph", "er2", "member? (no &#8594; Failed)", ret=True)
-    s.msg("er2", "graph", "POST /applications  (tags, notes, roles, redirect URIs, claims)")
-    s.msg("graph", "er2", "id &middot; appId &middot; appRoles[]", ret=True)
-    with s.block("opt  expose an API", "er2", "graph", color=GREY):
+    s.msg("er2", "graph", "POST /users/{id}/checkMemberGroups  [existing owning team]")
+    s.msg("graph", "er2", "member? (no &#8594; Failed: not a member of the owning team)", ret=True)
+    s.msg("er2", "graph", "GET /groups/{team}  &#8594; name for the team tags")
+    s.msg("er2", "graph", "POST /applications  (APPCAT-ENV-BOR-name, tags, notes, roles, URIs, claims)")
+    s.msg("graph", "er2", "id &middot; appId &middot; appRoles[]  (no owners added)", ret=True)
+    s.self_msg("er2", "wait 15 s: the new app replicates across Entra")
+    with s.block("opt  expose an API &middot; loop until 204 (max 6 &#215; 10 s)", "er2", "graph", color=ORANGE):
         s.msg("er2", "graph", "PATCH /applications/{id}  identifierUris + scopes")
-    with s.block("loop  each owner", "er2", "graph", color=GREY):
-        s.msg("er2", "graph", "POST /applications/{id}/owners/$ref")
-    with s.block("loop  until 201 (new app replicating)", "er2", "graph", color=ORANGE):
-        s.msg("er2", "graph", "POST /servicePrincipals  {appId, tags}")
-    with s.block("loop  each role &#215; group", "er2", "cat", color=GREY):
-        s.msg("er2", "graph", "POST /groups  (only for new groups)")
+    with s.block("opt  enterprise app &middot; loop until 201 (max 6)", "er2", "graph", color=ORANGE):
+        s.msg("er2", "graph", "POST /servicePrincipals  {appId, accountEnabled, appRoleAssignmentRequired, tags}")
+    with s.block("loop  each role &#215; existing group &middot; until 201 (max 6)", "er2", "graph", color=ORANGE):
         s.msg("er2", "graph", "POST /servicePrincipals/{sp}/appRoleAssignedTo")
     s.msg("er2", "cat", "create EntraCatalogApps row")
     s.msg("er2", "sp", "Status = Completed &middot; ResultJson &middot; CompletedAt", color=GREEN)
@@ -337,6 +335,8 @@ def page_seq_execute() -> Page:
     s.gap()
     s.note("<b>Any failure inside Try</b> jumps to Catch: Status = Failed, ErrorMessage, ResultJson (what was "
            "already created), email to the requester and the Entra ID team.", "er2", w=520, h=48)
+    s.note("<b>servicePrincipalType = Application</b> is set by Entra for an enterprise app created from an "
+           "app registration; Graph doesn't accept it in the request.", "graph", w=420, h=48)
     s.finish()
     return p
 
@@ -348,7 +348,7 @@ def page_flow_er01() -> Page:
           "Standard connectors only. Every rejection exits to the right; the approved path runs straight down.")
     W = 300
     X = 400
-    t0 = p.terminal("Item created &middot; Status = Submitted", X + 40, 90, BLUE_FILL, BLUE, w=220)
+    t0 = p.terminal("Item created &middot; Submitted &middot; not onboardGroup", X + 10, 90, BLUE_FILL, BLUE, w=280)
     n1 = p.node("<b>Lock</b><br>" + small("break inheritance &middot; Owners Full Control &middot; requester Read"),
                 X, 170, W, 56, stroke=BLUE)
     n2 = p.node("<b>Snapshot</b><br>" + small("Get locked item &#8594; Payload &middot; Summary"), X, 260, W, 56,
@@ -405,20 +405,20 @@ def page_flow_er02() -> Page:
     f1 = p.terminal("Failed: not your app", 1200, 438, RED_FILL, RED, w=200)
     sw = p.node("<b>Switch: RequestType</b>", X, 540, W, 40, stroke=BLUE, bold=False)
     cases = [
-        ("createAppRegistration", "team group &middot; app &middot; expose API &middot; owners &middot; enterprise app"),
-        ("createGroup", "security group with owners &amp; members"),
+        ("createAppRegistration", "team membership &middot; app &middot; wait 15 s &middot; expose API &middot; "
+                                  "enterprise app"),
         ("exposeApi", "add App ID URI &middot; scopes"),
         ("addAppRoles", "add roles &middot; queue role groups"),
         ("assignGroupsToAppRoles", "queue assignments &middot; enterprise app if missing"),
         ("createServicePrincipal", "enterprise app (fails if one exists)"),
     ]
-    xs = [315, 455, 595, 735, 875, 1015]
+    xs = [320, 490, 660, 830, 1000]
     case_ids = []
     for (name, what), cx in zip(cases, xs):
         case_ids.append(p.node(f"<b style='font-size:10px'>Do {name}</b><br>" + small(what),
-                               cx, 620, 136, 90, stroke=BLUE, font=10))
+                               cx, 620, 150, 90, stroke=BLUE, font=10))
     n2 = p.node("<b>Role assignments</b> (shared by 3 cases)<br>" + small(
-        "for each queued item: create the group if new &#8594; POST appRoleAssignedTo"), X - 40, 770, W + 80, 56,
+        "for each queued existing group &#8594; POST appRoleAssignedTo (retry 6&#215;)"), X - 40, 770, W + 80, 56,
         stroke=BLUE)
     n3 = p.node("<b>Default access?</b><br>" + small("new app, assignment required, no roles &#8594; team gets "
                                                     "Default Access"), X - 40, 860, W + 80, 56, stroke=BLUE)
@@ -437,16 +437,18 @@ def page_flow_er02() -> Page:
     p.edge(d2, sw, "yes", exit=(0.5, 1), entry=(1, 0.5), points=[(920, 560)])
     p.edge(d1, sw, "no")
     for cid, cx in zip(case_ids, xs):
-        p.edge(sw, cid, "", BLUE, exit=(0.5, 1), entry=(0.5, 0), points=[(630, 600), (cx + 68, 600)])
+        p.edge(sw, cid, "", BLUE, exit=(0.5, 1), entry=(0.5, 0), points=[(630, 600), (cx + 75, 600)])
     for cid, cx in zip(case_ids, xs):
-        p.edge(cid, n2, "", GREY, exit=(0.5, 1), entry=(0.5, 0), points=[(cx + 68, 745), (630, 745)])
+        p.edge(cid, n2, "", GREY, exit=(0.5, 1), entry=(0.5, 0), points=[(cx + 75, 745), (630, 745)])
     p.edge(n2, n3); p.edge(n3, done, "", GREEN)
     p.arrow(1000, 1050, 1000, 1090, "any action fails", RED, dashed=True, above=False)
 
     p.sticky("<b>Why the guard.</b> A site owner editing Status by hand is not the flow account, so the run "
              "stops before any Graph call.", 40, 160, 240, 100)
-    p.sticky("<b>Retries.</b> Enterprise app creation retries until the new app has replicated; role "
-             "assignment retries 4&#215; with backoff.", 1200, 620, 260, 90)
+    p.sticky("<b>Retries.</b> After creating the app ER-02 waits 15 s; Expose API, the enterprise app and each "
+             "role assignment then retry up to 6&#215;, 10 s apart.", 1200, 620, 260, 100)
+    p.sticky("<b>No groups, no owners.</b> Groups must already exist (onboarded with ER-04). The app "
+             "registration and enterprise app get no owners.", 40, 620, 240, 100)
     p.sticky("<b>Not idempotent.</b> Re-running a failed createAppRegistration creates a second app; "
              "ResultJson lists what to clean up first.", 1200, 1110, 260, 90)
     return p
@@ -481,16 +483,66 @@ def page_flow_er03() -> Page:
            ";alex@contoso.com;sam@contoso.com;</font><br>" + small("lower case, ';' at both ends, so the app "
            "can test <i>\";\" &amp; upn &amp; \";\" in TeamMemberUpns</i>"), 820, 300, 400, 90, stroke=GREY,
            fill=GREY_FILL)
-    p.sticky("<b>Onboarding an existing group:</b> add a row to EntraCatalogGroups with just Title and GroupId, "
-             "then run ER-03 manually. It fills in members, owners and appCatID.", 820, 620, 400, 74)
+    p.sticky("<b>Onboarding an existing group</b> is done by ER-04 (<i>Add existing group</i> in the app). "
+             "ER-03 then keeps that row's members and owners current every hour.", 820, 620, 400, 74)
     p.sticky("<b>Deleted group?</b> GET returns 404 and that iteration fails. Add a branch with run-after "
              "'has failed' to flag or delete the row.", 820, 760, 400, 64)
     return p
 
 
 # ---------------------------------------------------------------------------
+def page_flow_er04() -> Page:
+    p = Page("9 Flow - ER-04 Onboard group", 1500, 1180)
+    title(p, "Flowchart &mdash; ER-04 Onboard an existing group",
+          "Groups are created outside this platform. ER-04 checks one exists and the requester belongs to it, "
+          "then makes it pickable in the app. No approval, read-only in Entra.", w=1300)
+    X, W = 470, 340
+    t0 = p.terminal("Item created &middot; RequestType = onboardGroup", X + 20, 90, BLUE_FILL, BLUE, w=300)
+    n0 = p.node("<b>Status = InProgress</b><br>" + small("query = TargetDisplayName (name or Object ID, as typed)"),
+                X, 160, W, 56, stroke=BLUE)
+    d0 = p.decision("36 characters,<br>5 dash-separated parts?", X + 70, 245, w=200, h=80)
+    byid = p.node("<b>GET /groups/{id}</b>", 200, 340, 220, 44, stroke=PURPLE)
+    byname = p.node("<b>GET /groups?$filter=displayName eq '&lt;name&gt;'</b>", 860, 340, 320, 44, stroke=PURPLE)
+    f_id = p.terminal("Failed: no group with that Object ID", 170, 430, RED_FILL, RED, w=280)
+    d_n = p.decision("exactly one<br>match?", 940, 420, w=160, h=76)
+    f_nm = p.terminal("Failed: none found, or N groups share the name", 1110, 530, RED_FILL, RED, w=360)
+    n1 = p.node("<b>Requester member or owner?</b><br>" + small("POST checkMemberGroups &middot; GET owners"),
+                X, 600, W, 56, stroke=PURPLE)
+    d1 = p.decision("member<br>or owner?", X + 90, 690, w=160, h=76)
+    f1 = p.terminal("Failed: you are neither a member nor an owner", 900, 708, RED_FILL, RED, w=360)
+    d2 = p.decision("security<br>enabled?", X + 90, 800, w=160, h=76)
+    f2 = p.terminal("Failed: not a security group", 900, 818, RED_FILL, RED, w=360)
+    n2 = p.node("<b>Upsert EntraCatalogGroups</b><br>" + small("name &middot; description &middot; MemberUpns "
+                "&middot; OwnerUpns"), X, 910, W, 56, stroke=GREEN)
+    ok = p.terminal("Completed &middot; TargetObjectId = group id", X + 20, 1000, GREEN_FILL, GREEN, w=300)
+
+    p.edge(t0, n0); p.edge(n0, d0)
+    p.edge(d0, byid, "yes", exit=(0, 0.5), entry=(0.5, 0), points=[(310, 285)])
+    p.edge(d0, byname, "no", exit=(1, 0.5), entry=(0.5, 0), points=[(1020, 285)])
+    p.edge(byid, f_id, "404", RED)
+    p.edge(byname, d_n)
+    p.edge(d_n, f_nm, "no", RED, exit=(1, 0.5), entry=(0.5, 0), points=[(1290, 458)])
+    p.edge(byid, n1, "200", exit=(1, 0.5), entry=(0, 0.5), points=[(470, 362), (470, 628)])
+    p.edge(d_n, n1, "yes", exit=(0.5, 1), entry=(1, 0.5), points=[(1020, 628)])
+    p.edge(n1, d1)
+    p.edge(d1, f1, "no", RED)
+    p.edge(d1, d2, "yes")
+    p.edge(d2, f2, "no", RED)
+    p.edge(d2, n2, "yes"); p.edge(n2, ok, "", GREEN)
+
+    p.container("In the Power App (no Premium licence needed)", 40, 1060, 1420, 80, stroke=BLUE, fill=BLUE_FILL)
+    p.note("<b>Add existing group</b>: the user types a name or Object ID &#8594; Patch an onboardGroup item "
+           "&#8594; a Timer re-reads that item every 3 s (up to 60 s) &#8594; shows <i>Added</i>, or the "
+           "ErrorMessage written by ER-04. The group then appears in the Owning team and role-group pickers.",
+           60, 1085, 1380, 50, font=11, color=INK)
+    p.sticky("<b>Why membership is required.</b> Otherwise anyone could attach any group to their app's roles, "
+             "or claim a team they're not in.", 40, 600, 300, 80)
+    return p
+
+
+# ---------------------------------------------------------------------------
 def page_lifecycle() -> Page:
-    p = Page("9 Request lifecycle", 1500, 760)
+    p = Page("10 Request lifecycle", 1500, 760)
     title(p, "Request lifecycle &mdash; EntraRequests.Status",
           "Transitions name who makes them. Only the flow account moves a request past Submitted.")
     start = p.dot(40, 228)
@@ -513,10 +565,13 @@ def page_lifecycle() -> Page:
     p.edge(pe, rj, "team rejects<br>or self-approves", RED, exit=(0.5, 1), entry=(0.75, 0))
     p.edge(fa, ap, "retry: flow account sets Approved again", ORANGE, dashed=True,
            exit=(0.5, 1), entry=(0.5, 1), points=[(1365, 520), (915, 520)])
+    p.edge(sub, ip, "onboardGroup: ER-04, no approvals", BLUE, dashed=True,
+           exit=(0.5, 0), entry=(0.5, 0), points=[(185, 150), (1145, 150)])
     p.table("Who writes Status", [
         "Requester (Power App) .... Submitted",
         "ER-01 (flow account) ..... PendingManagerApproval, PendingEntraApproval, Approved, Rejected",
         "ER-02 (flow account) ..... InProgress, Completed, Failed",
+        "ER-04 (flow account) ..... InProgress, Completed, Failed (onboardGroup only)",
         "Site owners .............. can edit, but ER-02 ignores edits not made by the flow account",
     ], 40, 580, 760, GREY, mono=True)
     p.sticky("<b>Versioning is the audit trail.</b> EntraRequests keeps 500 versions, so every status change, "
@@ -526,7 +581,7 @@ def page_lifecycle() -> Page:
 
 # ---------------------------------------------------------------------------
 def page_data() -> Page:
-    p = Page("10 Data model", 1700, 1040)
+    p = Page("11 Data model", 1700, 1040)
     title(p, "Data model &mdash; SharePoint lists, payload and Entra stamps",
           "Internal column names shown. Bold = written once and never changed by users.", w=1200)
     p.container("SharePoint site " + SITE, 40, 100, 1040, 900, stroke=SP_TEAL, fill="#F2FAFA")
@@ -551,7 +606,7 @@ def page_data() -> Page:
         "TeamMemberUpns &middot; OwnerUpns (;upn;upn;)",
         "LastSynced",
     ], 60, 560, 480, SP_TEAL)
-    grp = p.table("EntraCatalogGroups &middot; groups users can pick", [
+    grp = p.table("EntraCatalogGroups &middot; written by ER-04 / ER-03", [
         "Title &middot; <b>GroupId</b> &middot; AppCatId (from description)",
         "Description",
         "OwnerUpns &middot; MemberUpns (;upn;upn;)",
@@ -572,57 +627,61 @@ def page_data() -> Page:
 
     p.container("PayloadJson &middot; createAppRegistration", 1110, 100, 560, 440, stroke=BLUE, fill=BLUE_FILL)
     p.table("payload", [
-        "displayName &middot; description &middot; signInAudience",
-        "owningGroup { mode: new|existing, id, displayName, ownerIds }",
+        "displayName = APPCAT-ENV-BORSHORT-freeText",
+        "appEnv (P Q D L U F T S) &middot; borShortName &middot; nameText",
+        "description &middot; signInAudience",
+        "owningGroup { mode: existing, id, displayName }",
         "redirectUrisWeb &middot; redirectUrisSpa (';' separated)",
         "exposeApi { enabled, identifierUriTemplate, scopes[] }",
         "optionalClaimsIdToken &middot; optionalClaimsAccessToken &middot; groupMembershipClaims",
         "appRoles[] { value, displayName, description, allowedMemberTypes,",
-        "    assignGroups[] { mode, id, displayName, ownerIds } }",
-        "createServicePrincipal &middot; appRoleAssignmentRequired",
-        "additionalOwnerIds &middot; tags ('key=value;...')",
+        "    assignGroups[] { mode: existing, id, displayName } }",
+        "createServicePrincipal &middot; appRoleAssignmentRequired &middot; tags",
     ], 1130, 150, 520, BLUE, mono=True)
-    p.note(small("Other types: createGroup, exposeApi, addAppRoles, assignGroupsToAppRoles, createServicePrincipal "
-                 "(see docs/03 &sect;3.5). No field identifies the requester; ER-02 uses Created By."),
-           1130, 470, 520, 50)
+    p.note(small("Other types: exposeApi, addAppRoles, assignGroupsToAppRoles, createServicePrincipal, "
+                 "onboardGroup (see docs/03 &sect;3.5). No owners field. No field identifies the requester; "
+                 "the flows use Created By."), 1130, 475, 520, 50)
 
     p.container("Stamped on every object Entra creates", 1110, 570, 560, 430, stroke=PURPLE, fill=PURPLE_FILL)
     p.table("app registration &middot; tags", [
-        "appCatID:&lt;id&gt; &middot; team:&lt;group id&gt; &middot; teamName:&lt;name&gt;",
+        "appCatID:&lt;id&gt; &middot; appEnv:&lt;P|Q|D|L|U|F|T|S&gt; &middot; borShortName:&lt;x&gt;",
+        "team:&lt;group id&gt; &middot; teamName:&lt;name&gt;",
         "createdBy:&lt;upn&gt; &middot; createdById:&lt;oid&gt; &middot; createdTimestamp",
         "lastUpdatedBy &middot; lastUpdatedTimestamp &middot; requestId:REQ-...",
         "managedBy:&lt;ManagedByTag&gt; &middot; optional key:value tags",
     ], 1130, 615, 520, PURPLE, mono=True)
     p.table("app registration &middot; notes", [
         "appCatID=...; requestId=...; createdBy=...; managedBy=...",
-    ], 1130, 785, 520, PURPLE, mono=True)
-    p.table("group &middot; end of description", [
-        "[appCatID=...; requestId=...; createdBy=...; managedBy=...]",
-    ], 1130, 865, 520, PURPLE, mono=True)
-    p.note(small("Enterprise apps get the same tags plus WindowsAzureActiveDirectoryIntegratedApp. "
-                 "ER-03 finds managed apps by the managedBy tag."), 1130, 940, 520, 40, color=PURPLE)
+    ], 1130, 807, 520, PURPLE, mono=True)
+    p.table("enterprise app (service principal)", [
+        "appId = the new app &middot; accountEnabled = true",
+        "appRoleAssignmentRequired = from the request",
+        "tags = app tags + WindowsAzureActiveDirectoryIntegratedApp",
+    ], 1130, 870, 520, PURPLE, mono=True)
+    p.note(small("No owners on either object. ER-03 finds managed apps by the managedBy tag."),
+           1130, 966, 520, 26, color=PURPLE)
     return p
 
 
 # ---------------------------------------------------------------------------
 def page_security() -> Page:
-    p = Page("11 Security and permissions", 1700, 920)
+    p = Page("12 Security and permissions", 1700, 920)
     title(p, "Security &mdash; who can do what, and the guards in the flows",
           "Least privilege for people; one tightly held app identity for Graph.", w=1200)
     p.table("People and their access", [
         "<b>Requester</b>: SharePoint Member &middot; uses the app &middot; no Entra role",
         "<b>Manager</b>: answers approvals only (Outlook / Teams)",
         "<b>Entra ID team</b>: second approval &middot; site Owner &middot; flow co-owners",
-        "<b>Flow account</b>: owns the flows &middot; site Owner &middot; Power Automate Premium &middot; Entra read-only",
+        "<b>Flow account</b>: owns ER-01 to ER-04 &middot; site Owner &middot; Power Automate Premium &middot; Entra read-only",
         "<b>Entra admin</b>: one-time admin consent for the platform app",
         "<b>Power Platform admin</b>: environment, DLP policy, Dataverse for Approvals",
     ], 40, 100, 780, GREY)
     p.table("Platform app &middot; Microsoft Graph application permissions", [
-        "<b>Application.ReadWrite.All</b>: app registrations, enterprise apps, URIs, scopes, roles, owners, tags",
-        "<b>AppRoleAssignment.ReadWrite.All</b>: assign groups to app roles",
-        "<b>Group.ReadWrite.All</b>: create security groups with owners and members",
-        "<b>Directory.Read.All</b>: checkMemberGroups, transitive members for the catalog",
-        "<b>User.Read.All</b>: requester object id, owners and members",
+        "<b>Application.ReadWrite.All</b>: app registrations, enterprise apps, URIs, scopes, roles, tags",
+        "<b>AppRoleAssignment.ReadWrite.All</b>: assign existing groups to app roles",
+        "<b>Directory.Read.All</b>: find groups by name or id, checkMemberGroups, members and owners",
+        "<b>User.Read.All</b>: requester object id",
+        "No group write permission: groups are created outside this platform",
         "Credential: <b>certificate only</b> (no client secret) &middot; admin consent required",
     ], 860, 100, 800, PURPLE)
     p.table("SharePoint permissions", [
@@ -649,10 +708,10 @@ def page_security() -> Page:
          "as Reject."),
         ("pauto", "&#9315; Editor check", "ER-02 runs only if the last editor is the flow account and both "
          "decisions are Approved."),
-        ("groups", "&#9316; Ownership", "Changes to an existing app need team membership or ownership, and a "
-         "matching appCatID."),
-        ("entra", "&#9317; Stamping", "Every object carries appCatID, requestId, createdBy, managedBy for "
-         "audit and sync."),
+        ("groups", "&#9316; Membership", "Owning team and onboarded groups: requester must be a member. App "
+         "changes also need a matching appCatID."),
+        ("entra", "&#9317; Naming + stamping", "Name APPCAT-ENV-BOR-text is enforced; apps carry appCatID, "
+         "appEnv, requestId, managedBy."),
     ]
     for i, (key, head, body) in enumerate(guards):
         cx = 180 + i * 260
@@ -664,7 +723,7 @@ def page_security() -> Page:
         p.free_edge(a + 40, 618, a + 260 - 40, 618, "", GREY,
                     style_extra="edgeStyle=orthogonalEdgeStyle;strokeWidth=2;endArrow=blockThin;")
 
-    p.sticky("<b>The one real risk.</b> Whoever can edit ER-02 or ER-03 can make any Graph call the platform "
+    p.sticky("<b>The one real risk.</b> Whoever can edit ER-02, ER-03 or ER-04 can make any Graph call the platform "
              "app is allowed to make. Treat flow co-ownership like an Entra admin role.", 40, 810, 560, 70)
     p.sticky("<b>Rotate the certificate yearly.</b> Upload the new one to the app registration, update the "
              "connection, then remove the old one. If other automations share the app, give this solution its "
@@ -676,13 +735,13 @@ def page_security() -> Page:
 
 # ---------------------------------------------------------------------------
 def page_deploy() -> Page:
-    p = Page("12 Deployment and build order", 1700, 900)
+    p = Page("13 Deployment and build order", 1700, 900)
     title(p, "Deployment &mdash; what exists, and the order to build it",
           "Three places to configure: Entra ID, the SharePoint site, and the Power Platform environment.", w=1200)
 
     p.container("Microsoft Entra ID tenant", 40, 100, 520, 560, stroke=PURPLE, fill=PURPLE_FILL)
     p.icon("appreg", "<b>Platform app registration</b><br>" + small("18723-Q-M365-<br>Automation-AppProvisioning<br>"
-           "certificate &middot; 5 Graph permissions"), 160, 160)
+           "certificate &middot; 4 Graph permissions"), 160, 160)
     p.icon("user", "<b>Flow account</b><br>" + small("member user<br>M365 + Power Automate Premium"), 160, 340)
     p.icon("users", "<b>Requesters</b><br>" + small("Manager attribute set<br>(for Get manager)"), 160, 500)
     p.node("<b>Copy for later</b><br><font style='font-family:monospace;font-size:10px'>"
@@ -700,17 +759,17 @@ def page_deploy() -> Page:
         ("EntraSettings", "owners only &middot; item ID 1"),
     ]):
         sp_list(p, f"<b>{name}</b><br>" + small(note), 670, 160 + i * 120)
-    p.node("<b>sharepoint/provision.ps1</b><br>" + small("creates all 4 lists, columns, indexes, permissions and "
-           "the settings item (PnP PowerShell)"), 840, 160, 220, 90, stroke=SP_TEAL)
+    p.node("<b>Flow SP-00</b> or <b>provision.ps1</b><br>" + small("creates all 4 lists, columns, indexes and "
+           "the settings item (no script needed with SP-00)"), 840, 160, 220, 90, stroke=SP_TEAL)
     p.node("<b>Site groups</b><br>" + small("Owners: Entra ID team + flow account<br>Members: requesters"),
            840, 300, 220, 70, stroke=SP_TEAL)
 
     p.container("Power Platform environment &middot; Entra Self-Service (solution)", 1120, 100, 540, 560,
                 stroke=BLUE, fill=BLUE_FILL)
-    p.icon("papps", "<b>Entra Self-Service</b><br>" + small("paste 5 pa.yaml screens &middot; publish &middot; "
-           "share as User").replace(" &middot; publish", "<br>publish"), 1220, 160)
-    p.icon("pauto", "<b>ER-01 &middot; ER-02 &middot; ER-03</b><br>" + small("built from docs/04 &middot; "
-           "owner = flow account").replace(" &middot; owner", "<br>owner"), 1220, 330)
+    p.icon("papps", "<b>Entra Self-Service</b><br>" + small("import EntraSelfService.msapp<br>"
+           "publish &middot; share as User"), 1220, 160)
+    p.icon("pauto", "<b>SP-00 &middot; ER-01 to ER-04</b><br>" + small("solution EntraSelfService 1.2<br>"
+           "owner = flow account"), 1220, 330)
     p.icon("dataverse", "<b>Dataverse</b><br>" + small("required by Approvals"), 1220, 490)
     p.table("Connections (flow account)", [
         "SharePoint &middot; Office 365 Users",
@@ -722,15 +781,14 @@ def page_deploy() -> Page:
            "Power Automate Premium"), 1380, 330, 260, 70, stroke=BLUE)
 
     p.sticky("<b>Build order</b><br>"
-             "&#9312; <b>Entra admin</b>: app registration, upload the .crt, add 5 permissions, grant admin consent "
+             "&#9312; <b>Entra admin</b>: app registration, upload the .crt, add 4 permissions, grant admin consent "
              "(docs/01)<br>"
-             "&#9313; <b>Site owner</b>: run provision.ps1, or create the lists by hand (docs/02)<br>"
-             "&#9314; Fill the EntraSettings item: tenant, client ID, ServiceAccountUpn, approvers, fallback<br>"
-             "&#9315; <b>Power Apps</b>: add data sources, paste formulas and screens, publish (docs/03)<br>"
-             "&#9316; <b>Power Automate</b>, as the flow account: create connections, build ER-01, ER-02, ER-03 "
-             "(docs/04)<br>"
-             "&#9317; Copy the app's web link into EntraSettings.PowerAppUrl<br>"
-             "&#9318; Test: one request per type, plus a rejection and a self-approval (docs/05)",
+             "&#9313; <b>Flow account</b>: import the solution zip, create the 5 connections, set the site URL (docs/09)<br>"
+             "&#9314; Run SP-00 (or provision.ps1) to create the lists; fill the EntraSettings item (docs/02)<br>"
+             "&#9315; <b>Power Apps</b>: import the .msapp, add the data sources, publish, share (docs/03)<br>"
+             "&#9316; Copy the app's web link into EntraSettings.PowerAppUrl<br>"
+             "&#9317; Turn on ER-01, ER-03, ER-04; onboard the first groups with <i>Add existing group</i><br>"
+             "&#9318; Turn on ER-02 and test one request per type (docs/06 to docs/10)",
              40, 690, 820, 170)
     p.sticky("<b>Test the Graph connection first.</b> In a scratch flow: Invoke an HTTP request "
              "<code>GET /v1.0/organization</code>. A 403 means consent is missing; AADSTS700027 means the "
@@ -742,7 +800,7 @@ def page_deploy() -> Page:
 
 # ---------------------------------------------------------------------------
 def page_compare() -> Page:
-    p = Page("13 Option - Graph connection", 1700, 900)
+    p = Page("14 Option - Graph connection", 1700, 900)
     title(p, "Option &mdash; how ER-02 / ER-03 authenticate to Graph",
           "Both use the same app registration and certificate. They differ in where the certificate lives.",
           w=1200)
@@ -763,7 +821,7 @@ def page_compare() -> Page:
     ], 40, 280, 520, GREEN)
     p.table("Identical either way", [
         "App registration " + APP_REG,
-        "Same 5 Graph application permissions + admin consent",
+        "Same 4 Graph application permissions + admin consent",
         "Same certificate (.pfx for Power Automate, .crt in Entra)",
         "Same Graph requests and JSON bodies (powerautomate/actions)",
         "Same Premium licence for the flow owner",
@@ -776,7 +834,7 @@ def page_compare() -> Page:
         "Certificate: Key Vault secrets (base64 .pfx + password)",
         "Each flow: Get PFX + Get PFX password (secure outputs) first",
         "Extra: Azure subscription, Key Vault, Key Vault Secrets User role",
-        "Authentication set on each of the 14 HTTP actions",
+        "Authentication set on every HTTP action",
         "Limit: no connector throttle to worry about",
         "Fails as: 401 at run time if the secret or password is wrong",
     ], 1140, 280, 520, BLUE)
@@ -791,6 +849,6 @@ if __name__ == "__main__":
     out = Path(__file__).resolve().parent / "entra-powerplatform.drawio"
     Doc(out).add(
         page_glance(), page_context(), page_identity(), page_seq_approvals(), page_seq_execute(),
-        page_flow_er01(), page_flow_er02(), page_flow_er03(), page_lifecycle(), page_data(),
+        page_flow_er01(), page_flow_er02(), page_flow_er03(), page_flow_er04(), page_lifecycle(), page_data(),
         page_security(), page_deploy(), page_compare(),
     ).write()

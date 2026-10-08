@@ -21,11 +21,12 @@ az login --tenant <tenant> --allow-no-subscriptions
 
    | Permission | Why |
    |---|---|
-   | `Application.ReadWrite.All` | create app registrations and service principals; App ID URI, scopes, app roles, owners, tags |
+   | `Application.ReadWrite.All` | create app registrations and service principals; App ID URI, scopes, app roles, tags |
    | `AppRoleAssignment.ReadWrite.All` | assign groups to app roles on enterprise apps |
-   | `Group.ReadWrite.All` | create security groups with owners and members; appCatID in the description |
-   | `Directory.Read.All` | `checkMemberGroups` (is the requester in the owning team?), group members for the catalog |
-   | `User.Read.All` | the requester's object ID; owners and members |
+   | `Directory.Read.All` | find groups by name or Object ID, `checkMemberGroups` (is the requester in the group?), group members and owners for the catalog |
+   | `User.Read.All` | the requester's object ID |
+
+   Since version 1.2 the platform creates no groups, so `Group.ReadWrite.All` is **not needed**. If you granted it for an earlier version, remove it (API permissions → `…` → Remove permission) to keep the app least-privileged.
 
    → **Grant admin consent for <tenant>** (Global Administrator or Privileged Role Administrator).
    No SharePoint permission is needed: the flows reach SharePoint through the SharePoint connector, as the service account.

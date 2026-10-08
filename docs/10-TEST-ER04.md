@@ -58,7 +58,7 @@ Adding a group that already has a catalog row (e.g. added by someone else) **upd
 |---|---|
 | Stays **Submitted** | ER-04 is off, or its trigger condition doesn't match (RequestType value must be exactly `onboardGroup`) |
 | Request went to the manager for approval | ER-01's trigger condition wasn't updated (10.1) |
-| **Failed** with `HTTP_…: Insufficient privileges` | Graph connection or admin consent (`Directory.Read.All`, `User.Read.All`, `Group.ReadWrite.All` cover these reads) |
+| **Failed** with `HTTP_…: Insufficient privileges` | Graph connection or admin consent (`Directory.Read.All` and `User.Read.All` cover these reads) |
 | Completed, but the group isn't in Owning team | You are owner only (10.3), or the app hasn't refreshed: reopen the New app screen |
 
 ## 10.7 Clean up

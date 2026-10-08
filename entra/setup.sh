@@ -30,13 +30,13 @@ OBJ_ID=$(az ad app show --id "$APP_ID" --query id -o tsv)
 SP_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null || az ad sp create --id "$APP_ID" --query id -o tsv)
 GRAPH_SP=$(az ad sp show --id "$GRAPH_APP_ID" --query id -o tsv)
 
-# Permission -> why it is needed (Power Automate flows ER-02 execute and ER-03 sync)
+# Permission -> why it is needed (flows ER-02 execute, ER-03 sync, ER-04 onboard group).
+# No group write: since 1.2 groups are created outside this platform.
 PERMS=(
-  "Application.ReadWrite.All:create app registrations + service principals; App ID URI, scopes, app roles, owners, tags"
-  "AppRoleAssignment.ReadWrite.All:assign groups to app roles on enterprise apps"
-  "Group.ReadWrite.All:create security groups with owners/members; stamp appCatID in the description"
-  "Directory.Read.All:checkMemberGroups (is the requester in the owning team?), group members for the catalog"
-  "User.Read.All:resolve the requester's object id; owners and members by UPN"
+  "Application.ReadWrite.All:create app registrations + service principals; App ID URI, scopes, app roles, tags"
+  "AppRoleAssignment.ReadWrite.All:assign existing groups to app roles on enterprise apps"
+  "Directory.Read.All:find groups by name or id, checkMemberGroups, group members and owners for the catalog"
+  "User.Read.All:resolve the requester's object id"
 )
 access=""
 for e in "${PERMS[@]}"; do
@@ -45,7 +45,7 @@ for e in "${PERMS[@]}"; do
   access+="{\"id\":\"$id\",\"type\":\"Role\"},"
 done
 az rest --method PATCH --uri "$GRAPH/applications/$OBJ_ID" --headers 'Content-Type=application/json' --body "{
-  \"notes\": \"Graph identity for the Entra self-service Power Automate flows (ER-02 execute, ER-03 catalog sync). Certificate credential only.\",
+  \"notes\": \"Graph identity for the Entra self-service Power Automate flows (ER-02 execute, ER-03 catalog sync, ER-04 onboard group). Certificate credential only.\",
   \"requiredResourceAccess\": [{\"resourceAppId\":\"$GRAPH_APP_ID\",\"resourceAccess\":[${access%,}]}]
 }" -o none
 

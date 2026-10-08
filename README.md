@@ -2,6 +2,8 @@
 
 Entra ID self-service built only from **Power Apps + SharePoint + Power Automate + one Entra app registration**. No Azure resources, no code to host.
 
+**Start here:** [docs/00-OVERVIEW.md](docs/00-OVERVIEW.md): the problem, architecture with diagrams, flows, constraints, cost saving and the future ServiceNow extension.
+
 Sibling of `../entra-portal-next` (Next.js) and `../entra-portal-lite` (Functions). It uses the same request types, the same payload shapes and the same tag vocabulary (`appCatID`, `team`, `createdBy`, `requestId`, `managedBy` …), so objects look identical whichever tool created them.
 
 ```
@@ -14,7 +16,8 @@ Sibling of `../entra-portal-next` (Next.js) and `../entra-portal-lite` (Function
    ▼                                                                                 │
  ER-02 Execute ─ HTTP (premium) as app "entra-pp-graph" (certificate) ─▶ Microsoft Graph
    checks: approvals + "set by the approval flow" + requester owns the target app     │
-   creates app registration / App ID URI / scopes / roles / SP / groups / assignments │
+   creates app registration / App ID URI / scopes / roles / SP / role assignments     │
+   (groups are created elsewhere and onboarded by ER-04; no owners are added)         │
    writes ResultJson, Status = Completed | Failed                                     │
  ER-03 Catalog sync (hourly) ─ HTTP (premium) ─▶ EntraCatalogApps / EntraCatalogGroups ┘
    (what each user's groups own → the app's pickers, without premium in the app)

@@ -17,7 +17,7 @@
         <mxCell id="c4" value="&lt;b style='font-size:14px'&gt;Ask&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=13;fontColor=#323130;spacing=2;" vertex="1" parent="1">
           <mxGeometry x="60" y="226" width="220" height="24" as="geometry"/>
         </mxCell>
-        <mxCell id="c5" value="The requester fills in a wizard in the Power App: app name, appCatID, owning team, roles, groups." style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
+        <mxCell id="c5" value="The requester fills in a wizard: appCatID, environment, BoR short name + name, an existing owning team, roles." style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
           <mxGeometry x="55" y="254" width="230" height="90" as="geometry"/>
         </mxCell>
         <mxCell id="c6" value="STEP 2" style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=10;fontColor=#0078D4;spacing=2;" vertex="1" parent="1">
@@ -65,7 +65,7 @@
         <mxCell id="c20" value="&lt;b style='font-size:14px'&gt;Stamp&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=13;fontColor=#323130;spacing=2;" vertex="1" parent="1">
           <mxGeometry x="1100" y="226" width="220" height="24" as="geometry"/>
         </mxCell>
-        <mxCell id="c21" value="Every app, enterprise app and group carries the appCatID, request ID and owning team." style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
+        <mxCell id="c21" value="Every app and enterprise app carries the appCatID, environment, request ID and owning team." style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
           <mxGeometry x="1095" y="254" width="230" height="90" as="geometry"/>
         </mxCell>
         <mxCell id="e22" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;strokeWidth=2;endArrow=blockThin;" edge="1" parent="1">
@@ -92,10 +92,10 @@
             <mxPoint x="1164" y="176" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c26" value="&lt;b&gt;Where things live&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;Power Apps canvas app &amp;middot; SharePoint site /teams/m365automationqa (4 lists) &amp;middot; 3 Power Automate flows &amp;middot; 1 Entra app registration with a certificate&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3F2F1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c26" value="&lt;b&gt;Where things live&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;Power Apps canvas app &amp;middot; SharePoint site /teams/m365automationqa (4 lists) &amp;middot; 4 Power Automate flows &amp;middot; 1 Entra app registration with a certificate&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3F2F1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="60" y="380" width="600" height="60" as="geometry"/>
         </mxCell>
-        <mxCell id="c27" value="&lt;b&gt;Licences&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;App and ER-01 use Standard connectors (covered by Microsoft 365). ER-02 and ER-03 use a Premium connector: one Power Automate Premium licence for the flow owner.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3F2F1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c27" value="&lt;b&gt;Licences&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;App and ER-01 use Standard connectors (covered by Microsoft 365). ER-02, ER-03 and ER-04 use a Premium connector: one Power Automate Premium licence for the flow owner.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3F2F1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="700" y="380" width="640" height="60" as="geometry"/>
         </mxCell>
         <mxCell id="c28" value="&lt;b&gt;Nobody gets Entra admin rights.&lt;/b&gt; Requesters, managers and even the flow owner can be read-only in Entra. Only the platform app registration holds Graph permissions, and only the flows can use it." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
@@ -175,40 +175,43 @@
         <mxCell id="c21" value="HTTP with Microsoft&lt;br&gt;Entra ID (preauthorized)&lt;br&gt;&lt;font style='font-size:10px'&gt;client certificate&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/integration/Logic_Apps_Custom_Connector.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1042" y="410" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c22" value="&lt;font style='font-size:10px'&gt;Office 365 Users (Get manager) &amp;middot; Outlook (mail) &amp;middot; SharePoint &amp;mdash; all as the flow account&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#605E5C;spacing=2;" vertex="1" parent="1">
-          <mxGeometry x="805" y="760" width="340" height="40" as="geometry"/>
+        <mxCell id="c22" value="&lt;b&gt;ER-04 Onboard group&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;Premium &amp;middot; no approval&lt;br&gt;trigger: onboardGroup item&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="850" y="650" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c23" value="Microsoft Entra ID &amp;middot; single tenant" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#F1ECF7;strokeColor=#5C2D91;strokeWidth=1.5;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontStyle=1;fontSize=13;fontColor=#323130;container=1;collapsible=0;" vertex="1" parent="1">
+        <mxCell id="c23" value="&lt;font style='font-size:10px'&gt;Office 365 Users (Get manager) &amp;middot; Outlook (mail) &amp;middot; SharePoint &amp;mdash; all as the flow account&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#605E5C;spacing=2;" vertex="1" parent="1">
+          <mxGeometry x="805" y="790" width="340" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="c24" value="Microsoft Entra ID &amp;middot; single tenant" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#F1ECF7;strokeColor=#5C2D91;strokeWidth=1.5;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontStyle=1;fontSize=13;fontColor=#323130;container=1;collapsible=0;" vertex="1" parent="1">
           <mxGeometry x="1220" y="110" width="460" height="760" as="geometry"/>
         </mxCell>
-        <mxCell id="c24" value="&lt;b&gt;Microsoft Graph&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;graph.microsoft.com/v1.0&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c25" value="&lt;b&gt;Microsoft Graph&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;graph.microsoft.com/v1.0&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1250" y="410" width="180" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c25" value="&lt;b&gt;Platform app registration&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;18723-Q-M365-Automation-AppProvisioning&lt;br&gt;5 Graph application permissions&lt;br&gt;certificate credential&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/App_Registrations.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c26" value="&lt;b&gt;Platform app registration&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;18723-Q-M365-Automation-AppProvisioning&lt;br&gt;4 Graph application permissions&lt;br&gt;certificate credential&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/App_Registrations.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1312" y="600" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c26" value="App registrations&lt;br&gt;&lt;font style='font-size:10px'&gt;App ID URI &amp;middot; scopes &amp;middot; roles&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/App_Registrations.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c27" value="App registrations&lt;br&gt;&lt;font style='font-size:10px'&gt;App ID URI &amp;middot; scopes &amp;middot; roles&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/App_Registrations.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1560" y="170" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c27" value="Enterprise apps&lt;br&gt;&lt;font style='font-size:10px'&gt;assignment required&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/Enterprise_Applications.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c28" value="Enterprise apps&lt;br&gt;&lt;font style='font-size:10px'&gt;from the new appId&lt;br&gt;assignment required: per request&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/Enterprise_Applications.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1560" y="330" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c28" value="Security groups&lt;br&gt;&lt;font style='font-size:10px'&gt;team + role groups&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/Groups.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c29" value="Security groups&lt;br&gt;&lt;font style='font-size:10px'&gt;existing only &amp;middot; read, never created&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/Groups.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1560" y="490" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c29" value="App role&lt;br&gt;assignments" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/Custom_Azure_AD_Roles.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c30" value="App role&lt;br&gt;assignments" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/Custom_Azure_AD_Roles.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1560" y="650" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="e30" value="uses the app" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e31" value="uses the app" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="168" y="215" as="sourcePoint"/>
             <mxPoint x="357" y="215" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e31" value="Patch: new request" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="c9" target="c12">
+        <mxCell id="e32" value="Patch: new request" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="c9" target="c12">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e32" value="reads" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e33" value="reads" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="605" y="373" as="sourcePoint"/>
             <mxPoint x="470" y="345" as="targetPoint"/>
@@ -218,7 +221,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e33" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e34" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="605" y="523" as="sourcePoint"/>
             <mxPoint x="530" y="385" as="targetPoint"/>
@@ -227,19 +230,19 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e34" value="&amp;#8594; item created &amp;nbsp; &amp;#8592; lock &amp;middot; status" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e35" value="&amp;#8594; item created &amp;nbsp; &amp;#8592; lock &amp;middot; status" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="655" y="206" as="sourcePoint"/>
             <mxPoint x="850" y="206" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e35" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e36" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="850" y="222" as="sourcePoint"/>
             <mxPoint x="655" y="222" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e36" value="Status = Approved" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;startArrow=blockThin;startFill=1;" edge="1" parent="1">
+        <mxCell id="e37" value="Status = Approved" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;startArrow=blockThin;startFill=1;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="655" y="240" as="sourcePoint"/>
             <mxPoint x="850" y="368" as="targetPoint"/>
@@ -249,22 +252,32 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e37" value="catalog new app / group" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=top;" edge="1" parent="1">
+        <mxCell id="e38" value="catalog new app / group" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=top;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="850" y="392" as="sourcePoint"/>
             <mxPoint x="655" y="392" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e38" value="upsert both catalog lists" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e39" value="upsert both catalog lists" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="850" y="528" as="sourcePoint"/>
             <mxPoint x="655" y="528" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e39" value="start and wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="c17" target="c20">
+        <mxCell id="e40" value="onboard an existing group" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="850" y="668" as="sourcePoint"/>
+            <mxPoint x="655" y="540" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="770" y="668"/>
+              <mxPoint x="770" y="540"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e41" value="start and wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="c17" target="c20">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e40" value="approval: manager first, then the Entra ID team" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e42" value="approval: manager first, then the Entra ID team" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="1095" y="227" as="sourcePoint"/>
             <mxPoint x="168" y="408" as="targetPoint"/>
@@ -276,7 +289,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e41" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e43" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="205" y="760" as="sourcePoint"/>
             <mxPoint x="168" y="568" as="targetPoint"/>
@@ -285,7 +298,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e42" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e44" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="906" y="378" as="sourcePoint"/>
             <mxPoint x="1042" y="430" as="targetPoint"/>
@@ -295,7 +308,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e43" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e45" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="906" y="528" as="sourcePoint"/>
             <mxPoint x="1042" y="446" as="targetPoint"/>
@@ -305,10 +318,20 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e44" value="token + Graph call" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="c21" target="c24">
+        <mxCell id="e46" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="906" y="678" as="sourcePoint"/>
+            <mxPoint x="1042" y="452" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="1000" y="678"/>
+              <mxPoint x="1000" y="452"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e47" value="token + Graph call" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="c21" target="c25">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e45" value="signs in as" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e48" value="signs in as" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="1098" y="452" as="sourcePoint"/>
             <mxPoint x="1312" y="628" as="targetPoint"/>
@@ -318,7 +341,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e46" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e49" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="1430" y="438" as="sourcePoint"/>
             <mxPoint x="1560" y="198" as="targetPoint"/>
@@ -328,7 +351,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e47" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e50" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="1430" y="438" as="sourcePoint"/>
             <mxPoint x="1560" y="358" as="targetPoint"/>
@@ -338,7 +361,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e48" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e51" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="1430" y="438" as="sourcePoint"/>
             <mxPoint x="1560" y="518" as="targetPoint"/>
@@ -348,7 +371,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e49" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e52" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="1430" y="438" as="sourcePoint"/>
             <mxPoint x="1560" y="678" as="targetPoint"/>
@@ -358,10 +381,10 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c50" value="&lt;font style='font-size:10px'&gt;every object stamped&lt;br&gt;&lt;b&gt;appCatID &amp;middot; requestId &amp;middot; managedBy&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#5C2D91;spacing=2;" vertex="1" parent="1">
+        <mxCell id="c53" value="&lt;font style='font-size:10px'&gt;apps and enterprise apps stamped&lt;br&gt;&lt;b&gt;appCatID &amp;middot; appEnv &amp;middot; requestId &amp;middot; managedBy&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#5C2D91;spacing=2;" vertex="1" parent="1">
           <mxGeometry x="1480" y="760" width="190" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="e51" value="one-time: create, upload certificate, grant admin consent" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e54" value="one-time: create, upload certificate, grant admin consent" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="168" y="748" as="sourcePoint"/>
             <mxPoint x="1340" y="745" as="targetPoint"/>
@@ -372,10 +395,10 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c52" value="&lt;b&gt;The Graph permissions belong to the app, not to people.&lt;/b&gt; The flow owner can be read-only in Entra; ER-02 and ER-03 call Graph through a connection that signs in as the platform app with its certificate." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+        <mxCell id="c55" value="&lt;b&gt;The Graph permissions belong to the app, not to people.&lt;/b&gt; The flow owner can be read-only in Entra; ER-02, ER-03 and ER-04 call Graph through a connection that signs in as the platform app with its certificate." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="970" width="620" height="70" as="geometry"/>
         </mxCell>
-        <mxCell id="c53" value="&lt;b&gt;Anyone who can edit ER-02 or ER-03 can use that connection.&lt;/b&gt; Keep the flows in their own environment, with only the Entra ID team as co-owners." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+        <mxCell id="c56" value="&lt;b&gt;Anyone who can edit ER-02, ER-03 or ER-04 can use that connection.&lt;/b&gt; Keep the flows in their own environment, with only the Entra ID team as co-owners." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
           <mxGeometry x="690" y="970" width="560" height="70" as="geometry"/>
         </mxCell>
       </root>
@@ -426,10 +449,10 @@
         <mxCell id="c11" value="&amp;#9313; The flow owner (connections created by the flow account)" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontStyle=1;fontSize=13;fontColor=#323130;container=1;collapsible=0;" vertex="1" parent="1">
           <mxGeometry x="40" y="330" width="1520" height="200" as="geometry"/>
         </mxCell>
-        <mxCell id="c12" value="Flow account&lt;br&gt;&lt;font style='font-size:10px'&gt;owns ER-01/02/03&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/Users.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c12" value="Flow account&lt;br&gt;&lt;font style='font-size:10px'&gt;owns ER-01 to ER-04&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/Users.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="100" y="400" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c13" value="ER-01 / ER-02 / ER-03" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c13" value="ER-01 to ER-04" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="380" y="400" width="56" height="56" as="geometry"/>
         </mxCell>
         <mxCell id="c14" value="SharePoint&lt;br&gt;&lt;font style='font-size:10px'&gt;site owner&lt;/font&gt;" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;fillColor=#03787C;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.list_library;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
@@ -454,13 +477,13 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c19" value="&lt;b&gt;What the flow account needs&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;Site owner on the SharePoint site (to break inheritance). Power Automate Premium for ER-02/ER-03. &lt;b&gt;No Entra role&lt;/b&gt;; read-only is fine.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c19" value="&lt;b&gt;What the flow account needs&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;Site owner on the SharePoint site (to break inheritance). Power Automate Premium for ER-02/03/04. &lt;b&gt;No Entra role&lt;/b&gt;; read-only is fine.&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1180" y="380" width="350" height="110" as="geometry"/>
         </mxCell>
-        <mxCell id="c20" value="&amp;#9314; The platform app (application permissions, used only by ER-02 / ER-03)" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#F1ECF7;strokeColor=#5C2D91;strokeWidth=1.5;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontStyle=1;fontSize=13;fontColor=#323130;container=1;collapsible=0;" vertex="1" parent="1">
+        <mxCell id="c20" value="&amp;#9314; The platform app (application permissions, used only by ER-02 / ER-03 / ER-04)" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#F1ECF7;strokeColor=#5C2D91;strokeWidth=1.5;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontStyle=1;fontSize=13;fontColor=#323130;container=1;collapsible=0;" vertex="1" parent="1">
           <mxGeometry x="40" y="560" width="1520" height="300" as="geometry"/>
         </mxCell>
-        <mxCell id="c21" value="ER-02 / ER-03" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c21" value="ER-02 / ER-03 / ER-04" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="100" y="640" width="56" height="56" as="geometry"/>
         </mxCell>
         <mxCell id="c22" value="HTTP with Microsoft&lt;br&gt;Entra ID (preauthorized)" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/integration/Logic_Apps_Custom_Connector.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
@@ -481,7 +504,7 @@
             <mxPoint x="680" y="656" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e27" value="&amp;#9313; access token: aud graph &amp;middot; roles = 5 permissions" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=top;" edge="1" parent="1">
+        <mxCell id="e27" value="&amp;#9313; access token: aud graph &amp;middot; roles = 4 permissions" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=top;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="680" y="682" as="sourcePoint"/>
             <mxPoint x="436" y="682" as="targetPoint"/>
@@ -501,7 +524,7 @@
         <mxCell id="c29" value="&lt;b&gt;Connection fields&lt;/b&gt;&lt;br&gt;&lt;font style='font-family:monospace;font-size:10px'&gt;Auth type: Log in using a Client Certificate Auth&lt;br&gt;Resource URI: https://graph.microsoft.com&lt;br&gt;Base Resource URL: https://graph.microsoft.com&lt;br&gt;Tenant: &amp;lt;Directory (tenant) ID&amp;gt;&lt;br&gt;Client ID: &amp;lt;appId of the platform app&amp;gt;&lt;br&gt;Client certificate: .pfx + password&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1160" y="600" width="380" height="140" as="geometry"/>
         </mxCell>
-        <mxCell id="c30" value="&lt;font style='font-size:10px'&gt;Graph permissions (admin-consented): Application.ReadWrite.All &amp;middot; AppRoleAssignment.ReadWrite.All &amp;middot; Group.ReadWrite.All &amp;middot; Directory.Read.All &amp;middot; User.Read.All&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#5C2D91;spacing=2;" vertex="1" parent="1">
+        <mxCell id="c30" value="&lt;font style='font-size:10px'&gt;Graph permissions (admin-consented): Application.ReadWrite.All &amp;middot; AppRoleAssignment.ReadWrite.All &amp;middot; Directory.Read.All &amp;middot; User.Read.All &amp;middot; no group write: groups are created elsewhere&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#5C2D91;spacing=2;" vertex="1" parent="1">
           <mxGeometry x="380" y="800" width="760" height="30" as="geometry"/>
         </mxCell>
         <mxCell id="c31" value="&lt;b&gt;Don't pick 'Log in with Microsoft Entra ID'&lt;/b&gt; on the connection: that calls Graph as the flow account, and a read-only account gets &lt;i&gt;Insufficient privileges&lt;/i&gt;." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
@@ -591,7 +614,7 @@
             <mxPoint x="510" y="228" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e18" value="trigger: item created (Status = Submitted)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e18" value="trigger: item created (Status = Submitted, not onboardGroup)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="510" y="262" as="sourcePoint"/>
             <mxPoint x="715" y="262" as="targetPoint"/>
@@ -735,58 +758,49 @@
         <mxCell id="c1" value="&lt;b style='font-size:16px'&gt;Sequence &amp;mdash; ER-02 creates an app registration&lt;/b&gt;&lt;br&gt;Every Graph call goes through the client-certificate connection; the token is fetched once and reused." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=12;fontColor=#605E5C;spacing=2;" vertex="1" parent="1">
           <mxGeometry x="40" y="20" width="1100" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="c2" value="alt  owning team is new" style="shape=umlFrame;whiteSpace=wrap;html=1;width=162;height=22;fillColor=none;strokeColor=#605E5C;fontSize=10;fontStyle=1;fontColor=#605E5C;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="250" y="398" width="1080" height="108" as="geometry"/>
+        <mxCell id="c2" value="opt  expose an API &amp;middot; loop until 204 (max 6 &amp;#215; 10 s)" style="shape=umlFrame;whiteSpace=wrap;html=1;width=396;height=22;fillColor=none;strokeColor=#CA5010;fontSize=10;fontStyle=1;fontColor=#CA5010;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="612" width="850" height="74" as="geometry"/>
         </mxCell>
-        <mxCell id="c3" value="else  existing team" style="shape=umlFrame;whiteSpace=wrap;html=1;width=138;height=22;fillColor=none;strokeColor=#605E5C;fontSize=10;fontStyle=1;fontColor=#605E5C;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="250" y="518" width="850" height="108" as="geometry"/>
+        <mxCell id="c3" value="opt  enterprise app &amp;middot; loop until 201 (max 6)" style="shape=umlFrame;whiteSpace=wrap;html=1;width=330;height=22;fillColor=none;strokeColor=#CA5010;fontSize=10;fontStyle=1;fontColor=#CA5010;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="698" width="850" height="74" as="geometry"/>
         </mxCell>
-        <mxCell id="c4" value="opt  expose an API" style="shape=umlFrame;whiteSpace=wrap;html=1;width=132;height=22;fillColor=none;strokeColor=#605E5C;fontSize=10;fontStyle=1;fontColor=#605E5C;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="250" y="706" width="850" height="74" as="geometry"/>
+        <mxCell id="c4" value="loop  each role &amp;#215; existing group &amp;middot; until 201 (max 6)" style="shape=umlFrame;whiteSpace=wrap;html=1;width=408;height=22;fillColor=none;strokeColor=#CA5010;fontSize=10;fontStyle=1;fontColor=#CA5010;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="784" width="850" height="74" as="geometry"/>
         </mxCell>
-        <mxCell id="c5" value="loop  each owner" style="shape=umlFrame;whiteSpace=wrap;html=1;width=120;height=22;fillColor=none;strokeColor=#605E5C;fontSize=10;fontStyle=1;fontColor=#605E5C;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="250" y="792" width="850" height="74" as="geometry"/>
+        <mxCell id="c5" value="EntraRequests" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF6EA;strokeColor=#107C10;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="120" height="1054" as="geometry"/>
         </mxCell>
-        <mxCell id="c6" value="loop  until 201 (new app replicating)" style="shape=umlFrame;whiteSpace=wrap;html=1;width=246;height=22;fillColor=none;strokeColor=#CA5010;fontSize=10;fontStyle=1;fontColor=#CA5010;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="250" y="878" width="850" height="74" as="geometry"/>
+        <mxCell id="c6" value="ER-02 Execute" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="270" y="80" width="120" height="1054" as="geometry"/>
         </mxCell>
-        <mxCell id="c7" value="loop  each role &amp;#215; group" style="shape=umlFrame;whiteSpace=wrap;html=1;width=192;height=22;fillColor=none;strokeColor=#605E5C;fontSize=10;fontStyle=1;fontColor=#605E5C;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="250" y="964" width="1080" height="108" as="geometry"/>
+        <mxCell id="c7" value="HTTP with Entra ID" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="500" y="80" width="120" height="1054" as="geometry"/>
         </mxCell>
-        <mxCell id="c8" value="EntraRequests" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF6EA;strokeColor=#107C10;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="40" y="80" width="120" height="1210" as="geometry"/>
+        <mxCell id="c8" value="Entra token endpoint" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#F1ECF7;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="730" y="80" width="120" height="1054" as="geometry"/>
         </mxCell>
-        <mxCell id="c9" value="ER-02 Execute" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="270" y="80" width="120" height="1210" as="geometry"/>
+        <mxCell id="c9" value="Microsoft Graph" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#F1ECF7;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="960" y="80" width="120" height="1054" as="geometry"/>
         </mxCell>
-        <mxCell id="c10" value="HTTP with Entra ID" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="500" y="80" width="120" height="1210" as="geometry"/>
+        <mxCell id="c10" value="Catalog lists" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF6EA;strokeColor=#107C10;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="80" width="120" height="1054" as="geometry"/>
         </mxCell>
-        <mxCell id="c11" value="Entra token endpoint" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#F1ECF7;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="730" y="80" width="120" height="1210" as="geometry"/>
-        </mxCell>
-        <mxCell id="c12" value="Microsoft Graph" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#F1ECF7;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="960" y="80" width="120" height="1210" as="geometry"/>
-        </mxCell>
-        <mxCell id="c13" value="Catalog lists" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF6EA;strokeColor=#107C10;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="1190" y="80" width="120" height="1210" as="geometry"/>
-        </mxCell>
-        <mxCell id="c14" value="Requester" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;strokeColor=#323130;fontSize=11;" vertex="1" parent="1">
+        <mxCell id="c11" value="Requester" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;strokeColor=#323130;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="1465" y="70" width="30" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="e15" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;endArrow=none;strokeWidth=1;" edge="1" parent="1">
+        <mxCell id="e12" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;endArrow=none;strokeWidth=1;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="1480" y="125" as="sourcePoint"/>
-            <mxPoint x="1480" y="1290" as="targetPoint"/>
+            <mxPoint x="1480" y="1134" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e16" value="trigger: Status = Approved (one run at a time)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e13" value="trigger: Status = Approved (one run at a time)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="100" y="150" as="sourcePoint"/>
             <mxPoint x="330" y="150" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e17" value="guard: Editor = flow account &amp;middot; both decisions Approved" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;align=left;verticalAlign=middle;spacingLeft=48;" edge="1" parent="1">
+        <mxCell id="e14" value="guard: Editor = flow account &amp;middot; both decisions Approved" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;align=left;verticalAlign=middle;spacingLeft=48;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="330" y="184" as="sourcePoint"/>
             <mxPoint x="330" y="206" as="targetPoint"/>
@@ -796,122 +810,117 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e18" value="Status = InProgress" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e15" value="Status = InProgress" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="330" y="228" as="sourcePoint"/>
             <mxPoint x="100" y="228" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e19" value="Invoke an HTTP request" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e16" value="Invoke an HTTP request" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="330" y="262" as="sourcePoint"/>
             <mxPoint x="560" y="262" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e20" value="client credentials &amp;middot; certificate assertion" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e17" value="client credentials &amp;middot; certificate assertion" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="560" y="296" as="sourcePoint"/>
             <mxPoint x="790" y="296" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e21" value="token: aud graph &amp;middot; 5 roles (cached)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;verticalAlign=bottom;endArrow=open;endFill=0;" edge="1" parent="1">
+        <mxCell id="e18" value="token: aud graph &amp;middot; 4 roles (cached)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;verticalAlign=bottom;endArrow=open;endFill=0;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="790" y="330" as="sourcePoint"/>
             <mxPoint x="560" y="330" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e22" value="GET /users/{requester}  &amp;#8594; object id" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e19" value="GET /users/{requester}  &amp;#8594; object id" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="560" y="364" as="sourcePoint"/>
             <mxPoint x="1020" y="364" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e23" value="POST /groups  (owners, appCatID in description)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e20" value="POST /users/{id}/checkMemberGroups  [existing owning team]" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="330" y="438" as="sourcePoint"/>
-            <mxPoint x="1020" y="438" as="targetPoint"/>
+            <mxPoint x="330" y="398" as="sourcePoint"/>
+            <mxPoint x="1020" y="398" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e24" value="create EntraCatalogGroups row" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e21" value="member? (no &amp;#8594; Failed: not a member of the owning team)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;verticalAlign=bottom;endArrow=open;endFill=0;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="330" y="472" as="sourcePoint"/>
-            <mxPoint x="1250" y="472" as="targetPoint"/>
+            <mxPoint x="1020" y="432" as="sourcePoint"/>
+            <mxPoint x="330" y="432" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e25" value="POST /users/{id}/checkMemberGroups" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e22" value="GET /groups/{team}  &amp;#8594; name for the team tags" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="330" y="558" as="sourcePoint"/>
-            <mxPoint x="1020" y="558" as="targetPoint"/>
+            <mxPoint x="330" y="466" as="sourcePoint"/>
+            <mxPoint x="1020" y="466" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e26" value="member? (no &amp;#8594; Failed)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;verticalAlign=bottom;endArrow=open;endFill=0;" edge="1" parent="1">
+        <mxCell id="e23" value="POST /applications  (APPCAT-ENV-BOR-name, tags, notes, roles, URIs, claims)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="1020" y="592" as="sourcePoint"/>
-            <mxPoint x="330" y="592" as="targetPoint"/>
+            <mxPoint x="330" y="500" as="sourcePoint"/>
+            <mxPoint x="1020" y="500" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e27" value="POST /applications  (tags, notes, roles, redirect URIs, claims)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e24" value="id &amp;middot; appId &amp;middot; appRoles[]  (no owners added)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;verticalAlign=bottom;endArrow=open;endFill=0;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="330" y="638" as="sourcePoint"/>
-            <mxPoint x="1020" y="638" as="targetPoint"/>
+            <mxPoint x="1020" y="534" as="sourcePoint"/>
+            <mxPoint x="330" y="534" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e28" value="id &amp;middot; appId &amp;middot; appRoles[]" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;verticalAlign=bottom;endArrow=open;endFill=0;" edge="1" parent="1">
+        <mxCell id="e25" value="wait 15 s: the new app replicates across Entra" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;align=left;verticalAlign=middle;spacingLeft=48;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="1020" y="672" as="sourcePoint"/>
-            <mxPoint x="330" y="672" as="targetPoint"/>
+            <mxPoint x="330" y="568" as="sourcePoint"/>
+            <mxPoint x="330" y="590" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="370" y="568"/>
+              <mxPoint x="370" y="590"/>
+            </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e29" value="PATCH /applications/{id}  identifierUris + scopes" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e26" value="PATCH /applications/{id}  identifierUris + scopes" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="330" y="746" as="sourcePoint"/>
-            <mxPoint x="1020" y="746" as="targetPoint"/>
+            <mxPoint x="330" y="652" as="sourcePoint"/>
+            <mxPoint x="1020" y="652" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e30" value="POST /applications/{id}/owners/$ref" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e27" value="POST /servicePrincipals  {appId, accountEnabled, appRoleAssignmentRequired, tags}" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="330" y="832" as="sourcePoint"/>
-            <mxPoint x="1020" y="832" as="targetPoint"/>
+            <mxPoint x="330" y="738" as="sourcePoint"/>
+            <mxPoint x="1020" y="738" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e31" value="POST /servicePrincipals  {appId, tags}" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e28" value="POST /servicePrincipals/{sp}/appRoleAssignedTo" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="330" y="918" as="sourcePoint"/>
-            <mxPoint x="1020" y="918" as="targetPoint"/>
+            <mxPoint x="330" y="824" as="sourcePoint"/>
+            <mxPoint x="1020" y="824" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e32" value="POST /groups  (only for new groups)" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e29" value="create EntraCatalogApps row" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="330" y="1004" as="sourcePoint"/>
-            <mxPoint x="1020" y="1004" as="targetPoint"/>
+            <mxPoint x="330" y="870" as="sourcePoint"/>
+            <mxPoint x="1250" y="870" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e33" value="POST /servicePrincipals/{sp}/appRoleAssignedTo" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e30" value="Status = Completed &amp;middot; ResultJson &amp;middot; CompletedAt" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="330" y="1038" as="sourcePoint"/>
-            <mxPoint x="1020" y="1038" as="targetPoint"/>
+            <mxPoint x="330" y="904" as="sourcePoint"/>
+            <mxPoint x="100" y="904" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e34" value="create EntraCatalogApps row" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
+        <mxCell id="e31" value="email: your request is complete" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="330" y="1084" as="sourcePoint"/>
-            <mxPoint x="1250" y="1084" as="targetPoint"/>
+            <mxPoint x="330" y="938" as="sourcePoint"/>
+            <mxPoint x="1480" y="938" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e35" value="Status = Completed &amp;middot; ResultJson &amp;middot; CompletedAt" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="330" y="1118" as="sourcePoint"/>
-            <mxPoint x="100" y="1118" as="targetPoint"/>
-          </mxGeometry>
+        <mxCell id="c32" value="&lt;b&gt;Any failure inside Try&lt;/b&gt; jumps to Catch: Status = Failed, ErrorMessage, ResultJson (what was already created), email to the requester and the Entra ID team." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+          <mxGeometry x="350" y="980" width="520" height="48" as="geometry"/>
         </mxCell>
-        <mxCell id="e36" value="email: your request is complete" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;verticalAlign=bottom;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="330" y="1152" as="sourcePoint"/>
-            <mxPoint x="1480" y="1152" as="targetPoint"/>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="c37" value="&lt;b&gt;Any failure inside Try&lt;/b&gt; jumps to Catch: Status = Failed, ErrorMessage, ResultJson (what was already created), email to the requester and the Entra ID team." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
-          <mxGeometry x="350" y="1194" width="520" height="48" as="geometry"/>
+        <mxCell id="c33" value="&lt;b&gt;servicePrincipalType = Application&lt;/b&gt; is set by Entra for an enterprise app created from an app registration; Graph doesn't accept it in the request." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="1038" width="420" height="48" as="geometry"/>
         </mxCell>
       </root>
     </mxGraphModel>
@@ -924,8 +933,8 @@
         <mxCell id="c1" value="&lt;b style='font-size:16px'&gt;Flowchart &amp;mdash; ER-01 Approvals&lt;/b&gt;&lt;br&gt;Standard connectors only. Every rejection exits to the right; the approved path runs straight down." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=12;fontColor=#605E5C;spacing=2;" vertex="1" parent="1">
           <mxGeometry x="40" y="20" width="1100" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="c2" value="Item created &amp;middot; Status = Submitted" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="440" y="90" width="220" height="44" as="geometry"/>
+        <mxCell id="c2" value="Item created &amp;middot; Submitted &amp;middot; not onboardGroup" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="410" y="90" width="280" height="44" as="geometry"/>
         </mxCell>
         <mxCell id="c3" value="&lt;b&gt;Lock&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;break inheritance &amp;middot; Owners Full Control &amp;middot; requester Read&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="400" y="170" width="300" height="56" as="geometry"/>
@@ -1059,182 +1068,166 @@
         <mxCell id="c10" value="&lt;b&gt;Switch: RequestType&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="470" y="540" width="320" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="c11" value="&lt;b style='font-size:10px'&gt;Do createAppRegistration&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;team group &amp;middot; app &amp;middot; expose API &amp;middot; owners &amp;middot; enterprise app&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="315" y="620" width="136" height="90" as="geometry"/>
+        <mxCell id="c11" value="&lt;b style='font-size:10px'&gt;Do createAppRegistration&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;team membership &amp;middot; app &amp;middot; wait 15 s &amp;middot; expose API &amp;middot; enterprise app&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="320" y="620" width="150" height="90" as="geometry"/>
         </mxCell>
-        <mxCell id="c12" value="&lt;b style='font-size:10px'&gt;Do createGroup&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;security group with owners &amp;amp; members&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="455" y="620" width="136" height="90" as="geometry"/>
+        <mxCell id="c12" value="&lt;b style='font-size:10px'&gt;Do exposeApi&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;add App ID URI &amp;middot; scopes&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="490" y="620" width="150" height="90" as="geometry"/>
         </mxCell>
-        <mxCell id="c13" value="&lt;b style='font-size:10px'&gt;Do exposeApi&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;add App ID URI &amp;middot; scopes&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="595" y="620" width="136" height="90" as="geometry"/>
+        <mxCell id="c13" value="&lt;b style='font-size:10px'&gt;Do addAppRoles&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;add roles &amp;middot; queue role groups&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="660" y="620" width="150" height="90" as="geometry"/>
         </mxCell>
-        <mxCell id="c14" value="&lt;b style='font-size:10px'&gt;Do addAppRoles&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;add roles &amp;middot; queue role groups&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="735" y="620" width="136" height="90" as="geometry"/>
+        <mxCell id="c14" value="&lt;b style='font-size:10px'&gt;Do assignGroupsToAppRoles&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;queue assignments &amp;middot; enterprise app if missing&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="830" y="620" width="150" height="90" as="geometry"/>
         </mxCell>
-        <mxCell id="c15" value="&lt;b style='font-size:10px'&gt;Do assignGroupsToAppRoles&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;queue assignments &amp;middot; enterprise app if missing&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="875" y="620" width="136" height="90" as="geometry"/>
+        <mxCell id="c15" value="&lt;b style='font-size:10px'&gt;Do createServicePrincipal&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;enterprise app (fails if one exists)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="620" width="150" height="90" as="geometry"/>
         </mxCell>
-        <mxCell id="c16" value="&lt;b style='font-size:10px'&gt;Do createServicePrincipal&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;enterprise app (fails if one exists)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
-          <mxGeometry x="1015" y="620" width="136" height="90" as="geometry"/>
-        </mxCell>
-        <mxCell id="c17" value="&lt;b&gt;Role assignments&lt;/b&gt; (shared by 3 cases)&lt;br&gt;&lt;font style='font-size:10px'&gt;for each queued item: create the group if new &amp;#8594; POST appRoleAssignedTo&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c16" value="&lt;b&gt;Role assignments&lt;/b&gt; (shared by 3 cases)&lt;br&gt;&lt;font style='font-size:10px'&gt;for each queued existing group &amp;#8594; POST appRoleAssignedTo (retry 6&amp;#215;)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="430" y="770" width="400" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c18" value="&lt;b&gt;Default access?&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;new app, assignment required, no roles &amp;#8594; team gets Default Access&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c17" value="&lt;b&gt;Default access?&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;new app, assignment required, no roles &amp;#8594; team gets Default Access&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="430" y="860" width="400" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c19" value="Completed &amp;middot; ResultJson &amp;middot; email requester" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#EAF6EA;strokeColor=#107C10;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c18" value="Completed &amp;middot; ResultJson &amp;middot; email requester" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#EAF6EA;strokeColor=#107C10;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="480" y="960" width="300" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="c20" value="Catch (run after Try: failed / timed out)" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FDE7E9;strokeColor=#A4262C;strokeWidth=1.5;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontStyle=1;fontSize=13;fontColor=#323130;container=1;collapsible=0;" vertex="1" parent="1">
+        <mxCell id="c19" value="Catch (run after Try: failed / timed out)" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FDE7E9;strokeColor=#A4262C;strokeWidth=1.5;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontStyle=1;fontSize=13;fontColor=#323130;container=1;collapsible=0;" vertex="1" parent="1">
           <mxGeometry x="300" y="1090" width="870" height="120" as="geometry"/>
         </mxCell>
-        <mxCell id="c21" value="&lt;b&gt;Failed&lt;/b&gt; &amp;middot; ErrorMessage = first failed action &amp;middot; ResultJson = what was already created &amp;middot; email requester + Entra ID team" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#A4262C;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c20" value="&lt;b&gt;Failed&lt;/b&gt; &amp;middot; ErrorMessage = first failed action &amp;middot; ResultJson = what was already created &amp;middot; email requester + Entra ID team" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#A4262C;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="330" y="1130" width="810" height="50" as="geometry"/>
         </mxCell>
-        <mxCell id="e22" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c2" target="c3">
+        <mxCell id="e21" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c2" target="c3">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e23" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#A4262C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c3" target="c4">
+        <mxCell id="e22" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#A4262C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c3" target="c4">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e24" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c3" target="c6">
+        <mxCell id="e23" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c3" target="c6">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e25" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c6" target="c7">
+        <mxCell id="e24" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c6" target="c7">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e26" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c7" target="c8">
+        <mxCell id="e25" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c7" target="c8">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e27" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#A4262C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c8" target="c9">
+        <mxCell id="e26" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#A4262C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c8" target="c9">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e28" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c8" target="c10">
+        <mxCell id="e27" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c8" target="c10">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="920" y="560"/>
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e29" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c7" target="c10">
+        <mxCell id="e28" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c7" target="c10">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e30" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c10" target="c11">
+        <mxCell id="e29" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c10" target="c11">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="630" y="600"/>
-              <mxPoint x="383" y="600"/>
+              <mxPoint x="395" y="600"/>
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e31" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c10" target="c12">
+        <mxCell id="e30" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c10" target="c12">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="630" y="600"/>
-              <mxPoint x="523" y="600"/>
+              <mxPoint x="565" y="600"/>
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e32" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c10" target="c13">
+        <mxCell id="e31" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c10" target="c13">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="630" y="600"/>
-              <mxPoint x="663" y="600"/>
+              <mxPoint x="735" y="600"/>
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e33" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c10" target="c14">
+        <mxCell id="e32" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c10" target="c14">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="630" y="600"/>
-              <mxPoint x="803" y="600"/>
+              <mxPoint x="905" y="600"/>
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e34" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c10" target="c15">
+        <mxCell id="e33" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c10" target="c15">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="630" y="600"/>
-              <mxPoint x="943" y="600"/>
+              <mxPoint x="1075" y="600"/>
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e35" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c10" target="c16">
+        <mxCell id="e34" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c11" target="c16">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="630" y="600"/>
-              <mxPoint x="1083" y="600"/>
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e36" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c11" target="c17">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="383" y="745"/>
+              <mxPoint x="395" y="745"/>
               <mxPoint x="630" y="745"/>
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e37" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c12" target="c17">
+        <mxCell id="e35" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c12" target="c16">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="523" y="745"/>
+              <mxPoint x="565" y="745"/>
               <mxPoint x="630" y="745"/>
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e38" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c13" target="c17">
+        <mxCell id="e36" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c13" target="c16">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="663" y="745"/>
+              <mxPoint x="735" y="745"/>
               <mxPoint x="630" y="745"/>
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e39" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c14" target="c17">
+        <mxCell id="e37" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c14" target="c16">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="803" y="745"/>
+              <mxPoint x="905" y="745"/>
               <mxPoint x="630" y="745"/>
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e40" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c15" target="c17">
+        <mxCell id="e38" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c15" target="c16">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="943" y="745"/>
+              <mxPoint x="1075" y="745"/>
               <mxPoint x="630" y="745"/>
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e41" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c16" target="c17">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1083" y="745"/>
-              <mxPoint x="630" y="745"/>
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e42" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c17" target="c18">
+        <mxCell id="e39" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c16" target="c17">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e43" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c18" target="c19">
+        <mxCell id="e40" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c17" target="c18">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <mxCell id="e44" value="any action fails" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#A4262C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=top;" edge="1" parent="1">
+        <mxCell id="e41" value="any action fails" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#A4262C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;verticalAlign=top;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="1000" y="1050" as="sourcePoint"/>
             <mxPoint x="1000" y="1090" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c45" value="&lt;b&gt;Why the guard.&lt;/b&gt; A site owner editing Status by hand is not the flow account, so the run stops before any Graph call." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+        <mxCell id="c42" value="&lt;b&gt;Why the guard.&lt;/b&gt; A site owner editing Status by hand is not the flow account, so the run stops before any Graph call." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="160" width="240" height="100" as="geometry"/>
         </mxCell>
-        <mxCell id="c46" value="&lt;b&gt;Retries.&lt;/b&gt; Enterprise app creation retries until the new app has replicated; role assignment retries 4&amp;#215; with backoff." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
-          <mxGeometry x="1200" y="620" width="260" height="90" as="geometry"/>
+        <mxCell id="c43" value="&lt;b&gt;Retries.&lt;/b&gt; After creating the app ER-02 waits 15 s; Expose API, the enterprise app and each role assignment then retry up to 6&amp;#215;, 10 s apart." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="620" width="260" height="100" as="geometry"/>
         </mxCell>
-        <mxCell id="c47" value="&lt;b&gt;Not idempotent.&lt;/b&gt; Re-running a failed createAppRegistration creates a second app; ResultJson lists what to clean up first." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+        <mxCell id="c44" value="&lt;b&gt;No groups, no owners.&lt;/b&gt; Groups must already exist (onboarded with ER-04). The app registration and enterprise app get no owners." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="620" width="240" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="c45" value="&lt;b&gt;Not idempotent.&lt;/b&gt; Re-running a failed createAppRegistration creates a second app; ResultJson lists what to clean up first." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
           <mxGeometry x="1200" y="1110" width="260" height="90" as="geometry"/>
         </mxCell>
       </root>
@@ -1320,7 +1313,7 @@
         <mxCell id="c25" value="&lt;b&gt;UPN lists format&lt;/b&gt;&lt;br&gt;&lt;font style='font-family:monospace;font-size:10px'&gt;;alex@contoso.com;sam@contoso.com;&lt;/font&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;lower case, ';' at both ends, so the app can test &lt;i&gt;&quot;;&quot; &amp;amp; upn &amp;amp; &quot;;&quot; in TeamMemberUpns&lt;/i&gt;&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3F2F1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="820" y="300" width="400" height="90" as="geometry"/>
         </mxCell>
-        <mxCell id="c26" value="&lt;b&gt;Onboarding an existing group:&lt;/b&gt; add a row to EntraCatalogGroups with just Title and GroupId, then run ER-03 manually. It fills in members, owners and appCatID." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+        <mxCell id="c26" value="&lt;b&gt;Onboarding an existing group&lt;/b&gt; is done by ER-04 (&lt;i&gt;Add existing group&lt;/i&gt; in the app). ER-03 then keeps that row's members and owners current every hour." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
           <mxGeometry x="820" y="620" width="400" height="74" as="geometry"/>
         </mxCell>
         <mxCell id="c27" value="&lt;b&gt;Deleted group?&lt;/b&gt; GET returns 404 and that iteration fails. Add a branch with run-after 'has failed' to flag or delete the row." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
@@ -1329,7 +1322,138 @@
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram id="9-request-lifecycle" name="9 Request lifecycle">
+  <diagram id="9-flow---er-04-onboard-group" name="9 Flow - ER-04 Onboard group">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1180" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="c1" value="&lt;b style='font-size:16px'&gt;Flowchart &amp;mdash; ER-04 Onboard an existing group&lt;/b&gt;&lt;br&gt;Groups are created outside this platform. ER-04 checks one exists and the requester belongs to it, then makes it pickable in the app. No approval, read-only in Entra." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=12;fontColor=#605E5C;spacing=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1300" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="c2" value="Item created &amp;middot; RequestType = onboardGroup" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="490" y="90" width="300" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="c3" value="&lt;b&gt;Status = InProgress&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;query = TargetDisplayName (name or Object ID, as typed)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="470" y="160" width="340" height="56" as="geometry"/>
+        </mxCell>
+        <mxCell id="c4" value="36 characters,&lt;br&gt;5 dash-separated parts?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="540" y="245" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="c5" value="&lt;b&gt;GET /groups/{id}&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="200" y="340" width="220" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="c6" value="&lt;b&gt;GET /groups?$filter=displayName eq '&amp;lt;name&amp;gt;'&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="860" y="340" width="320" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="c7" value="Failed: no group with that Object ID" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FDE7E9;strokeColor=#A4262C;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="170" y="430" width="280" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="c8" value="exactly one&lt;br&gt;match?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="940" y="420" width="160" height="76" as="geometry"/>
+        </mxCell>
+        <mxCell id="c9" value="Failed: none found, or N groups share the name" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FDE7E9;strokeColor=#A4262C;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="530" width="360" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="c10" value="&lt;b&gt;Requester member or owner?&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;POST checkMemberGroups &amp;middot; GET owners&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="470" y="600" width="340" height="56" as="geometry"/>
+        </mxCell>
+        <mxCell id="c11" value="member&lt;br&gt;or owner?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="560" y="690" width="160" height="76" as="geometry"/>
+        </mxCell>
+        <mxCell id="c12" value="Failed: you are neither a member nor an owner" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FDE7E9;strokeColor=#A4262C;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="900" y="708" width="360" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="c13" value="security&lt;br&gt;enabled?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="560" y="800" width="160" height="76" as="geometry"/>
+        </mxCell>
+        <mxCell id="c14" value="Failed: not a security group" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#FDE7E9;strokeColor=#A4262C;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="900" y="818" width="360" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="c15" value="&lt;b&gt;Upsert EntraCatalogGroups&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;name &amp;middot; description &amp;middot; MemberUpns &amp;middot; OwnerUpns&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#107C10;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="470" y="910" width="340" height="56" as="geometry"/>
+        </mxCell>
+        <mxCell id="c16" value="Completed &amp;middot; TargetObjectId = group id" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#EAF6EA;strokeColor=#107C10;strokeWidth=1.5;fontSize=12;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+          <mxGeometry x="490" y="1000" width="300" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="e17" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c2" target="c3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c3" target="c4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e19" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="c4" target="c5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="285"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e20" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="c4" target="c6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1020" y="285"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e21" value="404" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#A4262C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c5" target="c7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e22" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c6" target="c8">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e23" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#A4262C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="c8" target="c9">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1290" y="458"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e24" value="200" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="c5" target="c10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="470" y="362"/>
+              <mxPoint x="470" y="628"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e25" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="c8" target="c10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1020" y="628"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e26" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c10" target="c11">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e27" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#A4262C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c11" target="c12">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e28" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c11" target="c13">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e29" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#A4262C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c13" target="c14">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e30" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#323130;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c13" target="c15">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e31" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#107C10;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c15" target="c16">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c32" value="In the Power App (no Premium licence needed)" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontStyle=1;fontSize=13;fontColor=#323130;container=1;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1060" width="1420" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="c33" value="&lt;b&gt;Add existing group&lt;/b&gt;: the user types a name or Object ID &amp;#8594; Patch an onboardGroup item &amp;#8594; a Timer re-reads that item every 3 s (up to 60 s) &amp;#8594; shows &lt;i&gt;Added&lt;/i&gt;, or the ErrorMessage written by ER-04. The group then appears in the Owning team and role-group pickers." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1085" width="1380" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="c34" value="&lt;b&gt;Why membership is required.&lt;/b&gt; Otherwise anyone could attach any group to their app's roles, or claim a team they're not in." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="600" width="300" height="80" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="10-request-lifecycle" name="10 Request lifecycle">
     <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="760" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
@@ -1399,28 +1523,39 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c21" value="Who writes Status" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#605E5C;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="40" y="580" width="760" height="146" as="geometry"/>
+        <mxCell id="e21" value="onboardGroup: ER-04, no approvals" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=blockThin;endFill=1;strokeColor=#0078D4;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;dashed=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="c3" target="c7">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="185" y="150"/>
+              <mxPoint x="1145" y="150"/>
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="c22" value="Requester (Power App) .... Submitted" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c21">
+        <mxCell id="c22" value="Who writes Status" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#605E5C;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="40" y="580" width="760" height="168" as="geometry"/>
+        </mxCell>
+        <mxCell id="c23" value="Requester (Power App) .... Submitted" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c22">
           <mxGeometry x="0" y="30" width="760" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c23" value="ER-01 (flow account) ..... PendingManagerApproval, PendingEntraApproval, Approved, Rejected" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c21">
+        <mxCell id="c24" value="ER-01 (flow account) ..... PendingManagerApproval, PendingEntraApproval, Approved, Rejected" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c22">
           <mxGeometry x="0" y="52" width="760" height="36" as="geometry"/>
         </mxCell>
-        <mxCell id="c24" value="ER-02 (flow account) ..... InProgress, Completed, Failed" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c21">
+        <mxCell id="c25" value="ER-02 (flow account) ..... InProgress, Completed, Failed" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c22">
           <mxGeometry x="0" y="88" width="760" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c25" value="Site owners .............. can edit, but ER-02 ignores edits not made by the flow account" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c21">
-          <mxGeometry x="0" y="110" width="760" height="36" as="geometry"/>
+        <mxCell id="c26" value="ER-04 (flow account) ..... InProgress, Completed, Failed (onboardGroup only)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c22">
+          <mxGeometry x="0" y="110" width="760" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c26" value="&lt;b&gt;Versioning is the audit trail.&lt;/b&gt; EntraRequests keeps 500 versions, so every status change, decision and who made it is recorded on the item." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+        <mxCell id="c27" value="Site owners .............. can edit, but ER-02 ignores edits not made by the flow account" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c22">
+          <mxGeometry x="0" y="132" width="760" height="36" as="geometry"/>
+        </mxCell>
+        <mxCell id="c28" value="&lt;b&gt;Versioning is the audit trail.&lt;/b&gt; EntraRequests keeps 500 versions, so every status change, decision and who made it is recorded on the item." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
           <mxGeometry x="840" y="600" width="420" height="70" as="geometry"/>
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram id="10-data-model" name="10 Data model">
+  <diagram id="11-data-model" name="11 Data model">
     <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1040" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
@@ -1488,7 +1623,7 @@
         <mxCell id="c21" value="LastSynced" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c15">
           <mxGeometry x="0" y="140" width="480" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c22" value="EntraCatalogGroups &amp;middot; groups users can pick" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#03787C;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
+        <mxCell id="c22" value="EntraCatalogGroups &amp;middot; written by ER-04 / ER-03" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#03787C;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
           <mxGeometry x="570" y="560" width="490" height="118" as="geometry"/>
         </mxCell>
         <mxCell id="c23" value="Title &amp;middot; &lt;b&gt;GroupId&lt;/b&gt; &amp;middot; AppCatId (from description)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c22">
@@ -1531,75 +1666,87 @@
           <mxGeometry x="1110" y="100" width="560" height="440" as="geometry"/>
         </mxCell>
         <mxCell id="c36" value="payload" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="1130" y="150" width="520" height="242" as="geometry"/>
+          <mxGeometry x="1130" y="150" width="520" height="264" as="geometry"/>
         </mxCell>
-        <mxCell id="c37" value="displayName &amp;middot; description &amp;middot; signInAudience" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
+        <mxCell id="c37" value="displayName = APPCAT-ENV-BORSHORT-freeText" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
           <mxGeometry x="0" y="30" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c38" value="owningGroup { mode: new|existing, id, displayName, ownerIds }" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
+        <mxCell id="c38" value="appEnv (P Q D L U F T S) &amp;middot; borShortName &amp;middot; nameText" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
           <mxGeometry x="0" y="52" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c39" value="redirectUrisWeb &amp;middot; redirectUrisSpa (';' separated)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
+        <mxCell id="c39" value="description &amp;middot; signInAudience" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
           <mxGeometry x="0" y="74" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c40" value="exposeApi { enabled, identifierUriTemplate, scopes[] }" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
+        <mxCell id="c40" value="owningGroup { mode: existing, id, displayName }" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
           <mxGeometry x="0" y="96" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c41" value="optionalClaimsIdToken &amp;middot; optionalClaimsAccessToken &amp;middot; groupMembershipClaims" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
-          <mxGeometry x="0" y="118" width="520" height="36" as="geometry"/>
+        <mxCell id="c41" value="redirectUrisWeb &amp;middot; redirectUrisSpa (';' separated)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
+          <mxGeometry x="0" y="118" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c42" value="appRoles[] { value, displayName, description, allowedMemberTypes," style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
-          <mxGeometry x="0" y="154" width="520" height="22" as="geometry"/>
+        <mxCell id="c42" value="exposeApi { enabled, identifierUriTemplate, scopes[] }" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
+          <mxGeometry x="0" y="140" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c43" value="    assignGroups[] { mode, id, displayName, ownerIds } }" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
-          <mxGeometry x="0" y="176" width="520" height="22" as="geometry"/>
+        <mxCell id="c43" value="optionalClaimsIdToken &amp;middot; optionalClaimsAccessToken &amp;middot; groupMembershipClaims" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
+          <mxGeometry x="0" y="162" width="520" height="36" as="geometry"/>
         </mxCell>
-        <mxCell id="c44" value="createServicePrincipal &amp;middot; appRoleAssignmentRequired" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
+        <mxCell id="c44" value="appRoles[] { value, displayName, description, allowedMemberTypes," style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
           <mxGeometry x="0" y="198" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c45" value="additionalOwnerIds &amp;middot; tags ('key=value;...')" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
+        <mxCell id="c45" value="    assignGroups[] { mode: existing, id, displayName } }" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
           <mxGeometry x="0" y="220" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c46" value="&lt;font style='font-size:10px'&gt;Other types: createGroup, exposeApi, addAppRoles, assignGroupsToAppRoles, createServicePrincipal (see docs/03 &amp;sect;3.5). No field identifies the requester; ER-02 uses Created By.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#605E5C;spacing=2;" vertex="1" parent="1">
-          <mxGeometry x="1130" y="470" width="520" height="50" as="geometry"/>
+        <mxCell id="c46" value="createServicePrincipal &amp;middot; appRoleAssignmentRequired &amp;middot; tags" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c36">
+          <mxGeometry x="0" y="242" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c47" value="Stamped on every object Entra creates" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#F1ECF7;strokeColor=#5C2D91;strokeWidth=1.5;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontStyle=1;fontSize=13;fontColor=#323130;container=1;collapsible=0;" vertex="1" parent="1">
+        <mxCell id="c47" value="&lt;font style='font-size:10px'&gt;Other types: exposeApi, addAppRoles, assignGroupsToAppRoles, createServicePrincipal, onboardGroup (see docs/03 &amp;sect;3.5). No owners field. No field identifies the requester; the flows use Created By.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#605E5C;spacing=2;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="475" width="520" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="c48" value="Stamped on every object Entra creates" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#F1ECF7;strokeColor=#5C2D91;strokeWidth=1.5;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontStyle=1;fontSize=13;fontColor=#323130;container=1;collapsible=0;" vertex="1" parent="1">
           <mxGeometry x="1110" y="570" width="560" height="430" as="geometry"/>
         </mxCell>
-        <mxCell id="c48" value="app registration &amp;middot; tags" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="1130" y="615" width="520" height="132" as="geometry"/>
+        <mxCell id="c49" value="app registration &amp;middot; tags" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="615" width="520" height="154" as="geometry"/>
         </mxCell>
-        <mxCell id="c49" value="appCatID:&amp;lt;id&amp;gt; &amp;middot; team:&amp;lt;group id&amp;gt; &amp;middot; teamName:&amp;lt;name&amp;gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c48">
+        <mxCell id="c50" value="appCatID:&amp;lt;id&amp;gt; &amp;middot; appEnv:&amp;lt;P|Q|D|L|U|F|T|S&amp;gt; &amp;middot; borShortName:&amp;lt;x&amp;gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c49">
           <mxGeometry x="0" y="30" width="520" height="36" as="geometry"/>
         </mxCell>
-        <mxCell id="c50" value="createdBy:&amp;lt;upn&amp;gt; &amp;middot; createdById:&amp;lt;oid&amp;gt; &amp;middot; createdTimestamp" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c48">
+        <mxCell id="c51" value="team:&amp;lt;group id&amp;gt; &amp;middot; teamName:&amp;lt;name&amp;gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c49">
           <mxGeometry x="0" y="66" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c51" value="lastUpdatedBy &amp;middot; lastUpdatedTimestamp &amp;middot; requestId:REQ-..." style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c48">
+        <mxCell id="c52" value="createdBy:&amp;lt;upn&amp;gt; &amp;middot; createdById:&amp;lt;oid&amp;gt; &amp;middot; createdTimestamp" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c49">
           <mxGeometry x="0" y="88" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c52" value="managedBy:&amp;lt;ManagedByTag&amp;gt; &amp;middot; optional key:value tags" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c48">
+        <mxCell id="c53" value="lastUpdatedBy &amp;middot; lastUpdatedTimestamp &amp;middot; requestId:REQ-..." style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c49">
           <mxGeometry x="0" y="110" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c53" value="app registration &amp;middot; notes" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="1130" y="785" width="520" height="52" as="geometry"/>
+        <mxCell id="c54" value="managedBy:&amp;lt;ManagedByTag&amp;gt; &amp;middot; optional key:value tags" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c49">
+          <mxGeometry x="0" y="132" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c54" value="appCatID=...; requestId=...; createdBy=...; managedBy=..." style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c53">
+        <mxCell id="c55" value="app registration &amp;middot; notes" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="807" width="520" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="c56" value="appCatID=...; requestId=...; createdBy=...; managedBy=..." style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c55">
           <mxGeometry x="0" y="30" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c55" value="group &amp;middot; end of description" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="1130" y="865" width="520" height="52" as="geometry"/>
+        <mxCell id="c57" value="enterprise app (service principal)" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="870" width="520" height="96" as="geometry"/>
         </mxCell>
-        <mxCell id="c56" value="[appCatID=...; requestId=...; createdBy=...; managedBy=...]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c55">
+        <mxCell id="c58" value="appId = the new app &amp;middot; accountEnabled = true" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c57">
           <mxGeometry x="0" y="30" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c57" value="&lt;font style='font-size:10px'&gt;Enterprise apps get the same tags plus WindowsAzureActiveDirectoryIntegratedApp. ER-03 finds managed apps by the managedBy tag.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#5C2D91;spacing=2;" vertex="1" parent="1">
-          <mxGeometry x="1130" y="940" width="520" height="40" as="geometry"/>
+        <mxCell id="c59" value="appRoleAssignmentRequired = from the request" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c57">
+          <mxGeometry x="0" y="52" width="520" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="c60" value="tags = app tags + WindowsAzureActiveDirectoryIntegratedApp" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c57">
+          <mxGeometry x="0" y="74" width="520" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="c61" value="&lt;font style='font-size:10px'&gt;No owners on either object. ER-03 finds managed apps by the managedBy tag.&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#5C2D91;spacing=2;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="966" width="520" height="26" as="geometry"/>
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram id="11-security-and-permissions" name="11 Security and permissions">
+  <diagram id="12-security-and-permissions" name="12 Security and permissions">
     <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="920" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
@@ -1619,7 +1766,7 @@
         <mxCell id="c5" value="&lt;b&gt;Entra ID team&lt;/b&gt;: second approval &amp;middot; site Owner &amp;middot; flow co-owners" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c2">
           <mxGeometry x="0" y="74" width="780" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c6" value="&lt;b&gt;Flow account&lt;/b&gt;: owns the flows &amp;middot; site Owner &amp;middot; Power Automate Premium &amp;middot; Entra read-only" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c2">
+        <mxCell id="c6" value="&lt;b&gt;Flow account&lt;/b&gt;: owns ER-01 to ER-04 &amp;middot; site Owner &amp;middot; Power Automate Premium &amp;middot; Entra read-only" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c2">
           <mxGeometry x="0" y="96" width="780" height="36" as="geometry"/>
         </mxCell>
         <mxCell id="c7" value="&lt;b&gt;Entra admin&lt;/b&gt;: one-time admin consent for the platform app" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c2">
@@ -1629,25 +1776,25 @@
           <mxGeometry x="0" y="154" width="780" height="22" as="geometry"/>
         </mxCell>
         <mxCell id="c9" value="Platform app &amp;middot; Microsoft Graph application permissions" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5C2D91;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
-          <mxGeometry x="860" y="100" width="800" height="176" as="geometry"/>
+          <mxGeometry x="860" y="100" width="800" height="190" as="geometry"/>
         </mxCell>
-        <mxCell id="c10" value="&lt;b&gt;Application.ReadWrite.All&lt;/b&gt;: app registrations, enterprise apps, URIs, scopes, roles, owners, tags" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c9">
+        <mxCell id="c10" value="&lt;b&gt;Application.ReadWrite.All&lt;/b&gt;: app registrations, enterprise apps, URIs, scopes, roles, tags" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c9">
           <mxGeometry x="0" y="30" width="800" height="36" as="geometry"/>
         </mxCell>
-        <mxCell id="c11" value="&lt;b&gt;AppRoleAssignment.ReadWrite.All&lt;/b&gt;: assign groups to app roles" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c9">
+        <mxCell id="c11" value="&lt;b&gt;AppRoleAssignment.ReadWrite.All&lt;/b&gt;: assign existing groups to app roles" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c9">
           <mxGeometry x="0" y="66" width="800" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c12" value="&lt;b&gt;Group.ReadWrite.All&lt;/b&gt;: create security groups with owners and members" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c9">
-          <mxGeometry x="0" y="88" width="800" height="22" as="geometry"/>
+        <mxCell id="c12" value="&lt;b&gt;Directory.Read.All&lt;/b&gt;: find groups by name or id, checkMemberGroups, members and owners" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c9">
+          <mxGeometry x="0" y="88" width="800" height="36" as="geometry"/>
         </mxCell>
-        <mxCell id="c13" value="&lt;b&gt;Directory.Read.All&lt;/b&gt;: checkMemberGroups, transitive members for the catalog" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c9">
-          <mxGeometry x="0" y="110" width="800" height="22" as="geometry"/>
+        <mxCell id="c13" value="&lt;b&gt;User.Read.All&lt;/b&gt;: requester object id" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c9">
+          <mxGeometry x="0" y="124" width="800" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c14" value="&lt;b&gt;User.Read.All&lt;/b&gt;: requester object id, owners and members" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c9">
-          <mxGeometry x="0" y="132" width="800" height="22" as="geometry"/>
+        <mxCell id="c14" value="No group write permission: groups are created outside this platform" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c9">
+          <mxGeometry x="0" y="146" width="800" height="22" as="geometry"/>
         </mxCell>
         <mxCell id="c15" value="Credential: &lt;b&gt;certificate only&lt;/b&gt; (no client secret) &amp;middot; admin consent required" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c9">
-          <mxGeometry x="0" y="154" width="800" height="22" as="geometry"/>
+          <mxGeometry x="0" y="168" width="800" height="22" as="geometry"/>
         </mxCell>
         <mxCell id="c16" value="SharePoint permissions" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#03787C;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
           <mxGeometry x="40" y="330" width="780" height="154" as="geometry"/>
@@ -1724,19 +1871,19 @@
         <mxCell id="c40" value="" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/Groups.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1192" y="590" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c41" value="&lt;b style='font-size:12px'&gt;&amp;#9316; Ownership&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
+        <mxCell id="c41" value="&lt;b style='font-size:12px'&gt;&amp;#9316; Membership&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
           <mxGeometry x="1100" y="660" width="240" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c42" value="Changes to an existing app need team membership or ownership, and a matching appCatID." style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
+        <mxCell id="c42" value="Owning team and onboarded groups: requester must be a member. App changes also need a matching appCatID." style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
           <mxGeometry x="1100" y="686" width="240" height="80" as="geometry"/>
         </mxCell>
         <mxCell id="c43" value="" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/Azure_Active_Directory.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1452" y="590" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c44" value="&lt;b style='font-size:12px'&gt;&amp;#9317; Stamping&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
+        <mxCell id="c44" value="&lt;b style='font-size:12px'&gt;&amp;#9317; Naming + stamping&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
           <mxGeometry x="1360" y="660" width="240" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c45" value="Every object carries appCatID, requestId, createdBy, managedBy for audit and sync." style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
+        <mxCell id="c45" value="Name APPCAT-ENV-BOR-text is enforced; apps carry appCatID, appEnv, requestId, managedBy." style="text;html=1;align=center;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#323130;spacing=2;" vertex="1" parent="1">
           <mxGeometry x="1360" y="686" width="240" height="80" as="geometry"/>
         </mxCell>
         <mxCell id="e46" value="" style="html=1;endArrow=blockThin;endFill=1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=10;fontColor=#323130;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;strokeWidth=2;endArrow=blockThin;" edge="1" parent="1">
@@ -1769,7 +1916,7 @@
             <mxPoint x="1440" y="618" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c51" value="&lt;b&gt;The one real risk.&lt;/b&gt; Whoever can edit ER-02 or ER-03 can make any Graph call the platform app is allowed to make. Treat flow co-ownership like an Entra admin role." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+        <mxCell id="c51" value="&lt;b&gt;The one real risk.&lt;/b&gt; Whoever can edit ER-02, ER-03 or ER-04 can make any Graph call the platform app is allowed to make. Treat flow co-ownership like an Entra admin role." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="810" width="560" height="70" as="geometry"/>
         </mxCell>
         <mxCell id="c52" value="&lt;b&gt;Rotate the certificate yearly.&lt;/b&gt; Upload the new one to the app registration, update the connection, then remove the old one. If other automations share the app, give this solution its own certificate." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
@@ -1781,7 +1928,7 @@
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram id="12-deployment-and-build-order" name="12 Deployment and build order">
+  <diagram id="13-deployment-and-build-order" name="13 Deployment and build order">
     <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="900" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
@@ -1792,7 +1939,7 @@
         <mxCell id="c2" value="Microsoft Entra ID tenant" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#F1ECF7;strokeColor=#5C2D91;strokeWidth=1.5;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontStyle=1;fontSize=13;fontColor=#323130;container=1;collapsible=0;" vertex="1" parent="1">
           <mxGeometry x="40" y="100" width="520" height="560" as="geometry"/>
         </mxCell>
-        <mxCell id="c3" value="&lt;b&gt;Platform app registration&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;18723-Q-M365-&lt;br&gt;Automation-AppProvisioning&lt;br&gt;certificate &amp;middot; 5 Graph permissions&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/App_Registrations.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c3" value="&lt;b&gt;Platform app registration&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;18723-Q-M365-&lt;br&gt;Automation-AppProvisioning&lt;br&gt;certificate &amp;middot; 4 Graph permissions&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/App_Registrations.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="160" y="160" width="56" height="56" as="geometry"/>
         </mxCell>
         <mxCell id="c4" value="&lt;b&gt;Flow account&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;member user&lt;br&gt;M365 + Power Automate Premium&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/identity/Users.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
@@ -1822,7 +1969,7 @@
         <mxCell id="c12" value="&lt;b&gt;EntraSettings&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;owners only &amp;middot; item ID 1&lt;/font&gt;" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;fillColor=#03787C;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.list_library;fontSize=10;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="670" y="520" width="50" height="46" as="geometry"/>
         </mxCell>
-        <mxCell id="c13" value="&lt;b&gt;sharepoint/provision.ps1&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;creates all 4 lists, columns, indexes, permissions and the settings item (PnP PowerShell)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#03787C;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c13" value="&lt;b&gt;Flow SP-00&lt;/b&gt; or &lt;b&gt;provision.ps1&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;creates all 4 lists, columns, indexes and the settings item (no script needed with SP-00)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#03787C;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="840" y="160" width="220" height="90" as="geometry"/>
         </mxCell>
         <mxCell id="c14" value="&lt;b&gt;Site groups&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;Owners: Entra ID team + flow account&lt;br&gt;Members: requesters&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#03787C;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
@@ -1831,10 +1978,10 @@
         <mxCell id="c15" value="Power Platform environment &amp;middot; Entra Self-Service (solution)" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontStyle=1;fontSize=13;fontColor=#323130;container=1;collapsible=0;" vertex="1" parent="1">
           <mxGeometry x="1120" y="100" width="540" height="560" as="geometry"/>
         </mxCell>
-        <mxCell id="c16" value="&lt;b&gt;Entra Self-Service&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;paste 5 pa.yaml screens&lt;br&gt;publish &amp;middot; share as User&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerApps.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c16" value="&lt;b&gt;Entra Self-Service&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;import EntraSelfService.msapp&lt;br&gt;publish &amp;middot; share as User&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerApps.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1220" y="160" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c17" value="&lt;b&gt;ER-01 &amp;middot; ER-02 &amp;middot; ER-03&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;built from docs/04&lt;br&gt;owner = flow account&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c17" value="&lt;b&gt;SP-00 &amp;middot; ER-01 to ER-04&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;solution EntraSelfService 1.2&lt;br&gt;owner = flow account&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1220" y="330" width="56" height="56" as="geometry"/>
         </mxCell>
         <mxCell id="c18" value="&lt;b&gt;Dataverse&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;required by Approvals&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/Dataverse.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
@@ -1858,7 +2005,7 @@
         <mxCell id="c24" value="&lt;b&gt;Licences&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;Users: Microsoft 365 (Standard connectors)&lt;br&gt;Flow account: Power Automate Premium&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1380" y="330" width="260" height="70" as="geometry"/>
         </mxCell>
-        <mxCell id="c25" value="&lt;b&gt;Build order&lt;/b&gt;&lt;br&gt;&amp;#9312; &lt;b&gt;Entra admin&lt;/b&gt;: app registration, upload the .crt, add 5 permissions, grant admin consent (docs/01)&lt;br&gt;&amp;#9313; &lt;b&gt;Site owner&lt;/b&gt;: run provision.ps1, or create the lists by hand (docs/02)&lt;br&gt;&amp;#9314; Fill the EntraSettings item: tenant, client ID, ServiceAccountUpn, approvers, fallback&lt;br&gt;&amp;#9315; &lt;b&gt;Power Apps&lt;/b&gt;: add data sources, paste formulas and screens, publish (docs/03)&lt;br&gt;&amp;#9316; &lt;b&gt;Power Automate&lt;/b&gt;, as the flow account: create connections, build ER-01, ER-02, ER-03 (docs/04)&lt;br&gt;&amp;#9317; Copy the app's web link into EntraSettings.PowerAppUrl&lt;br&gt;&amp;#9318; Test: one request per type, plus a rejection and a self-approval (docs/05)" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+        <mxCell id="c25" value="&lt;b&gt;Build order&lt;/b&gt;&lt;br&gt;&amp;#9312; &lt;b&gt;Entra admin&lt;/b&gt;: app registration, upload the .crt, add 4 permissions, grant admin consent (docs/01)&lt;br&gt;&amp;#9313; &lt;b&gt;Flow account&lt;/b&gt;: import the solution zip, create the 5 connections, set the site URL (docs/09)&lt;br&gt;&amp;#9314; Run SP-00 (or provision.ps1) to create the lists; fill the EntraSettings item (docs/02)&lt;br&gt;&amp;#9315; &lt;b&gt;Power Apps&lt;/b&gt;: import the .msapp, add the data sources, publish, share (docs/03)&lt;br&gt;&amp;#9316; Copy the app's web link into EntraSettings.PowerAppUrl&lt;br&gt;&amp;#9317; Turn on ER-01, ER-03, ER-04; onboard the first groups with &lt;i&gt;Add existing group&lt;/i&gt;&lt;br&gt;&amp;#9318; Turn on ER-02 and test one request per type (docs/06 to docs/10)" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="690" width="820" height="170" as="geometry"/>
         </mxCell>
         <mxCell id="c26" value="&lt;b&gt;Test the Graph connection first.&lt;/b&gt; In a scratch flow: Invoke an HTTP request &lt;code&gt;GET /v1.0/organization&lt;/code&gt;. A 403 means consent is missing; AADSTS700027 means the certificate doesn't match." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
@@ -1870,7 +2017,7 @@
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram id="13-option---graph-connection" name="13 Option - Graph connection">
+  <diagram id="14-option---graph-connection" name="14 Option - Graph connection">
     <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="900" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
@@ -1934,7 +2081,7 @@
         <mxCell id="c17" value="App registration 18723-Q-M365-Automation-AppProvisioning" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c16">
           <mxGeometry x="0" y="30" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c18" value="Same 5 Graph application permissions + admin consent" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c16">
+        <mxCell id="c18" value="Same 4 Graph application permissions + admin consent" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c16">
           <mxGeometry x="0" y="52" width="520" height="22" as="geometry"/>
         </mxCell>
         <mxCell id="c19" value="Same certificate (.pfx for Power Automate, .crt in Entra)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c16">
@@ -1970,7 +2117,7 @@
         <mxCell id="c29" value="Extra: Azure subscription, Key Vault, Key Vault Secrets User role" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c24">
           <mxGeometry x="0" y="118" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c30" value="Authentication set on each of the 14 HTTP actions" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c24">
+        <mxCell id="c30" value="Authentication set on every HTTP action" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c24">
           <mxGeometry x="0" y="140" width="520" height="22" as="geometry"/>
         </mxCell>
         <mxCell id="c31" value="Limit: no connector throttle to worry about" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c24">
