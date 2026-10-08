@@ -31,7 +31,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.2.0.0"
+VERSION = "1.2.1.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -409,10 +409,12 @@ def fail_item(seq: Seq, fail_name, stop_name, message, code):
 
 
 def graph_until_ok(seq: "Seq", name: str, method: str, url: str, body: str, ok_status: int, flag: str,
-                   fail_name: str, stop_name: str, fail_message: str, attempts: int = 6, delay: int = 10) -> "Seq":
+                   fail_name: str, stop_name: str, fail_message: str, attempts: int = 6, delay: int = 10,
+                   on_give_up: "Seq | None" = None) -> "Seq":
     """Graph objects take a few seconds to replicate after creation, and calls against them can return
     404/400 meanwhile. The connector retry policy only retries 408/429/5xx, so retry here: up to
-    `attempts` calls, `delay` seconds apart; 'already exist(s)' counts as success."""
+    `attempts` calls, `delay` seconds apart; 'already exist(s)' counts as success.
+    Inside an Apply to each pass `on_give_up` (e.g. set an error variable): Terminate can't be nested in a loop."""
     k = key(name)
     seq.set_var(f"Reset {flag}", flag, "no")
     body_seq = Seq()
@@ -424,7 +426,7 @@ def graph_until_ok(seq: "Seq", name: str, method: str, url: str, body: str, ok_s
                   run_after={k: ["Succeeded", "Failed"]})
     seq.until(f"Until {name}", f"@equals(variables('{flag}'), 'yes')", body_seq, attempts, "PT10M")
     seq.cond(f"{name} gave up", eq(f"@variables('{flag}')", "no"),
-             yes=fail_item(Seq(), fail_name, stop_name, fail_message, "GraphRetryExhausted"))
+             yes=on_give_up or fail_item(Seq(), fail_name, stop_name, fail_message, "GraphRetryExhausted"))
     return seq
 
 
@@ -451,7 +453,8 @@ def er02() -> dict:
     for var, typ, val in [("varTeamGroupId", "string", ""), ("varTeamGroupName", "string", ""), ("varSpId", "string", ""),
                           ("varGroupId", "string", ""), ("varRoleId", "string", ""), ("varAssignTodo", "array", []),
                           ("varAssignments", "array", []), ("varResult", "object", {}),
-                          ("varExposeOk", "string", "no"), ("varAssignOk", "string", "no")]:
+                          ("varExposeOk", "string", "no"), ("varAssignOk", "string", "no"),
+                          ("varAssignError", "string", "")]:
         s.init_var(f"Init {var}", var, typ, val)
 
     t = Seq()  # Try
@@ -583,17 +586,26 @@ def er02() -> dict:
     t.switch("Request type", "@triggerOutputs()?['body/RequestType/Value']", cases)
 
     # -- role assignments, shared
+    # Terminate can't be nested in Apply to each, so a failure is recorded in varAssignError, the remaining
+    # items are skipped, and the request is failed once after the loop.
+    A = "items('Apply_to_each_assignment')"
+    assign = Seq()
+    assign.set_var("Set group id", "varGroupId", f"@{A}?['id']")
+    graph_until_ok(assign, "HTTP Assign role", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo",
+                   body_file("HTTP_Assign_role"), 201, "varAssignOk", "", "", "",
+                   on_give_up=Seq().set_var("Record assign error", "varAssignError",
+                                            f"@concat('Could not assign ', {A}?['displayName'], ' to role ', {A}?['roleValue'], ' after 6 attempts. ResultJson of this request lists what was created.')"))
+    assign.cond("Assignment ok", eq("@variables('varAssignOk')", "yes"),
+                yes=Seq().append_var("Record assignment", "varAssignments", f"@concat({A}?['displayName'], ' -> ', {A}?['roleValue'])"))
     each = Seq()
-    each.cond("Group id missing", is_true("@empty(items('Apply_to_each_assignment')?['id'])"),
-              yes=fail_item(Seq(), "Fail no group id", "Stop no group id",
-                            "@concat('Group ', items('Apply_to_each_assignment')?['displayName'], ' has no Object ID. Requests can only use existing groups: add it with Add existing group and pick it again.')",
-                            "NoGroupId"))
-    each.set_var("Set group id", "varGroupId", "@items('Apply_to_each_assignment')?['id']")
-    graph_until_ok(each, "HTTP Assign role", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo",
-                   body_file("HTTP_Assign_role"), 201, "varAssignOk", "Fail assign role", "Stop assign role",
-                   "@concat('Could not assign ', items('Apply_to_each_assignment')?['displayName'], ' to role ', items('Apply_to_each_assignment')?['roleValue'], ' after 6 attempts. ResultJson of this request lists what was created.')")
-    each.append_var("Record assignment", "varAssignments", "@concat(items('Apply_to_each_assignment')?['displayName'], ' -> ', items('Apply_to_each_assignment')?['roleValue'])")
-    t.foreach("Apply to each assignment", "@variables('varAssignTodo')", each)
+    each.cond("Group id missing", is_true(f"@empty({A}?['id'])"),
+              yes=Seq().set_var("Record no group id", "varAssignError",
+                                f"@concat('Group ', {A}?['displayName'], ' has no Object ID. Requests can only use existing groups: add it with Add existing group and pick it again.')"),
+              no=assign)
+    skip = Seq().cond("No assignment error yet", is_true("@empty(variables('varAssignError'))"), yes=each)
+    t.foreach("Apply to each assignment", "@variables('varAssignTodo')", skip)
+    t.cond("Assignment failed", eq("@empty(variables('varAssignError'))", False),
+           yes=fail_item(Seq(), "Fail assignment", "Stop assignment", "@variables('varAssignError')", "RoleAssignmentFailed"))
     default = Seq().graph("HTTP Assign default access", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo", body_file("HTTP_Assign_default_access"))
     t.cond("Default access", is_true("@and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId'))))"), yes=default)
     t.sp_patch("Mark completed", "EntraRequests", ID, {

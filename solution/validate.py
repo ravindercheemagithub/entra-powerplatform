@@ -73,6 +73,18 @@ for f in sorted(glob.glob('src/Workflows/*.json')):
     for k in all_actions:
         if set(k) & set('?<>%&\\/:*#"\''):
             errors.append(f"{flow}: action name {k!r} contains a character Power Automate rejects")
+    # Rules Power Automate enforces when it saves a flow (the import only warns and leaves the flow off).
+    for k, (a, parents) in all_actions.items():
+        kinds = [all_actions[p][0]['type'] for p in parents]
+        if a['type'] == 'Terminate' and ({'Foreach', 'Until'} & set(kinds)):
+            errors.append(f"{flow}: {k}: Terminate can't be nested in a loop ({' > '.join(parents)})")
+        if a['type'] == 'InitializeVariable' and parents:
+            errors.append(f"{flow}: {k}: Initialize variable must be at the top level")
+        if a['type'] in ('SetVariable', 'AppendToArrayVariable', 'IncrementVariable'):
+            for p in parents:
+                pa = all_actions[p][0]
+                if pa['type'] == 'Foreach' and pa.get('runtimeConfiguration', {}).get('concurrency', {}).get('repetitions', 20) != 1:
+                    errors.append(f"{flow}: {k}: sets a variable inside parallel loop {p}; use concurrency 1")
     roots = [k for k, a in defn['actions'].items() if not a.get('runAfter')]
     if len(roots) != 1: errors.append(f"{flow}: top level has {len(roots)} start actions {roots}")
     init_vars = set()

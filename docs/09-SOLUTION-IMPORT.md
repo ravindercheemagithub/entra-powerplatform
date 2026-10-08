@@ -1,6 +1,6 @@
 # 9. Import the flows as a solution
 
-Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_2_0_0.zip`](../solution/dist/EntraSelfService_1_2_0_0.zip) (version 1.2) is an **unmanaged** solution containing:
+Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_2_1_0.zip`](../solution/dist/EntraSelfService_1_2_1_0.zip) (version 1.2.1) is an **unmanaged** solution containing:
 
 | Component | What it is |
 |---|---|
@@ -35,7 +35,7 @@ Import **as the account that should own the flows** (your account while testing,
 
 ## 9.2 Download the zip
 
-On GitHub open [`solution/dist/EntraSelfService_1_2_0_0.zip`](../solution/dist/EntraSelfService_1_2_0_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
+On GitHub open [`solution/dist/EntraSelfService_1_2_1_0.zip`](../solution/dist/EntraSelfService_1_2_1_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
 
 ## 9.3 Import
 
@@ -86,6 +86,8 @@ Open each flow once in the designer and check it has no errors before turning it
 | SharePoint actions fail with *List not found* | The site URL variable is wrong, or SP-00 hasn't created the lists yet |
 
 ## 9.6 Updating
+
+**1.2.1:** fixes the import warning *the workflow run action 'Stop_no_group_id' has type 'Terminate' that could not be nested under an action of type 'Foreach'* (ER-02 imported but stayed off). The role-assignment loop now records a failure in `varAssignError` and fails the request once, after the loop. Import over 1.2; then turn ER-02 on.
 
 **1.2:** groups are no longer created by the platform, and app registrations get no owners.
 - ER-02 requires an existing owning team and existing role groups.
