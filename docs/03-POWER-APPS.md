@@ -18,8 +18,12 @@ It contains **no data sources**: a SharePoint data source embeds each list's GUI
 
 1. **The lists must exist first**: run SP-00 from the solution (doc 09), or `provision.ps1`, or create them by hand (doc 02).
 2. **Download** the file on GitHub: `powerapps/dist/EntraSelfService.msapp` → **Download raw file**.
-3. **Import:** make.powerapps.com → pick the environment → **Apps** → **Import app** → **From file (.msapp)** → select the file. Power Apps Studio opens and builds the app from its source. Give it a minute; if asked, choose **Allow** or **Open**.
-   *(In Studio you can also use **File → Open → Browse**.)*
+3. **Open it in Studio.** A `.msapp` is opened from inside Power Apps Studio, not from *Import canvas app* (that button only takes `.zip` packages):
+   1. make.powerapps.com → pick the environment → **+ Create** → **Blank app** → **Blank canvas app** → **Tablet** → any name → **Create**. Studio opens with an empty app.
+   2. In Studio: **File** (in the newer Studio, the **…** / app menu at the top left) → **Open** → **Browse** → select `EntraSelfService.msapp`.
+   3. Studio replaces the blank app with this one and compiles it from source. Give it a minute; if asked, choose **Allow** or **Open**.
+
+   **Nothing appears in the Apps list until you save it in step 7.** Closing the tab before that discards it.
 4. **Add the data sources:** left rail → **Data** (cylinder icon) → **Add data**:
    - **SharePoint** → your connection → the site (`https://<tenant>.sharepoint.com/teams/m365automationqa`) → tick **EntraRequests**, **EntraCatalogApps**, **EntraCatalogGroups** → **Connect**. Don't add EntraSettings.
    - **Add data** → **Office 365 Users**.
@@ -27,7 +31,7 @@ It contains **no data sources**: a SharePoint data source embeds each list's GUI
    The data source names must be exactly these list names; the formulas refer to them.
 5. **Tree view → App → … → Run OnStart.**
 6. **App checker** (stethoscope icon, top right): expect **0 errors**. Warnings (delegation, accessibility) are fine. If errors about the lists remain, save, close Studio and open the app again so every formula re-binds.
-7. **File → Save as** → name `Entra Self-Service` → **Save**, then **Publish**. Share it as in 3.6 and put its web link into `EntraSettings.PowerAppUrl`.
+7. **Save to the cloud:** **File → Save** (or Ctrl+S). The first save asks for a name: `Entra Self-Service` → **Save**. Then **Publish**. Only now does the app show up under **Apps** (refresh the page). Share it as in 3.6 and put its web link into `EntraSettings.PowerAppUrl`.
 8. Optional: add it to the solution so it moves with the flows: **Solutions → Entra Self-Service → Add existing → App → Canvas app → Outside Dataverse** → select it.
 
 If Studio reports that it can't load the app, copy the message and share it. The paste route (3.1 to 3.3) still works and uses the same screens.
