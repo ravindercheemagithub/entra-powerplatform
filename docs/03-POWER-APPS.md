@@ -18,10 +18,11 @@ It contains **no data sources**: a SharePoint data source embeds each list's GUI
 
 1. **The lists must exist first**: run SP-00 from the solution (doc 09), or `provision.ps1`, or create them by hand (doc 02).
 2. **Download** the file on GitHub: `powerapps/dist/EntraSelfService.msapp` → **Download raw file**.
-3. **Open it in Studio.** A `.msapp` is opened from inside Power Apps Studio, not from *Import canvas app* (that button only takes `.zip` packages):
-   1. make.powerapps.com → pick the environment → **+ Create** → **Blank app** → **Blank canvas app** → **Tablet** → any name → **Create**. Studio opens with an empty app.
-   2. In Studio: **File** (in the newer Studio, the **…** / app menu at the top left) → **Open** → **Browse** → select `EntraSelfService.msapp`.
-   3. Studio replaces the blank app with this one and compiles it from source. Give it a minute; if asked, choose **Allow** or **Open**.
+3. **Open it in Studio.** Either route works; which one you see depends on your tenant's rollout:
+   - **Maker portal:** **Apps** → **Import app** → **From file (.msapp)** → select the file. (*Import canvas app* is a different button: it only takes `.zip` packages.)
+   - **From Studio:** **+ Create** → **Blank app** → **Blank canvas app** → **Tablet** → any name → **Create**. In Studio's top command bar click the **…** (ellipsis, at the right end of *Insert · Add data · New screen …*) → **Open** (the last item) → **Browse** → select `EntraSelfService.msapp`. Older Studio versions have this under **File → Open → Browse**.
+
+   Studio replaces the blank app with this one and compiles it from source. Give it a minute; if asked, choose **Allow** or **Open**.
 
    **Nothing appears in the Apps list until you save it in step 7.** Closing the tab before that discards it.
 4. **Add the data sources:** left rail → **Data** (cylinder icon) → **Add data**:

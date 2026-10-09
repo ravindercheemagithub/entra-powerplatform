@@ -67,7 +67,7 @@ On GitHub open [`solution/dist/EntraSelfService_1_2_1_0.zip`](../solution/dist/E
    - **ServiceAccountUpn** = the UPN of the account you imported as, in lower case. It owns the SharePoint connection, so its name appears in *Modified By*.
    - EntraApproverEmails, FallbackApproverEmail
    - PowerAppUrl (the list URL until the app exists)
-4. **Import the app**: [doc 03 §3.0](03-POWER-APPS.md#30-fastest-import-the-packed-app-msapp) (create a blank canvas app, then in Studio **File → Open → Browse** → the `.msapp`; add the three lists and Office 365 Users as data sources; **Save** to the cloud and **Publish**).
+4. **Import the app**: [doc 03 §3.0](03-POWER-APPS.md#30-fastest-import-the-packed-app-msapp) (**Apps → Import app → From file (.msapp)**, or create a blank canvas app and use Studio's **… → Open → Browse**; add the three lists and Office 365 Users as data sources; **Save** to the cloud and **Publish**).
 5. **Turn on ER-01** and test it with [doc 06](06-TEST-ER01.md).
 6. **Turn on ER-03** and test it with [doc 08](08-TEST-ER03.md). It's read-only in Entra.
    Turn on **ER-04** too, and test it with [doc 10](10-TEST-ER04.md). It's read-only in Entra and needs no approval.
