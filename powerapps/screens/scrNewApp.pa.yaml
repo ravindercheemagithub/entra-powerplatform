@@ -415,7 +415,6 @@
                 Control: Classic/ComboBox
                 Properties:
                   Items: =gMyTeams
-                  SearchItems: =Search(gMyTeams, Self.SearchText, Title)
                   DisplayFields: =["Title"]
                   SearchFields: =["Title"]
                   SelectMultiple: =false
@@ -1548,7 +1547,6 @@
                       Control: Classic/ComboBox
                       Properties:
                         Items: =gMyGroups
-                        SearchItems: =Search(gMyGroups, Self.SearchText, Title)
                         DisplayFields: =["Title"]
                         SearchFields: =["Title"]
                         SelectMultiple: =false

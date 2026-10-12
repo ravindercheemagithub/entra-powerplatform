@@ -916,7 +916,6 @@ Screens:
                         Control: Classic/ComboBox@2.4.0
                         Properties:
                           Items: =gMyGroups
-                          SearchItems: =Search(gMyGroups, Self.SearchText, Title)
                           DisplayFields: =["Title"]
                           SearchFields: =["Title"]
                           SelectMultiple: =false
@@ -1033,7 +1032,6 @@ Screens:
                     Control: Classic/ComboBox@2.4.0
                     Properties:
                       Items: =gMyGroups
-                      SearchItems: =Search(gMyGroups, Self.SearchText, Title)
                       DisplayFields: =["Title"]
                       SearchFields: =["Title"]
                       SelectMultiple: =false
