@@ -422,7 +422,7 @@ Screens:
             - lblTeam_NewApp:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="Owning team *"
+                  Text: ="Owning group (optional)"
                   X: =(Parent.Width + 24) / 2
                   Y: =154
                   Width: =(Parent.Width - 24) / 2
@@ -453,7 +453,7 @@ Screens:
                   HoverFill: =gTheme.PrimaryLight
                   SelectionFill: =gTheme.Primary
                   PaddingLeft: =10
-                  Tooltip: ="Choose a group you are a member of"
+                  Tooltip: ="Optional. Tagged team:group\<group id>. Leave empty and the app is tagged team:user\<your id>; hand it to a group later with Owning group."
                   AllowEmptySelection: =true
             - lnkAddExisting_NewApp:
                 Control: Label@2.5.1
@@ -1932,7 +1932,7 @@ Screens:
                     "<table style='border-collapse:collapse; width:100%'>" &
                     "<tr><td style='color:#605e5c; width:220px; padding:4px 0'>Display name</td><td><b>" & lblFullName_NewApp.Text & "</b></td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0'>appCatID · environment · BoR short name</td><td>" & Upper(Trim(txtAppCatId_NewApp.Text)) & " · " & ddEnv_NewApp.Selected.Value & " · " & Trim(txtBorShort_NewApp.Text) & "</td></tr>" &
-                    "<tr><td style='color:#605e5c; padding:4px 0'>Owning team</td><td>" & team.DisplayName & "</td></tr>" &
+                    "<tr><td style='color:#605e5c; padding:4px 0'>Owning group</td><td>" & If(IsBlank(team.GroupId), "none: you own it (tag team:user\&lt;your id&gt;). You can hand it to a group later with <i>Owning group</i>.", team.DisplayName & " (tag team:group\&lt;group id&gt;)") & "</td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0'>Account types</td><td>" & radAudience_NewApp.Selected.Value & "</td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0'>Redirect URIs</td><td>" & If(ddPlatform_NewApp.Selected.Value = "None", "none", ddPlatform_NewApp.Selected.Value & ": " & txtRedirect_NewApp.Text) & "</td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0'>Expose an API</td><td>" & If(chkExpose_NewApp.Value, If(radUri_NewApp.Selected.Value = "Custom", txtCustomUri_NewApp.Text, "api://{appId}") & If(CountRows(colScopes) > 0, " — scopes: " & Concat(colScopes, Value, ", "), ""), "no") & "</td></tr>" &
@@ -1941,7 +1941,7 @@ Screens:
                         If(CountRows(colRoles) = 0, "none", "<ul style='margin:0; padding-left:18px'>" &
                             Concat(ForAll(colRoles As r, {t: "<li><b>" & r.Value & "</b> → " & Coalesce(Concat(Filter(colRoleGroups, RoleKey = r.Key), DisplayName, ", "), "<i>no groups</i>") & "</li>"}), t) & "</ul>") & "</td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0'>Enterprise app</td><td>" & If(tglCreateSp_NewApp.Value || CountRows(colRoleGroups) > 0, "yes" & If(tglAssign_NewApp.Value, ", assignment required", ", assignment not required"), "no") & "</td></tr>" &
-                    "<tr><td style='color:#605e5c; padding:4px 0'>Owners</td><td>none (access is managed through the owning team and role groups)</td></tr>" &
+                    "<tr><td style='color:#605e5c; padding:4px 0'>Owners</td><td>none (who may change it is set by the team tag; who may sign in by the role groups)</td></tr>" &
                     "</table>" &
                     "<p style='margin-top:14px; padding:10px 12px; background:#ebf3fc; border-left:3px solid #0f6cbd'><b>What happens next</b><br>" &
                     "1. Your manager approves in Outlook / Teams.  2. The Entra ID team approves.  3. The app registration, roles, role assignments and enterprise app are created automatically and appear under My requests.</p>" &
@@ -1991,7 +1991,7 @@ Screens:
                                     nameText: Trim(txtAppName_NewApp.Text),
                                     description: Substitute(Substitute(Substitute(Substitute(Trim(txtDescription_NewApp.Text), Char(13), ""), Char(10), " "), """", "'"), "\", "/"),
                                     signInAudience: If(radAudience_NewApp.Selected.Value = "Multitenant", "AzureADMultipleOrgs", "AzureADMyOrg"),
-                                    owningGroup: {mode: "existing", id: team.GroupId, displayName: team.DisplayName},
+                                    owningGroup: If(IsBlank(team.GroupId), Blank(), {mode: "existing", id: team.GroupId, displayName: team.DisplayName}),
                                     redirectUrisWeb: If(ddPlatform_NewApp.Selected.Value = "Web", Trim(txtRedirect_NewApp.Text), ""),
                                     redirectUrisSpa: If(ddPlatform_NewApp.Selected.Value = "Single-page app", Trim(txtRedirect_NewApp.Text), ""),
                                     exposeApi: {
@@ -2178,7 +2178,6 @@ Screens:
                     If(!IsMatch(Trim(txtBorShort_NewApp.Text), "^[A-Za-z0-9]{2,20}$"), "App BoR short name: 2–20 letters or digits, no spaces."),
                     If(!IsMatch(Trim(txtAppName_NewApp.Text), "^[A-Za-z0-9][A-Za-z0-9 ._-]{1,79}$"), "Display name: enter the free-text part after the prefix (2–80 letters, digits, spaces, . _ -)."),
                     If(Len(lblFullName_NewApp.Text) > 120, "The full display name is longer than 120 characters; shorten the free-text part."),
-                    If(IsBlank(cmbTeam_NewApp.Selected.GroupId), "Choose the owning team. Not listed? Use 'Group not listed? Add an existing group'."),
                     If(Len(Trim(txtJustification_NewApp.Text)) < 10, "Business justification is required (10+ characters)."),
                     If(ddPlatform_NewApp.Selected.Value <> "None" && !IsMatch(Trim(txtRedirect_NewApp.Text), "^\S+$"), "Redirect URIs: no spaces; separate several with ;")
                 )

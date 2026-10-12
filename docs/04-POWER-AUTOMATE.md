@@ -1,4 +1,4 @@
-# 4. Power Automate: three flows
+# 4. Power Automate: the flows
 
 | Flow | Trigger | Connectors | Licence |
 |---|---|---|---|
@@ -6,10 +6,12 @@
 | **ER-02 Execute** | SharePoint: item created or modified, `Status = Approved` | SharePoint, Outlook, plus a Graph connection: **HTTP with Microsoft Entra ID (preauthorized)** (option A) or **HTTP** + **Azure Key Vault** (option B) | Premium (owner's licence) |
 | **ER-03 Catalog sync** | Recurrence, hourly (+ run manually) | SharePoint, plus the same Graph connection | Premium (owner's licence) |
 | **ER-04 Onboard group** | SharePoint: item created, `RequestType = onboardGroup` (group looked up by name or Object ID) | SharePoint, plus the same Graph connection | Premium (owner's licence) |
+| **ER-05 Find app** | SharePoint: item created, `RequestType = lookupApp` (the **Search** button on the change screen) | SharePoint, plus the same Graph connection | Premium (owner's licence) |
+| **ER-06 Tag owning group** | SharePoint: item created, `RequestType = tagOwnerGroup` | SharePoint, plus the same Graph connection | Premium (owner's licence) |
 
 **Shortcut:** instead of building the flows by hand, import them as a solution: [doc 09](09-SOLUTION-IMPORT.md). This page remains the reference for what each action does.
 
-Build all three **signed in as the flow account** (the account in `EntraSettings.ServiceAccountUpn`), in the Entra Self-Service environment, ideally inside a **solution** (Solutions → New solution → New → Automation → Cloud flow) so you can export and move them later. Add the Entra ID team as co-owners.
+Build them all **signed in as the flow account** (the account in `EntraSettings.ServiceAccountUpn`), in the Entra Self-Service environment, ideally inside a **solution** (Solutions → New solution → New → Automation → Cloud flow) so you can export and move them later. Add the Entra ID team as co-owners.
 
 ## Conventions used below
 
@@ -94,7 +96,7 @@ Either way, build the first Graph action completely, then copy it (classic: *…
 ## ER-01 Approvals (standard connectors only)
 
 **+ Create → Automated cloud flow** → name `ER-01 Approvals` → trigger **SharePoint – When an item is created** → Site Address = your site, List Name = `EntraRequests`.
-Trigger **Settings → Trigger conditions** → **+ Add**: `@and(equals(triggerOutputs()?['body/Status/Value'], 'Submitted'), not(equals(triggerOutputs()?['body/RequestType/Value'], 'onboardGroup')))` (onboardGroup requests need no approval; ER-04 handles them)
+Trigger **Settings → Trigger conditions** → **+ Add**: `@and(equals(triggerOutputs()?['body/Status/Value'], 'Submitted'), not(contains(createArray('onboardGroup', 'lookupApp', 'tagOwnerGroup'), triggerOutputs()?['body/RequestType/Value'])))` (these need no approval; ER-04, ER-05 and ER-06 handle them)
 
 | # | Action (name) | Type | Configuration |
 |---|---|---|---|
@@ -188,7 +190,7 @@ Trigger **Settings**:
 | 6 | `Requester` | Compose | Inputs `toLower(last(split(triggerOutputs()?['body/Author/Claims'], '\|')))` (the requester's UPN) |
 | 7 | `Payload` | Compose | Inputs `json(triggerOutputs()?['body/ApprovedPayloadJson'])` |
 | 8 | `Now` | Compose | Inputs `utcNow()` |
-| 9 | Eleven variables | Variables – Initialize variable ×11 | One action per row, named `Init <name>`: `varTeamGroupId` String (empty); `varTeamGroupName` String (empty); `varSpId` String (empty); `varGroupId` String (empty); `varRoleId` String (empty); `varAssignTodo` Array, Value *plain text* `[]`; `varAssignments` Array, Value `[]`; `varResult` Object, Value `{}`; `varExposeOk` String, Value `no`; `varAssignOk` String, Value `no`; `varAssignError` String (empty) |
+| 9 | Thirteen variables | Variables – Initialize variable ×13 | One action per row, named `Init <name>`: `varTeamGroupId` String (empty); `varTeamGroupName` String (empty); `varSpId` String (empty); `varGroupId` String (empty); `varRoleId` String (empty); `varAssignTodo` Array, Value *plain text* `[]`; `varAssignments` Array, Value `[]`; `varResult` Object, Value `{}`; `varExposeOk` String, Value `no`; `varAssignOk` String, Value `no`; `varAssignError` String (empty); `varTeamTag` String (empty); `varGroupOwner` String, Value `no` |
 | 10 | `Try` | Control – Scope | Everything in the next sections goes **inside** this scope |
 | 11 | `Catch` | Control – Scope | After `Try` (not inside it). See [Catch](#catch-scope). |
 
@@ -209,10 +211,9 @@ Trigger **Settings**:
 | `Filter team tag` | Data Operation – Filter array | From `body('HTTP_Get_target_app')?['tags']`; condition `startsWith(item(), 'team:')` is equal to `true` |
 | `Filter appcat tag` | Filter array | From `body('HTTP_Get_target_app')?['tags']`; condition `startsWith(item(), 'appCatID:')` is equal to `true` |
 | `Filter kept tags` | Filter array | From `body('HTTP_Get_target_app')?['tags']`; condition `not(or(startsWith(item(), 'lastUpdatedBy:'), startsWith(item(), 'lastUpdatedTimestamp:'), startsWith(item(), 'requestId:')))` is equal to `true` |
-| `HTTP Check target team` | Graph | `POST` `https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups`; Body [`HTTP_Check_target_team.json`](../powerautomate/actions/HTTP_Check_target_team.json) |
-| `HTTP Target owners` | Graph | `GET` `https://graph.microsoft.com/v1.0/applications/@{triggerOutputs()?['body/TargetObjectId']}/owners?$select=id` |
-| `Requester may change` | Condition | `and(or(not(empty(body('HTTP_Check_target_team')?['value'])), contains(string(body('HTTP_Target_owners')?['value']), body('HTTP_Get_requester')?['id'])), or(empty(body('Filter_appcat_tag')), equals(first(body('Filter_appcat_tag')), concat('appCatID:', triggerOutputs()?['body/AppCatId']))))` is equal to `true`. **If no:** `Fail not owner` (SharePoint – Update item: List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `Failed`; ErrorMessage *plain text* `The app is not owned by any of your groups, or its appCatID differs.`) → `Stop not owner` (Terminate: Status **Failed**, Code `NotOwner`, Message *plain text* `Requester may not change this app`). **If yes:** leave empty. |
-| `Updated tags` | Compose | Inputs `union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId']), concat('managedBy:', body('Get_settings')?['ManagedByTag'])), json('[]')))` |
+| *Ownership check* | | The [ownership check](#ownership-check-shared-by-er-02-er-05-er-06) with prefix `Target`, tags `body('HTTP_Get_target_app')?['tags']`, user id `body('HTTP_Get_requester')?['id']`, flag `varGroupOwner` |
+| `Requester may change` | Condition | `and(<owner expression>, or(empty(body('Filter_appcat_tag')), empty(triggerOutputs()?['body/AppCatId']), equals(first(body('Filter_appcat_tag')), concat('appCatID:', triggerOutputs()?['body/AppCatId']))))` is equal to `true`, where `<owner expression>` is the one from the ownership check. **If no:** `Fail not owner` (Update item: Status `Failed`, ErrorMessage *plain text* `Not an authorized owner: the app's team tag names neither you (team:user\<your id>) nor a group you are a member of (team:group\<group id>), or its appCatID differs.`) → `Stop not owner` (Terminate: **Failed**, Code `NotOwner`). Owners of the app registration object are not used. |
+| `Updated tags` | Compose | Inputs `union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('managedBy:', body('Get_settings')?['ManagedByTag'])), json('[]')), if(and(empty(body('Filter_appcat_tag')), not(empty(triggerOutputs()?['body/AppCatId']))), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId'])), json('[]')))` |
 | `HTTP Find target SP` | Graph | `GET` `https://graph.microsoft.com/v1.0/servicePrincipals?$filter=appId eq '@{body('HTTP_Get_target_app')?['appId']}'&$select=id` |
 | `Set target SP` | Variables – Set variable | Name `varSpId`; Value `coalesce(first(body('HTTP_Find_target_SP')?['value'])?['id'], '')` |
 
@@ -224,18 +225,14 @@ Trigger **Settings**:
 
 | # | Action | Type | Configuration |
 |---|---|---|---|
-| 1 | `Owning team missing` | Condition | `empty(outputs('Payload')?['owningGroup']?['id'])` is equal to `true`. **If yes:** `Fail no team` (Update item: List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `Failed`; ErrorMessage *plain text* `The request has no owning team. Choose an existing group you are a member of.`) → `Stop no team` (Terminate: **Failed**, Code `NoOwningTeam`). **If no:** leave empty. Groups are created outside this platform, so the owning team is always an existing group. |
-| 2 | `HTTP Check team membership` | Graph | `POST` `https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups`; Body `{"groupIds": ["@{outputs('Payload')?['owningGroup']?['id']}"]}` |
-| 3 | `Is team member` | Condition | Left `length(body('HTTP_Check_team_membership')?['value'])`; **is greater than**; right *plain text* `0`. **If no:** `Fail not team member` (Update item as in step 1 with ErrorMessage *plain text* `You are not a member of the owning team.`) → `Stop not team member` (Terminate: **Failed**, Code `NotTeamMember`). **If yes:** leave empty. |
-| 4 | `HTTP Get team group` | Graph | `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Payload')?['owningGroup']?['id']}?$select=id,displayName` |
-| 5 | `Set team id` / `Set team name` | Set variable ×2 | `varTeamGroupId` = `body('HTTP_Get_team_group')?['id']`; `varTeamGroupName` = `body('HTTP_Get_team_group')?['displayName']` |
+| 1 | `Has owning group` | Condition | `not(empty(outputs('Payload')?['owningGroup']?['id']))` is equal to `true`. The owning group is **optional**. **If yes:** `HTTP Check team membership` (Graph: `POST` `https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups`; Body `{"groupIds": ["@{outputs('Payload')?['owningGroup']?['id']}"]}`) → `Is team member` (Condition: `length(body('HTTP_Check_team_membership')?['value'])` is greater than `0`; **If no:** `Fail not team member` with ErrorMessage `You are not a member of the owning group.` → `Stop not team member`) → `HTTP Get team group` (Graph: `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Payload')?['owningGroup']?['id']}?$select=id,displayName`) → `Set team id` (`varTeamGroupId` = `body('HTTP_Get_team_group')?['id']`) → `Set team name` (`varTeamGroupName` = `body('HTTP_Get_team_group')?['displayName']`) → `Set group team tag` (`varTeamTag` = `concat('team:group\', body('HTTP_Get_team_group')?['id'])`). **If no:** `Set user team name` (`varTeamGroupName` = `outputs('Requester')`) → `Set user team tag` (`varTeamTag` = `concat('team:user\', toLower(body('HTTP_Get_requester')?['id']))`). |
 | 2 | `Select app roles` | Select | From `coalesce(outputs('Payload')?['appRoles'], json('[]'))`; Map (key/value rows): `id` → `guid()`; `value` → `item()?['value']`; `displayName` → `item()?['displayName']`; `description` → `item()?['description']`; `allowedMemberTypes` → `split(item()?['allowedMemberTypes'], ',')`; `isEnabled` → `true` |
 | 3 | `Select scopes` | Select | From `if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), coalesce(outputs('Payload')?['exposeApi']?['scopes'], json('[]')), json('[]'))`; Map: `id` → `guid()`; `value` → `item()?['value']`; `type` → `item()?['type']`; `adminConsentDisplayName` → `item()?['adminConsentDisplayName']`; `adminConsentDescription` → `item()?['adminConsentDescription']`; `userConsentDisplayName` → `item()?['adminConsentDisplayName']`; `userConsentDescription` → `item()?['adminConsentDescription']`; `isEnabled` → `true` |
 | 4 | `Select id token claims` | Select | From `if(empty(outputs('Payload')?['optionalClaimsIdToken']), json('[]'), split(outputs('Payload')?['optionalClaimsIdToken'], ','))`; Map: `name` → `item()`; `essential` → `false` |
 | 5 | `Select access token claims` | Select | From `if(empty(outputs('Payload')?['optionalClaimsAccessToken']), json('[]'), split(outputs('Payload')?['optionalClaimsAccessToken'], ','))`; Map: `name` → `item()`; `essential` → `false` |
 | 6 | `Filter optional tags` | Filter array | From `split(coalesce(outputs('Payload')?['tags'], ''), ';')`; condition `and(contains(item(), '='), greater(length(trim(item())), 2))` is equal to `true` |
 | 7 | `Select optional tags` | Select | From `body('Filter_optional_tags')`; Map in text mode `concat(trim(first(split(item(), '='))), ':', trim(last(split(item(), '='))))` |
-| 8 | `App tags` | Compose | Inputs `union(outputs('Base_tags'), createArray(concat('team:', variables('varTeamGroupId')), concat('teamName:', variables('varTeamGroupName'))), body('Select_optional_tags'))` |
+| 8 | `App tags` | Compose | Inputs `union(outputs('Base_tags'), createArray(variables('varTeamTag'), concat('teamName:', variables('varTeamGroupName'))), if(empty(outputs('Payload')?['appEnv']), json('[]'), createArray(concat('appEnv:', outputs('Payload')?['appEnv']))), if(empty(outputs('Payload')?['borShortName']), json('[]'), createArray(concat('borShortName:', outputs('Payload')?['borShortName']))), body('Select_optional_tags'))`. The team tag is `team:group\<group id>` or `team:user\<requester object id>`. |
 | 9 | `HTTP Create application` | Graph | `POST` `https://graph.microsoft.com/v1.0/applications`; Body [`HTTP_Create_application.json`](../powerautomate/actions/HTTP_Create_application.json) |
 | 9b | `Wait for app replication` | Schedule – Delay | Count `15`, Unit **Second**. A new app takes a few seconds to replicate; calls against it before that return 404. Expose API (10) also retries. |
 | 10 | `Expose API` | Condition | `equals(outputs('Payload')?['exposeApi']?['enabled'], true)` is equal to `true`. **If yes:** the **retry pattern** below with call `HTTP Expose API` (Graph: `PATCH` `https://graph.microsoft.com/v1.0/applications/@{body('HTTP_Create_application')?['id']}`; Body [`HTTP_Expose_API.json`](../powerautomate/actions/HTTP_Expose_API.json)), success status `204`, flag `varExposeOk`, failure message `concat('Could not set the Application ID URI and scopes on the new app registration (object id ', body('HTTP_Create_application')?['id'], ') after 6 attempts. Delete that app in Entra before retrying.')`. **If no:** leave empty. |
@@ -378,9 +375,10 @@ concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs(
 | 5.1 | `Filter app team` | Filter array | From `items('Apply_to_each_app')?['tags']`; condition `startsWith(item(), 'team:')` is equal to `true` |
 | 5.2 | `Filter app team name` | Filter array | From `items('Apply_to_each_app')?['tags']`; condition `startsWith(item(), 'teamName:')` is equal to `true` |
 | 5.3 | `Filter app appcat` | Filter array | From `items('Apply_to_each_app')?['tags']`; condition `startsWith(item(), 'appCatID:')` is equal to `true` |
-| 5.4 | `Team id` | Compose | Inputs `if(empty(body('Filter_app_team')), '', substring(first(body('Filter_app_team')), 5))` |
+| 5.4 | `Team tag` / `Team id` / `Owner user id` | Compose ×3 | `Team tag` = `if(empty(body('Filter_app_team')), '', substring(first(body('Filter_app_team')), 5))` (`group\<id>`, `user\<id>`, or a bare group id from 1.2); `Team id` = `if(startsWith(outputs('Team_tag'), 'group\'), substring(outputs('Team_tag'), 6), if(startsWith(outputs('Team_tag'), 'user\'), '', outputs('Team_tag')))`; `Owner user id` = `if(startsWith(outputs('Team_tag'), 'user\'), substring(outputs('Team_tag'), 5), '')` |
 | 5.5 | `Reset members` | Set variable | Name `varMembers`; Value: leave empty |
 | 5.6 | `Has team` | Condition | `empty(outputs('Team_id'))` is equal to `false`. **If yes:** the actions in [Has team? → If yes](#er-03-has-team--if-yes). **If no:** leave empty. |
+| 5.6b | `Has owner user` | Condition | `empty(outputs('Owner_user_id'))` is equal to `false`. **If yes:** `HTTP Owner user` (Graph: `GET` `https://graph.microsoft.com/v1.0/users/@{outputs('Owner_user_id')}?$select=userPrincipalName`) → `Set owner member` (Set variable `varMembers` = `concat(';', toLower(body('HTTP_Owner_user')?['userPrincipalName']), ';')`). A user-owned app is visible to that user only. |
 | 5.7 | `HTTP App owners` | Graph | `GET` `https://graph.microsoft.com/v1.0/applications/@{items('Apply_to_each_app')?['id']}/owners/microsoft.graph.user?$select=userPrincipalName` |
 | 5.8 | `Select owner upns` | Select | From `body('HTTP_App_owners')?['value']`; Map in text mode `toLower(item()?['userPrincipalName'])` |
 | 5.9 | `HTTP App SP` | Graph | `GET` `https://graph.microsoft.com/v1.0/servicePrincipals?$filter=appId eq '@{items('Apply_to_each_app')?['appId']}'&$select=id` |
@@ -478,6 +476,85 @@ Catalog row fields (6.11):
 | MemberUpns | `concat(';', join(body('Select_member_upns'), ';'), ';')` |
 | OwnerUpns | `concat(';', join(body('Select_owner_upns'), ';'), ';')` |
 | LastSynced | `utcNow()` |
+
+---
+
+## Ownership check (shared by ER-02, ER-05, ER-06)
+
+An app registration belongs to whoever its **team tag** names. The platform never adds owners to the app registration itself.
+
+| Team tag | Who may change the app |
+|---|---|
+| `team:user\<user object id>` | That user. Written when an app is created **without** an owning group. |
+| `team:group\<group object id>` | Every member of that group (nested membership counts). Written when an owning group is chosen, or by ER-06. |
+| `team:<group object id>` | Same as `team:group\…`: the format apps created by 1.2 carry. |
+
+The backslash is a literal character: in expressions, `'team:user\'` is a normal string (Power Automate doesn't treat `\` as an escape).
+
+With a prefix `<P>` (e.g. `App`), the tags expression `<tags>`, the requester's object id `<user>` and a String variable `<flag>` initialized to `no`:
+
+| Action | Type | Configuration |
+|---|---|---|
+| `<P> team tags` | Filter array | From `coalesce(<tags>, json('[]'))`; condition `startsWith(item(), 'team:')` is equal to `true` |
+| `<P> group values` | Select | From `body('<P>_team_tags')`; Map in text mode `if(startsWith(item(), 'team:group\'), substring(item(), 11), if(startsWith(item(), 'team:user\'), '', substring(item(), 5)))` |
+| `<P> group ids` | Filter array | From `body('<P>_group_values')`; condition `not(empty(item()))` is equal to `true` |
+| `Reset <flag> <P>` | Set variable | `<flag>` = *plain text* `no` |
+| `<P> has team groups` | Condition | `length(body('<P>_group_ids'))` is greater than `0`. **If yes:** `HTTP <P> check groups` (Graph: `POST` `https://graph.microsoft.com/v1.0/users/@{<user>}/checkMemberGroups`; Body `{"groupIds": @{take(body('<P>_group_ids'), 20)}}`) → `<P> member of a team group` (Condition: `length(body('HTTP_<P>_check_groups')?['value'])` is greater than `0`; **If yes:** `Set <flag> <P>` = *plain text* `yes`) |
+
+**Owner expression** (used in the next condition): `or(contains(body('<P>_team_tags'), concat('team:user\', toLower(<user>))), equals(variables('<flag>'), 'yes'))`
+
+---
+
+## ER-05 Find app (Premium)
+
+Behind the **Search** button on the change screen. The requester types the app registration's **Application (client) ID or Object ID**; ER-05 finds the app and returns its details **only if the requester is its authorized owner** (ownership check above). Otherwise the request fails with *Not authorized owner*, which the app shows. Read-only in Entra; no approval. These `lookupApp` items are hidden from *My requests*.
+
+**+ Create → Automated cloud flow** → `ER-05 Find app` → **SharePoint – When an item is created** (EntraRequests). Trigger condition: `@and(equals(triggerOutputs()?['body/Status/Value'], 'Submitted'), equals(triggerOutputs()?['body/RequestType/Value'], 'lookupApp'))`
+
+| # | Action (name) | Type | Configuration |
+|---|---|---|---|
+| 1 | `Mark in progress` | Update item | Status `InProgress` |
+| 2 | `Requester` | Compose | `toLower(last(split(triggerOutputs()?['body/Author/Claims'], '\|')))` |
+| 3 | `App query` | Compose | `toLower(trim(coalesce(triggerOutputs()?['body/TargetDisplayName'], triggerOutputs()?['body/TargetObjectId'], '')))` |
+| 4 | `Init varApp` / `Init varGroupOwner` | Initialize variable ×2 | `varApp` Object `{}`; `varGroupOwner` String `no` |
+| 5 | `Try` | Scope | 5.1–5.9 |
+| 5.1 | `Query is a GUID` | Condition | `and(equals(length(outputs('App_query')), 36), equals(length(split(outputs('App_query'), '-')), 5))` is equal to `true`. **If no:** `Fail not a GUID` → `Stop not a GUID` |
+| 5.2 | `HTTP Get requester` | Graph | `GET` `https://graph.microsoft.com/v1.0/users/@{outputs('Requester')}?$select=id` |
+| 5.3 | *Find the app* | | `HTTP App by appId` (Graph: `GET` `https://graph.microsoft.com/v1.0/applications?$filter=appId eq '@{outputs('App_query')}'&$select=id,appId,displayName,tags,identifierUris,appRoles,api`) → `App found by appId` (Condition: `empty(body('HTTP_App_by_appId')?['value'])` is equal to `false`; **If yes:** `Set App from appId` (`varApp` = `first(body('HTTP_App_by_appId')?['value'])`); **If no:** `HTTP App by object id` (same with `$filter=id eq '…'`) → `App found by object id` (**If yes:** `Set App from object id`; **If no:** `Fail app not found` with ErrorMessage `concat('No app registration has the Application (client) ID or Object ID ', outputs('App_query'), '.')` → `Stop app not found`)) |
+| 5.4 | *Ownership check* | | Prefix `App`, tags `variables('varApp')?['tags']`, user `body('HTTP_Get_requester')?['id']`, flag `varGroupOwner` |
+| 5.5 | `Requester is owner` | Condition | the owner expression is equal to `true`. **If no:** `Fail not owner` with ErrorMessage `concat('Not authorized owner: ', variables('varApp')?['displayName'], ' is tagged ', coalesce(first(body('App_team_tags')), 'with no team'), '. Only that user, or a member of that group, can use it here.')` → `Stop not owner` |
+| 5.6 | `HTTP Find SP` | Graph | `GET` `https://graph.microsoft.com/v1.0/servicePrincipals?$filter=appId eq '@{variables('varApp')?['appId']}'&$select=id` |
+| 5.7 | `Filter appcat tag`, `Filter team name tag`, `App catid` | Filter array ×2, Compose | tags starting with `appCatID:` / `teamName:`; `App catid` = `if(empty(body('Filter_appcat_tag')), '', substring(first(body('Filter_appcat_tag')), 9))` |
+| 5.8 | `Result` | Compose | Object with `objectId`, `appId`, `displayName`, `appCatId`, `team` (the team tag), `teamName`, `identifierUri`, `servicePrincipalId`, and `appRolesJson` / `scopesJson` as **strings** (`string(coalesce(variables('varApp')?['appRoles'], json('[]')))`, `string(coalesce(variables('varApp')?['api']?['oauth2PermissionScopes'], json('[]')))`) |
+| 5.9 | `Mark completed` | Update item | Status `Completed`; CompletedAt `utcNow()`; TargetDisplayName = app name; TargetObjectId = app object id; AppCatId `outputs('App_catid')`; ResultJson `string(outputs('Result'))` |
+| 6 | `Catch` | Scope, run after `Try` failed / timed out | As in ER-04 (Failed actions → Error text → Mark failed) |
+
+## ER-06 Tag owning group (Premium)
+
+Behind the **Owning group** card. Replaces an app registration's team tag with `team:group\<group id>`, on the app registration and on its enterprise app. Allowed only when the requester is the app's **authorized owner** (the user in `team:user\…`, or a member of the group in its current tag) **and** a member or owner of the new group, which must be a security group. Anyone else gets *Not authorized owner*. No approval.
+
+The app writes `PayloadJson` = `{"app": "<app id>", "group": "<group object id>"}`.
+
+**+ Create → Automated cloud flow** → `ER-06 Tag owning group` → **SharePoint – When an item is created** (EntraRequests). Trigger condition: `@and(equals(triggerOutputs()?['body/Status/Value'], 'Submitted'), equals(triggerOutputs()?['body/RequestType/Value'], 'tagOwnerGroup'))`
+
+| # | Action (name) | Type | Configuration |
+|---|---|---|---|
+| 1 | `Mark in progress` | Update item | Status `InProgress` |
+| 2 | `Requester`, `Payload`, `App query`, `Group query`, `Now` | Compose ×5 | `Payload` = `json(coalesce(triggerOutputs()?['body/PayloadJson'], '{}'))`; `App query` = `toLower(trim(coalesce(outputs('Payload')?['app'], triggerOutputs()?['body/TargetObjectId'], '')))`; `Group query` = `toLower(trim(coalesce(outputs('Payload')?['group'], '')))`; `Now` = `utcNow()` |
+| 3 | `Init varApp` / `Init varGroupOwner` | Initialize variable ×2 | as ER-05 |
+| 4 | `Try` | Scope | 4.1–4.13 |
+| 4.1 | `Inputs are GUIDs` | Condition | both queries are 36 characters with 5 dash-separated parts. **If no:** `Fail not GUIDs` → `Stop not GUIDs` |
+| 4.2–4.4 | `HTTP Get requester`, *find the app*, *ownership check*, `Requester is owner` | | exactly as ER-05 steps 5.2–5.5 |
+| 4.5 | `HTTP Get group` | Graph | `GET` `https://graph.microsoft.com/v1.0/groups/@{outputs('Group_query')}?$select=id,displayName,securityEnabled`; Retry policy **None** |
+| 4.6 | `Group found` | Condition, run after `HTTP Get group` succeeded + failed | `outputs('HTTP_Get_group')?['statusCode']` is equal to `200`. **If no:** `Fail group not found` → `Stop group not found` |
+| 4.7 | `Group security enabled` | Condition | `body('HTTP_Get_group')?['securityEnabled']` is equal to **fx** `true`. **If no:** `Fail not security` → `Stop not security` |
+| 4.8 | `HTTP Check new group`, `HTTP New group owners`, `Member of new group` | Graph ×2, Condition | checkMemberGroups for the new group, and its owners; condition `or(not(empty(body('HTTP_Check_new_group')?['value'])), contains(string(body('HTTP_New_group_owners')?['value']), body('HTTP_Get_requester')?['id']))`. **If no:** `Fail not in group` → `Stop not in group` |
+| 4.9 | `Kept app tags` | Filter array | From `coalesce(variables('varApp')?['tags'], json('[]'))`; condition `not(or(startsWith(item(), 'team:'), startsWith(item(), 'teamName:'), startsWith(item(), 'lastUpdatedBy:'), startsWith(item(), 'lastUpdatedTimestamp:'), startsWith(item(), 'requestId:')))` |
+| 4.10 | `Team tags`, `New app tags` | Compose ×2 | `createArray(concat('team:group\', body('HTTP_Get_group')?['id']), concat('teamName:', body('HTTP_Get_group')?['displayName']))`; `union(body('Kept_app_tags'), outputs('Team_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])))` |
+| 4.11 | `HTTP Patch app tags` | Graph | `PATCH` `https://graph.microsoft.com/v1.0/applications/@{variables('varApp')?['id']}`; Body `{"tags": @{outputs('New_app_tags')}}` |
+| 4.12 | `HTTP Find SP`, `Has SP` | Graph, Condition | `GET …/servicePrincipals?$filter=appId eq '…'&$select=id,tags`; if one exists: `Kept SP tags` (its tags not starting with `team:` / `teamName:`) → `HTTP Patch SP tags` (`PATCH …/servicePrincipals/{id}`, Body `{"tags": @{union(body('Kept_SP_tags'), outputs('Team_tags'))}}`) |
+| 4.13 | `Mark completed` | Update item | Status `Completed`; TargetDisplayName / TargetObjectId = the app; ResultJson with `applicationObjectId`, `appId`, `previousTeam`, `groupId`, `groupDisplayName` |
+| 5 | `Catch` | Scope | As in ER-04 |
 
 ---
 

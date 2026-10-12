@@ -53,7 +53,7 @@ RequestType `createAppRegistration`, TargetDisplayName `APP-1234-D-PPTEST-pp-t2-
 | The item | Status **InProgress**, then **Completed**; ResultJson has applicationObjectId, appId, servicePrincipalId, teamGroupId |
 | Requester's inbox | *Your Entra request REQ-T2-0001 is complete*, with the IDs |
 | Entra → **App registrations** → the app | Created with the full display name; **Owners: none** (the platform adds no owners) |
-| → **Manifest** (or Graph Explorer) | `tags` include `appCatID:APP-1234`, `appEnv:D`, `borShortName:PPTEST`, `team:<TEAM_ID>`, `teamName:grp-pp-team`, `createdBy:…`, `managedBy:entra-pp`, `requestId:REQ-T2-…`; `notes` = `appCatID=…; requestId=…; createdBy=…; managedBy=…` |
+| → **Manifest** (or Graph Explorer) | `tags` include `appCatID:APP-1234`, `appEnv:D`, `borShortName:PPTEST`, `team:group\<TEAM_ID>`, `teamName:grp-pp-team`, `createdBy:…`, `managedBy:entra-pp`, `requestId:REQ-T2-…`; `notes` = `appCatID=…; requestId=…; createdBy=…; managedBy=…` |
 | Entra → **Enterprise applications** → the app | Created for the same **Application (client) ID**; **Properties → Assignment required: Yes** (from the payload's `appRoleAssignmentRequired`); **Users and groups**: grp-pp-team with **Default Access** |
 | Entra → **Groups** | **No new groups** |
 | `EntraCatalogApps` | New row with ObjectId, AppId, AppCatId, TeamGroupId/Name, ServicePrincipalId |
@@ -120,8 +120,8 @@ Expected: Enterprise applications lists the app, created for its appId, with Ass
 | Hand-edited status | As a site owner who is **not** the flow account, set an item's Status to Approved (with both decisions Approved) | ER-02 run status **Cancelled** at `Approved by the flow`; nothing in Entra |
 | Not your app | Path A: a requester who is not in the app's team group submits test 3 | Status **Failed**, *The app is not owned by any of your groups, or its appCatID differs.* |
 | Wrong appCatID | Test 3 with AppCatId `APP-9999` | Status **Failed** with the same message |
-| Not in owning team | Test 1 with `<TEAM_ID>` = a group the requester is not a member of | Status **Failed**, *You are not a member of the owning team.* |
-| No owning team | Test 1 with `"owningGroup":{"mode":"existing","id":"","displayName":""}` | Status **Failed**, *The request has no owning team…* |
+| Not in owning group | Test 1 with `<TEAM_ID>` = a group the requester is not a member of | Status **Failed**, *You are not a member of the owning group.* |
+| No owning group (allowed) | Test 1 with `"owningGroup":null` | Status **Completed**; the app is tagged `team:user\<your object id>` and `teamName:<your UPN>` |
 | Old-style new group | Test 2 with a role group `{"mode":"new","id":"","displayName":"grp-x"}` | Status **Failed**, *Group grp-x has no Object ID. Requests can only use existing groups…* (the app registration was created first; delete it) |
 | Graph rejects the request | Test 1 with `"signInAudience":"NotAValue"` | Status **Failed**; ErrorMessage starts with `HTTP_Create_application:` and Graph's message; nothing created |
 

@@ -1,7 +1,7 @@
 # Entra Self-Service on Power Platform: solution overview
 
 **Audience:** stakeholders, architects, the Entra ID team and change management.
-**Status:** version 1.2. Built and statically checked; it is being tested in the QA tenant.
+**Status:** version 1.3. Built and statically checked; it is being tested in the QA tenant.
 **In one line:** teams request Entra ID app registrations in a Power App. The request needs two approvals, then a flow creates the registration in minutes, named and tagged to standard.
 
 ---
@@ -28,7 +28,7 @@ Today an app registration is a manual ticket to the Entra ID team.
 2. **Lock:** flow ER-01 makes the request read-only, so what is approved can't change afterwards.
 3. **Approve:** the requester's manager approves, then the Entra ID team. A self-approval counts as a rejection.
 4. **Create:** flow ER-02 calls Microsoft Graph as a dedicated app identity, using a certificate, and creates exactly what was approved.
-5. **Stamp:** every object carries appCatID, environment, request ID, owning team and `managedBy`, for audit and for the catalog.
+5. **Stamp:** every object carries appCatID, environment, request ID, its owner tag (`team:user\…` or `team:group\…`) and `managedBy`, for audit and for the catalog.
 
 What it supports:
 
@@ -37,7 +37,8 @@ What it supports:
   - redirect URIs, optional claims, app roles, Expose an API (App ID URI and scopes);
   - an enterprise app with *Assignment required* chosen in the form;
   - role assignments to existing groups.
-- **Changes to existing apps:** add scopes, add app roles, assign groups to roles, create a missing enterprise app.
+- **Changes to existing apps:** search by the app's Application (client) ID or Object ID; only its owner can continue. Then add scopes, add app roles, assign groups to roles, or create a missing enterprise app.
+- **Ownership by tag, not by Entra owners:** an app created with an owning group is tagged `team:group\<id>` (all members may change it); without one, `team:user\<id>` (only the creator). **Owning group** hands a user-owned app to a group.
 - **Add an existing group:** a group created elsewhere becomes pickable once the requester proves they are a member or owner.
 - **My requests:** status, approvals and results of the requester's own requests.
 
@@ -59,7 +60,7 @@ Everything runs in **one Entra tenant**:
 
 | Component | Role |
 |---|---|
-| **Power App "Entra Self-Service"** (canvas, 5 screens) | The form and the request tracker. Uses only Standard connectors (SharePoint, Office 365 Users), so users need no extra licence. |
+| **Power App "Entra Self-Service"** (canvas, 6 screens) | The form and the request tracker. Uses only Standard connectors (SharePoint, Office 365 Users), so users need no extra licence. |
 | **SharePoint site** with 4 lists | `EntraRequests` holds one item per request and is the audit trail, with 500 versions. `EntraCatalogApps` and `EntraCatalogGroups` hold what each user may pick. `EntraSettings` holds the configuration. |
 | **Power Automate flows** (solution *Entra Self-Service* 1.2) | SP-00 (setup), ER-01 Approvals, ER-02 Execute, ER-03 Catalog sync, ER-04 Onboard group. All are owned by one flow account. |
 | **HTTP with Microsoft Entra ID (preauthorized)** connection | Signs in to Graph as the platform app with its certificate. The certificate stays in the connection and is never shown in run history. |
@@ -73,7 +74,7 @@ Everything runs in **one Entra tenant**:
 |---|---|---|
 | **Requester** (delegated, in the app) | Creating their own request items and reading the catalog | None |
 | **Flow account** (owns the flows and connections) | SharePoint updates, approvals, email | None. Read-only is enough. Needs one Power Automate Premium licence. |
-| **Platform app** (certificate, application permissions) | Every Graph call made by ER-02, ER-03 and ER-04 | The 4 Graph permissions above, with admin consent |
+| **Platform app** (certificate, application permissions) | Every Graph call made by ER-02 to ER-06 | The 4 Graph permissions above, with admin consent |
 
 ### 3.2 Request lifecycle
 
@@ -90,6 +91,8 @@ Only the flow account moves a request past *Submitted*. ER-02 runs only when the
 | **ER-02 Execute** | Status = Approved | Runs the guard, then one branch per request type (below). Records the result and emails the requester. On any failure the Catch branch marks the request Failed and lists what was already created. | SharePoint, HTTP with Entra ID, Outlook | Premium |
 | **ER-03 Catalog sync** | Every hour | Reads managed apps and onboarded groups from Entra, and refreshes their members and owners in the catalog lists the app uses. Read-only in Entra. | SharePoint, HTTP with Entra ID | Premium |
 | **ER-04 Onboard group** | A request item of type *onboardGroup* is created | Finds the group by name or Object ID and checks the requester is a member or owner and that it is a security group. Then adds it to the catalog. No approval; read-only in Entra. | SharePoint, HTTP with Entra ID | Premium |
+| **ER-05 Find app** | The **Search** button on the change screen (a *lookupApp* item) | Finds the app registration by Application (client) ID or Object ID and returns its details only if its team tag names the requester or a group they're in; otherwise *Not authorized owner*. No approval; read-only. | SharePoint, HTTP with Entra ID | Premium |
+| **ER-06 Tag owning group** | The **Owning group** card (a *tagOwnerGroup* item) | Lets the app's owner hand it to a security group they belong to: replaces the team tag with `team:group\<id>` on the app and its enterprise app. No approval. | SharePoint, HTTP with Entra ID | Premium |
 
 ### 4.1 Submit and approve (ER-01)
 
@@ -101,7 +104,7 @@ Only the flow account moves a request past *Submitted*. ER-02 runs only when the
 
 Key steps:
 
-1. **Membership check.** The requester must be a member of the chosen owning team, an existing group.
+1. **Owner tag.** With an owning group, the requester must be a member of it, and the app is tagged `team:group\<id>`. Without one, it is tagged `team:user\<requester id>`.
 2. **Create the app registration** with the enforced name, tags and notes. It gets no owners.
 3. **Wait 15 seconds** for the new app to replicate in Entra.
 4. **Expose an API**, retrying up to 6 times while the app replicates.
@@ -127,12 +130,12 @@ The app shows the result within seconds without a Premium licence. It writes a r
 | **What was approved is what runs** | ER-01 locks the item before snapshotting it into `ApprovedPayloadJson`, and ER-02 executes only that snapshot. |
 | **Two approvals, no self-approval** | The manager, then the Entra ID team. A responder who is the requester counts as Reject. |
 | **Only the flow can release a request** | ER-02 checks that the last editor is the flow account and both decisions are *Approved*. |
-| **Teams own their apps** | The requester must be a member of the owning team. Changes to an existing app also need membership and a matching appCatID. |
+| **Only owners change an app** | The team tag decides: the user in `team:user\…` or members of the group in `team:group\…`. Search (ER-05) checks it before the edit page opens, and ER-02 checks it again before changing anything. A matching appCatID is also required. |
 | **Groups can't be hijacked** | Only groups the requester is a member or owner of can be onboarded, and they must be security groups. |
 | **Least privilege** | No people get Entra roles. The app has no group-write permission and uses a **certificate only** (no client secret). |
 | **Naming and tagging** | Display name `<AppCatID>-<Env>-<BoR short name>-<text>`, plus tags `appCatID`, `appEnv`, `borShortName`, `team`, `createdBy`, `requestId` and `managedBy`. |
 
-**Residual risk:** anyone who can **edit** ER-02, ER-03 or ER-04 can use the Graph connection. So:
+**Residual risk:** anyone who can **edit** ER-02 to ER-06 can use the Graph connection. So:
 
 - keep the flows in a dedicated environment;
 - allow only the Entra ID team as co-owners;
@@ -142,10 +145,10 @@ The app shows the result within seconds without a Premium licence. It writes a r
 
 | Area | Constraint |
 |---|---|
-| **Licensing** | ER-02, ER-03 and ER-04 use a Premium connector, so the **flow account** needs one Power Automate Premium licence. App users need nothing beyond Microsoft 365, because the app never calls a Premium flow directly. |
+| **Licensing** | ER-02 to ER-06 use a Premium connector, so the **flow account** needs one Power Automate Premium licence. App users need nothing beyond Microsoft 365, because the app never calls a Premium flow directly. |
 | **Environment** | The Approvals connector needs a Power Platform environment **with Dataverse** (the default environment usually has one). Importing the solution also needs Dataverse. |
 | **Groups** | Groups are **not created** here. The owning team and role groups must already exist, be **security-enabled**, and be onboarded by someone who is a member or owner. |
-| **Owners** | App registrations and enterprise apps get **no owners**. Owning teams manage them through this platform only. Credentials (certificates, federated credentials) must be added by the Entra ID team or a separate process. |
+| **Owners** | App registrations and enterprise apps get **no owners**. Who may change them is set by the `team:` tag and enforced by this platform only; an app with no team tag can't be changed here until the Entra ID team tags it. Credentials (certificates, federated credentials) must be added by the Entra ID team or a separate process. |
 | **Naming** | `AppCatID` and the BoR short name are typed by the requester (validated by pattern). They aren't yet looked up from the book of record (see §8.2). |
 | **Entra replication** | New objects take seconds to replicate. ER-02 waits and retries, but under heavy load a step can still fail after 6 attempts. The request then fails cleanly with what was created. |
 | **Not idempotent** | Re-running a failed *new app* request creates a second app. Clean up the objects listed in ResultJson first. |
@@ -208,8 +211,8 @@ Even at the lowest volume (50 apps a year, ~49 person-days saved), one Premium l
 | Area | Change |
 |---|---|
 | **ER-01** | Its last step sets Status = **PendingChange** instead of *Approved*. |
-| **ER-05 Raise change** (new) | Triggered by PendingChange. Creates a ServiceNow **normal change**, either with the ServiceNow connector or with `POST /api/sn_chg_rest/change/normal`. The change includes:<ul><li>a short description with the app name;</li><li>the approved request summary as its description;</li><li>justification and requested-by;</li><li>assignment group, and the CMDB CI from the appCatID;</li><li>implementation, backout and test plans from a template;</li><li>the next change window;</li><li>the two in-app approvals as work notes;</li><li>`correlation_id` = the request ID.</li></ul>It stores ChangeNumber and ChangeSysId on the request and emails the requester the change number. |
-| **ER-06 Change sync** (new) | Runs every 15 minutes and mirrors the change state onto the request:<ul><li>*Implement*: sets Status = Approved, which starts ER-02 unchanged;</li><li>*Canceled* or rejected: sets Status = Rejected;</li><li>after ER-02 finishes: adds ResultJson as work notes, moves the change to Review with close code *successful* or *unsuccessful*, and closes it.</li></ul> |
+| **SN-01 Raise change** (new) | Triggered by PendingChange. Creates a ServiceNow **normal change**, either with the ServiceNow connector or with `POST /api/sn_chg_rest/change/normal`. The change includes:<ul><li>a short description with the app name;</li><li>the approved request summary as its description;</li><li>justification and requested-by;</li><li>assignment group, and the CMDB CI from the appCatID;</li><li>implementation, backout and test plans from a template;</li><li>the next change window;</li><li>the two in-app approvals as work notes;</li><li>`correlation_id` = the request ID.</li></ul>It stores ChangeNumber and ChangeSysId on the request and emails the requester the change number. |
+| **SN-02 Change sync** (new) | Runs every 15 minutes and mirrors the change state onto the request:<ul><li>*Implement*: sets Status = Approved, which starts ER-02 unchanged;</li><li>*Canceled* or rejected: sets Status = Rejected;</li><li>after ER-02 finishes: adds ResultJson as work notes, moves the change to Review with close code *successful* or *unsuccessful*, and closes it.</li></ul> |
 | **SharePoint** | New EntraRequests columns: ChangeNumber, ChangeSysId and ChangeState, plus the Status value PendingChange. New EntraSettings fields: ServiceNowUrl, ChangeAssignmentGroup and ChangeMode. |
 | **Connection** | A ServiceNow integration user (with change-write rights only), owned by the flow account. It is covered by the same Premium licence. |
 

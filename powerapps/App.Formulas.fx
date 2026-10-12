@@ -39,22 +39,20 @@ gMyGroups = ShowColumns(
     GroupId, Title, AppCatId
 );
 
-// Owning-team picker: groups the user is a MEMBER of (ER-02 checks membership of the owning team).
+// Owning-group picker (optional): groups the user is a MEMBER of (ER-02 checks membership of the owning group).
 gMyTeams = ShowColumns(
     Filter(EntraCatalogGroups, gMeKey in MemberUpns),
     GroupId, Title, AppCatId
 );
 
-// App registrations the user's teams own (team tag) or the user owns directly.
-gMyApps = Filter(EntraCatalogApps, gMeKey in TeamMemberUpns || gMeKey in OwnerUpns);
-
 gOperations = Table(
     { Key: "newApp", Title: "App registration", Subtitle: "Register a new application: API, app roles, enterprise app and role groups in one request.", Badge: "Most used" },
-    { Key: "exposeApi", Title: "Expose an API", Subtitle: "Set the Application ID URI and publish delegated scopes on an app your team owns.", Badge: "" },
+    { Key: "exposeApi", Title: "Expose an API", Subtitle: "Set the Application ID URI and publish delegated scopes on an app you or your group own.", Badge: "" },
     { Key: "addAppRoles", Title: "App roles", Subtitle: "Add User / Admin or custom app roles, each with the group that will hold it.", Badge: "" },
     { Key: "assignGroups", Title: "Role assignments", Subtitle: "Grant Entra groups an app role so the group owners manage who has access.", Badge: "" },
     { Key: "createSP", Title: "Enterprise application", Subtitle: "Create the service principal for an existing app registration.", Badge: "" },
-    { Key: "onboardGroup", Title: "Add existing group", Subtitle: "Make a group you belong to selectable as an owning team or role group. No approval needed.", Badge: "" },
+    { Key: "onboardGroup", Title: "Add existing group", Subtitle: "Make a group you belong to selectable as an owning group or role group. No approval needed.", Badge: "" },
+    { Key: "tagOwnerGroup", Title: "Owning group", Subtitle: "Hand an app registration you own to one of your groups: its tag team:user\you becomes team:group\<group>. No approval needed.", Badge: "" },
     { Key: "myRequests", Title: "My requests", Subtitle: "Track approvals and see exactly what was created.", Badge: "" }
 );
 

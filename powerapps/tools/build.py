@@ -7,7 +7,9 @@ Screens (create them in Studio with exactly these names):
   scrHome        cards for every operation + recent requests
   scrNewApp      "Register an application" wizard: 5 sections, Submit / Next / Cancel
   scrAddGroup    add an EXISTING group to the catalog (no group creation in this app)
-  scrAppChange   changes to an EXISTING app: expose API, app roles, role assignments, enterprise app
+  scrAppChange   changes to an EXISTING app: Search by app ID (ER-05 checks ownership), then expose API,
+                 app roles, role assignments, enterprise app
+  scrTagGroup    hand an app registration to a group: team:user\\<id> -> team:group\\<id> (ER-06)
   scrMyRequests  request history with approval stages and results
 """
 from __future__ import annotations
@@ -50,6 +52,7 @@ def home() -> None:
         on_select="""Switch(ThisItem.Key,
     "newApp", Set(varResetNewApp, true); Navigate(scrNewApp, ScreenTransition.Fade),
     "onboardGroup", Navigate(scrAddGroup, ScreenTransition.Fade),
+    "tagOwnerGroup", Navigate(scrTagGroup, ScreenTransition.Fade),
     "myRequests", Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade),
     Set(varOp, ThisItem.Key); Set(varResetChange, true); Navigate(scrAppChange, ScreenTransition.Fade)
 )""",
@@ -59,7 +62,7 @@ def home() -> None:
             rect("recCardAccent_Home", 8, 8, 4, "Parent.TemplateHeight - 16", fill="gTheme.Primary", thickness=0, OnSelect="Select(Parent)"),
             icon("icoCard_Home",
                  'Switch(ThisItem.Key, "newApp", Icon.AddDocument, "exposeApi", Icon.Settings, "addAppRoles", Icon.Lock, '
-                 '"assignGroups", Icon.People, "createSP", Icon.Waffle, "onboardGroup", Icon.AddUser, Icon.DetailList)',
+                 '"assignGroups", Icon.People, "createSP", Icon.Waffle, "onboardGroup", Icon.AddUser, "tagOwnerGroup", Icon.Edit, Icon.DetailList)',
                  28, 28, 44, 44, color="gTheme.Primary", on_select="Select(Parent)", Fill="gTheme.PrimaryLight",
                  PaddingTop=10, PaddingBottom=10, PaddingLeft=10, PaddingRight=10),
             label("lblCardTitle_Home", "ThisItem.Title", 84, 26, "Parent.TemplateWidth - 140", 26, size=13, bold=True, OnSelect="Select(Parent)"),
@@ -71,7 +74,8 @@ def home() -> None:
         ],
     )
     recent = gallery(
-        "galRecent_Home", "FirstN(Sort(EntraRequests, ID, SortOrder.Descending), 7)", "Parent.Width - 368", 196, 336, "Parent.Height - 300", 66,
+        # Search lookups (lookupApp) are not requests the user raised, so they are left out.
+        "galRecent_Home", 'FirstN(Sort(Filter(EntraRequests, RequestType.Value <> "lookupApp"), ID, SortOrder.Descending), 7)', "Parent.Width - 368", 196, 336, "Parent.Height - 300", 66,
         on_select="Set(varSelectedReqId, ThisItem.ID); Navigate(scrMyRequests, ScreenTransition.Fade)",
         children=[
             label("lblRName_Home", "ThisItem.TargetDisplayName", 12, 8, "Parent.TemplateWidth - 150", 22, bold=True, OnSelect="Select(Parent)"),
@@ -221,8 +225,9 @@ def new_app() -> None:
         field_label(f"lblBorShort_{s}", "App BoR short name", COL1_X, 154, COL_W, required=True),
         text_input(f"txtBorShort_{s}", '""', q("ORDERS"), COL1_X, 176, COL_W),
         hint(f"hntBorShort_{s}", q("Short name of the application in the book of record: 2–20 letters or digits."), COL1_X, 214, COL_W),
-        field_label(f"lblTeam_{s}", "Owning team", COL2_X, 154, COL_W, required=True),
-        group_dropdown(f"cmbTeam_{s}", "gMyTeams", "Title", COL2_X, 176, COL_W, hint="Choose a group you are a member of"),
+        field_label(f"lblTeam_{s}", "Owning group (optional)", COL2_X, 154, COL_W),
+        group_dropdown(f"cmbTeam_{s}", "gMyTeams", "Title", COL2_X, 176, COL_W,
+                       hint="Optional. Tagged team:group\\<group id>. Leave empty and the app is tagged team:user\\<your id>; hand it to a group later with Owning group."),
         link(f"lnkAddExisting_{s}", q("Group not listed? Add an existing group"), ADD_EXISTING, COL2_X, 214, COL_W),
 
         field_label(f"lblName_{s}", "Display name", COL1_X, 248, "Parent.Width", required=True),
@@ -311,7 +316,7 @@ def new_app() -> None:
 "<table style='border-collapse:collapse; width:100%'>" &
 "<tr><td style='color:#605e5c; width:220px; padding:4px 0'>Display name</td><td><b>" & {full} & "</b></td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>appCatID · environment · BoR short name</td><td>" & Upper(Trim(txtAppCatId_{s}.Text)) & " · " & ddEnv_{s}.Selected.Value & " · " & Trim(txtBorShort_{s}.Text) & "</td></tr>" &
-"<tr><td style='color:#605e5c; padding:4px 0'>Owning team</td><td>" & team.DisplayName & "</td></tr>" &
+"<tr><td style='color:#605e5c; padding:4px 0'>Owning group</td><td>" & If(IsBlank(team.GroupId), "none: you own it (tag team:user\\&lt;your id&gt;). You can hand it to a group later with <i>Owning group</i>.", team.DisplayName & " (tag team:group\\&lt;group id&gt;)") & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Account types</td><td>" & radAudience_{s}.Selected.Value & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Redirect URIs</td><td>" & If(ddPlatform_{s}.Selected.Value = "None", "none", ddPlatform_{s}.Selected.Value & ": " & txtRedirect_{s}.Text) & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Expose an API</td><td>" & If(chkExpose_{s}.Value, If(radUri_{s}.Selected.Value = "Custom", txtCustomUri_{s}.Text, "api://{{appId}}") & If(CountRows(colScopes) > 0, " — scopes: " & Concat(colScopes, Value, ", "), ""), "no") & "</td></tr>" &
@@ -320,7 +325,7 @@ def new_app() -> None:
     If(CountRows(colRoles) = 0, "none", "<ul style='margin:0; padding-left:18px'>" &
         Concat(ForAll(colRoles As r, {{t: "<li><b>" & r.Value & "</b> → " & Coalesce(Concat(Filter(colRoleGroups, RoleKey = r.Key), DisplayName, ", "), "<i>no groups</i>") & "</li>"}}), t) & "</ul>") & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Enterprise app</td><td>" & If(tglCreateSp_{s}.Value || CountRows(colRoleGroups) > 0, "yes" & If(tglAssign_{s}.Value, ", assignment required", ", assignment not required"), "no") & "</td></tr>" &
-"<tr><td style='color:#605e5c; padding:4px 0'>Owners</td><td>none (access is managed through the owning team and role groups)</td></tr>" &
+"<tr><td style='color:#605e5c; padding:4px 0'>Owners</td><td>none (who may change it is set by the team tag; who may sign in by the role groups)</td></tr>" &
 "</table>" &
 "<p style='margin-top:14px; padding:10px 12px; background:#ebf3fc; border-left:3px solid #0f6cbd'><b>What happens next</b><br>" &
 "1. Your manager approves in Outlook / Teams.  2. The Entra ID team approves.  3. The app registration, roles, role assignments and enterprise app are created automatically and appear under My requests.</p>" &
@@ -335,7 +340,6 @@ def new_app() -> None:
     If(!IsMatch(Trim(txtBorShort_{s}.Text), "^[A-Za-z0-9]{{2,20}}$"), "App BoR short name: 2–20 letters or digits, no spaces."),
     If(!IsMatch(Trim(txtAppName_{s}.Text), "^[A-Za-z0-9][A-Za-z0-9 ._-]{{1,79}}$"), "Display name: enter the free-text part after the prefix (2–80 letters, digits, spaces, . _ -)."),
     If(Len({full}) > 120, "The full display name is longer than 120 characters; shorten the free-text part."),
-    If(IsBlank(cmbTeam_{s}.Selected.GroupId), "Choose the owning team. Not listed? Use 'Group not listed? Add an existing group'."),
     If(Len(Trim(txtJustification_{s}.Text)) < 10, "Business justification is required (10+ characters)."),
     If(ddPlatform_{s}.Selected.Value <> "None" && !IsMatch(Trim(txtRedirect_{s}.Text), "^\\S+$"), "Redirect URIs: no spaces; separate several with ;")
 )"""
@@ -357,7 +361,7 @@ JSON({{
     nameText: Trim(txtAppName_{s}.Text),
     description: {clean(f"txtDescription_{s}.Text")},
     signInAudience: If(radAudience_{s}.Selected.Value = "Multitenant", "AzureADMultipleOrgs", "AzureADMyOrg"),
-    owningGroup: {{mode: "existing", id: team.GroupId, displayName: team.DisplayName}},
+    owningGroup: If(IsBlank(team.GroupId), Blank(), {{mode: "existing", id: team.GroupId, displayName: team.DisplayName}}),
     redirectUrisWeb: If(ddPlatform_{s}.Selected.Value = "Web", Trim(txtRedirect_{s}.Text), ""),
     redirectUrisSpa: If(ddPlatform_{s}.Selected.Value = "Single-page app", Trim(txtRedirect_{s}.Text), ""),
     exposeApi: {{
@@ -544,7 +548,8 @@ def app_change() -> None:
                   'allowedMemberTypes: Switch(r.Members, "Applications", "Application", "Both", "User,Application", "User"), '
                   'assignGroups: ForAll(Filter(colRoleGroups, RoleKey = r.Key) As g, {mode: g.Mode, id: g.GroupId, displayName: g.DisplayName, description: g.Description, ownerIds: g.OwnerIds})})')
     submit = f"""With({{err: Coalesce(
-        If(IsBlank(varApp), "Choose an application on the left."),
+        If(IsBlank(varApp), "Search for the app registration on the left first."),
+        If(!IsMatch(Upper(Trim(txtAppCat_{s}.Text)), gAppCatPattern), "appCatID looks like APPCAT-001."),
         If(Len(Trim(txtJust_{s}.Text)) < 10, "Business justification is required (10+ characters)."),
         If(varOp = "exposeApi" && radUri_{s}.Selected.Value = "Custom" && !IsMatch(Trim(txtCustomUri_{s}.Text), "^(api://|https://)\\S+$"), "The custom Application ID URI must start with api:// or https://"),
         If(varOp = "exposeApi" && CountRows(Filter(colScopes, !IsMatch(Value, gValuePattern) || IsBlank(Trim(AdminName)) || IsBlank(Trim(AdminDesc)))) > 0, "Each scope needs a name, an admin consent display name and a description."),
@@ -569,7 +574,7 @@ def app_change() -> None:
                     Title: varReqId,
                     RequestType: {{Value: type}},
                     Status: {{Value: "Submitted"}},
-                    AppCatId: varApp.AppCatId,
+                    AppCatId: Upper(Trim(txtAppCat_{s}.Text)),
                     TargetDisplayName: varApp.Title,
                     TargetObjectId: varApp.ObjectId,
                     Justification: Trim(txtJust_{s}.Text),
@@ -630,7 +635,7 @@ def app_change() -> None:
 
     detail = container(f"cntDetail_{s}", 376, 160, "Parent.Width - 416", "Parent.Height - 160 - 92", [
         label(f"lblAppTitle_{s}", "varApp.Title", 0, 0, "Parent.Width", 30, size=15, bold=True),
-        hint(f"lblAppInfo_{s}", '"App ID " & varApp.AppId & "    ·    appCatID " & varApp.AppCatId & "    ·    Team " & Coalesce(varApp.TeamGroupName, "-")', 0, 32, "Parent.Width"),
+        hint(f"lblAppInfo_{s}", '"App ID " & varApp.AppId & "    ·    Owner tag " & varApp.Team & If(IsBlank(varApp.TeamName), "", " (" & varApp.TeamName & ")")', 0, 32, "Parent.Width"),
         hint(f"lblAppInfo2_{s}", '"App ID URI: " & Coalesce(varApp.IdentifierUri, "not set") & "    ·    Enterprise app: " & If(IsBlank(varApp.ServicePrincipalId), "not created", "yes")', 0, 54, "Parent.Width"),
         rect(f"recDetailSep_{s}", 0, 84, "Parent.Width", 1, fill="gTheme.Border", thickness=0),
         expose, roles, assign, sp,
@@ -638,27 +643,73 @@ def app_change() -> None:
         text_input(f"txtJust_{s}", '""', q("Why is this change needed?"), COL1_X, "Parent.Height - 118", COL_W, 72, multiline=True),
         field_label(f"lblTicket_{s}", "Change ticket", COL2_X, "Parent.Height - 140", COL_W),
         text_input(f"txtTicket_{s}", '""', q("Optional"), COL2_X, "Parent.Height - 118", COL_W),
+        field_label(f"lblAppCat_{s}", "appCatID", COL2_X, "Parent.Height - 76", COL_W, required=True),
+        text_input(f"txtAppCat_{s}", "varApp.AppCatId", q("APPCAT-001 (the app has none yet: it is added with this change)"), COL2_X, "Parent.Height - 54", COL_W,
+                   DisplayMode="If(IsBlank(varApp.AppCatId), DisplayMode.Edit, DisplayMode.View)"),
     ], Visible="!IsBlank(varApp)")
 
+    # Search: the app writes a lookupApp item, ER-05 finds the app and checks the requester is its authorized owner
+    # (team:user\\<their id>, or team:group\\<id> of a group they are in), then returns the app's details.
+    a_in = f"Lower(Trim(txtAppId_{s}.Text))"
+    find = f"""If(
+    !IsMatch({a_in}, {GUID_RX}),
+        Notify("Enter the app registration's Application (client) ID or Object ID (a GUID).", NotificationType.Warning),
+    varLookupBusy,
+        Notify("Still searching, one moment.", NotificationType.Information),
+    {NEW_REQ_ID};
+    Set(varApp, Blank()); Set(varLookupMsg, ""); Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign);
+    IfError(
+        Set(varLookupRec, Patch(EntraRequests, Defaults(EntraRequests), {{
+            Title: varReqId,
+            RequestType: {{Value: "lookupApp"}},
+            Status: {{Value: "Submitted"}},
+            TargetDisplayName: {a_in},
+            TargetObjectId: {a_in},
+            Justification: "Find an app registration to change"
+        }})),
+        Notify("The search could not start: " & FirstError.Message, NotificationType.Error),
+        Set(varLookupPolls, 0); Set(varLookupBusy, true)
+    )
+)"""
+    poll = f"""Set(varLookupPolls, varLookupPolls + 1);
+Refresh(EntraRequests);
+With({{r: LookUp(EntraRequests, ID = varLookupRec.ID)}},
+    If(
+        r.Status.Value = "Completed",
+            With({{j: ParseJSON(r.ResultJson)}},
+                Set(varApp, {{
+                    Title: Text(j.displayName), ObjectId: Text(j.objectId), AppId: Text(j.appId), AppCatId: Text(j.appCatId),
+                    Team: Text(j.team), TeamName: Text(j.teamName), IdentifierUri: Text(j.identifierUri),
+                    ServicePrincipalId: Text(j.servicePrincipalId), AppRolesJson: Text(j.appRolesJson), ScopesJson: Text(j.scopesJson)
+                }})
+            );
+            Set(varLookupBusy, false); Set(varLookupMsg, ""); Reset(txtAppCat_{s}),
+        r.Status.Value = "Failed",
+            Set(varLookupBusy, false);
+            Set(varLookupMsg, Coalesce(r.ErrorMessage, "Not found, or you are not an authorized owner of this app registration."));
+            Notify(varLookupMsg, NotificationType.Error),
+        varLookupPolls >= 40,
+            Set(varLookupBusy, false);
+            Set(varLookupMsg, "No answer yet. Search again in a minute.")
+    )
+)"""
     children = frame(s, title, sub, '"Home  ›  " & ' + title) + [
         rect(f"recApps_{s}", 24, 146, 320, "Parent.Height - 146 - 80"),
-        label(f"lblAppsHead_{s}", q("Your applications"), 40, 156, 288, 26, size=12, bold=True),
-        text_input(f"txtSearchApps_{s}", '""', q("Search by name or appCatID"), 40, 186, 288, 34),
-        gallery(f"galApps_{s}",
-                f'Filter(Sort(gMyApps, Title), IsBlank(txtSearchApps_{s}.Text) || StartsWith(Title, txtSearchApps_{s}.Text) || txtSearchApps_{s}.Text in AppCatId)',
-                24, 228, 320, "Parent.Height - 228 - 88", 64,
-                on_select="Set(varApp, ThisItem); Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign)",
-                children=[
-                    rect(f"recAppSel_{s}", 0, 6, 4, 52, fill="If(varApp.ObjectId = ThisItem.ObjectId, gTheme.Primary, RGBA(0, 0, 0, 0))", thickness=0,
-                         OnSelect="Select(Parent)"),
-                    label(f"lblAppName_{s}", "ThisItem.Title", 16, 10, "Parent.TemplateWidth - 32", 24, bold=True, OnSelect="Select(Parent)"),
-                    label(f"lblAppMeta_{s}", 'ThisItem.AppCatId & "  ·  " & Coalesce(ThisItem.TeamGroupName, "you are an owner")', 16, 34,
-                          "Parent.TemplateWidth - 32", 20, size=9, color="gTheme.Muted", OnSelect="Select(Parent)"),
-                ]),
-        label(f"lblNoApps_{s}", q("No app registrations owned by your groups yet. The catalog refreshes every hour."),
-              40, 236, 288, 60, size=10, color="gTheme.Muted", Wrap="true", Visible=f"CountRows(galApps_{s}.AllItems) = 0"),
+        label(f"lblAppsHead_{s}", q("Find the app registration"), 40, 156, 288, 26, size=12, bold=True),
+        field_label(f"lblAppId_{s}", "Application (client) ID or Object ID", 40, 190, 288, required=True),
+        text_input(f"txtAppId_{s}", '""', q("00000000-0000-0000-0000-000000000000"), 40, 212, 288, 34,
+                   DisplayMode="If(varLookupBusy, DisplayMode.Disabled, DisplayMode.Edit)"),
+        button(f"btnFind_{s}", q("Search"), find, 40, 256, 120, 34, DisplayMode="If(varLookupBusy, DisplayMode.Disabled, DisplayMode.Edit)"),
+        label(f"lblLookupBusy_{s}", q("Searching Entra…"), 170, 256, 158, 34, size=10, bold=True, color="gTheme.Primary", Visible="varLookupBusy"),
+        label(f"lblLookupMsg_{s}", "varLookupMsg", 40, 300, 288, 96, size=10, bold=True, color="gTheme.Danger", Wrap="true",
+              VerticalAlign="VerticalAlign.Top", Visible="!IsBlank(varLookupMsg)"),
+        label(f"lblLookupInfo_{s}",
+              q("Only the app's owner can change it: the user named in its team:user\\… tag, or a member of the group in its "
+                "team:group\\… tag. The search checks this in Entra and usually answers within a minute."),
+              40, 404, 288, 110, size=9, color="gTheme.Muted", Wrap="true", VerticalAlign="VerticalAlign.Top"),
+        timer(f"tmrLookup_{s}", poll, "varLookupBusy"),
         rect(f"recDetail_{s}", 360, 146, "Parent.Width - 384", "Parent.Height - 146 - 80"),
-        label(f"lblPick_{s}", q("Choose one of your applications on the left."), 376, 170, 500, 30, size=11, color="gTheme.Muted",
+        label(f"lblPick_{s}", q("Search for an app registration on the left."), 376, 170, 500, 30, size=11, color="gTheme.Muted",
               Visible="IsBlank(varApp)"),
         detail,
         rect(f"recCmd_{s}", 0, "Parent.Height - 64", "Parent.Width", 64),
@@ -668,11 +719,105 @@ def app_change() -> None:
     write("scrAppChange", root(s, children), "Changes to an existing app: expose API, app roles, role assignments, enterprise app")
 
 
+# ============================================================================ scrTagGroup
+def tag_group() -> None:
+    """Hand an app registration to a group: ER-06 replaces its team tag (team:user\\<id> or another group) with
+    team:group\\<id>. Only its authorized owner may do this, and only to a group they belong to."""
+    s = "TagGroup"
+    a_in = f"Lower(Trim(txtApp_{s}.Text))"
+    g_in = f"Lower(Trim(txtGroup_{s}.Text))"
+    submit = f"""If(
+    !IsMatch({a_in}, {GUID_RX}),
+        Notify("App registration: enter its Application (client) ID or Object ID.", NotificationType.Warning),
+    !IsMatch({g_in}, {GUID_RX}),
+        Notify("Group: enter its Object ID, or pick one of your groups.", NotificationType.Warning),
+    varTagBusy,
+        Notify("Still working on the previous request, one moment.", NotificationType.Information),
+    {NEW_REQ_ID};
+    IfError(
+        Set(varTagRec, Patch(EntraRequests, Defaults(EntraRequests), {{
+            Title: varReqId,
+            RequestType: {{Value: "tagOwnerGroup"}},
+            Status: {{Value: "Submitted"}},
+            TargetDisplayName: {a_in},
+            TargetObjectId: {a_in},
+            Justification: "Hand the app registration to group " & {g_in},
+            PayloadJson: JSON({{app: {a_in}, group: {g_in}}}, JSONFormat.Compact)
+        }})),
+        Notify("The request could not be submitted: " & FirstError.Message, NotificationType.Error),
+        Set(varTagPolls, 0); Set(varTagBusy, true)
+    )
+)"""
+    poll = f"""Set(varTagPolls, varTagPolls + 1);
+Refresh(EntraRequests);
+With({{r: LookUp(EntraRequests, ID = varTagRec.ID)}},
+    If(
+        r.Status.Value = "Completed",
+            Set(varTagBusy, false); Reset(txtApp_{s}); Reset(ddMyGroup_{s}); Reset(txtGroup_{s});
+            Notify("Done: " & r.TargetDisplayName & " is now owned by group " & Text(ParseJSON(r.ResultJson).groupDisplayName) & ".", NotificationType.Success),
+        r.Status.Value = "Failed",
+            Set(varTagBusy, false);
+            Notify(Coalesce(r.ErrorMessage, "Not changed."), NotificationType.Error),
+        varTagPolls >= 40,
+            Set(varTagBusy, false);
+            Notify("Still working. The result will appear in the list below.", NotificationType.Information)
+    )
+)"""
+    history = gallery(
+        f"galTag_{s}", 'FirstN(Sort(Filter(EntraRequests, RequestType.Value = "tagOwnerGroup"), ID, SortOrder.Descending), 6)',
+        0, 330, "Parent.Width", "Parent.Height - 330", 64,
+        children=[
+            label(f"lblTName_{s}", "ThisItem.TargetDisplayName", 12, 6, "Parent.TemplateWidth - 190", 22, bold=True),
+            label(f"lblTMeta_{s}", 'ThisItem.Title & "  ·  " & Text(ThisItem.Created, "dd mmm yyyy hh:mm") & "  ·  " & ThisItem.Justification',
+                  12, 28, "Parent.TemplateWidth - 190", 18, size=9, color="gTheme.Muted"),
+            label(f"lblTError_{s}", "ThisItem.ErrorMessage", 12, 44, "Parent.TemplateWidth - 24", 18, size=9, color="gTheme.Danger",
+                  Visible="!IsBlank(ThisItem.ErrorMessage)"),
+            status_badge(f"lblTStatus_{s}", "ThisItem.Status.Value", "Parent.TemplateWidth - 166", 8, 150, 22),
+            rect(f"recTSep_{s}", 12, "Parent.TemplateHeight - 1", "Parent.TemplateWidth - 24", 1, fill="gTheme.Border", thickness=0),
+        ],
+    )
+    busy = "If(varTagBusy, DisplayMode.Disabled, DisplayMode.Edit)"
+    form = container(f"cntTag_{s}", 48, 170, "Parent.Width - 96", "Parent.Height - 170 - 92", [
+        field_label(f"lblApp_{s}", "App registration: Application (client) ID or Object ID", COL1_X, 0, COL_W, required=True),
+        text_input(f"txtApp_{s}", '""', q("00000000-0000-0000-0000-000000000000"), COL1_X, 22, COL_W, DisplayMode=busy),
+        field_label(f"lblMyGroup_{s}", "Pick one of your groups", COL1_X, 70, COL_W),
+        group_dropdown(f"ddMyGroup_{s}", "gMyTeams", "Title", COL1_X, 92, COL_W, hint="Fills in the Object ID below", DisplayMode=busy),
+        field_label(f"lblGroup_{s}", "or enter the group's Object ID", COL1_X, 140, COL_W, required=True),
+        text_input(f"txtGroup_{s}", f'Coalesce(ddMyGroup_{s}.Selected.GroupId, "")', q("00000000-0000-0000-0000-000000000000"), COL1_X, 162, COL_W,
+                   DisplayMode=busy),
+        label(f"lblWorking_{s}", q("Checking ownership and updating the tag in Entra…"), COL1_X, 210, COL_W, 28, size=10, bold=True,
+              color="gTheme.Primary", Visible="varTagBusy"),
+        rect(f"recInfo_{s}", COL2_X, 0, COL_W, 200, fill="gTheme.PrimaryLight", border="gTheme.PrimaryLight"),
+        label(f"lblInfo_{s}",
+              q("An app registration created without an owning group is tagged team:user\\<your id>: only you can change it. "
+                "Hand it to a security group you belong to and its tag becomes team:group\\<group id>: every member of that group "
+                "can then change it. Only the app's current owner can do this (you, or a member of its current group); anyone else "
+                "gets 'Not authorized owner'. No approval is needed; the enterprise app's tag is updated too."),
+              f"{COL2_X} + 14", 8, f"{COL_W} - 28", 184, size=10, Wrap="true", VerticalAlign="VerticalAlign.Top"),
+        label(f"lblHistory_{s}", q("Your recent changes"), COL1_X, 294, COL_W, 28, size=12, bold=True),
+        link(f"lnkRefresh_{s}", q("↻ Refresh"), "Refresh(EntraRequests)", "Parent.Width - 120", 296, 120),
+        history,
+        label(f"lblHistoryEmpty_{s}", q("Nothing changed yet."), COL1_X, 334, COL_W, 24, size=10, color="gTheme.Muted",
+              Visible=f"CountRows(galTag_{s}.AllItems) = 0"),
+    ])
+    children = frame(s, q("Owning group"),
+                     q("Hand an app registration you own to one of your groups."),
+                     q("Home  ›  App registrations  ›  Owning group")) + [
+        rect(f"recCard_{s}", 24, 146, "Parent.Width - 48", "Parent.Height - 146 - 80"),
+        form,
+        rect(f"recCmd_{s}", 0, "Parent.Height - 64", "Parent.Width", 64),
+        button(f"btnSubmit_{s}", q("Change owning group"), submit, 24, "Parent.Height - 50", 210, 36, DisplayMode=busy),
+        button(f"btnBack_{s}", q("Back"), "Back()", 244, "Parent.Height - 50", 120, 36, kind="subtle"),
+        timer(f"tmrTag_{s}", poll, "varTagBusy"),
+    ]
+    write("scrTagGroup", root(s, children), "Hand an app registration to a group (request type tagOwnerGroup, processed by flow ER-06)")
+
+
 # ============================================================================ scrMyRequests
 def my_requests() -> None:
     s = "My"
     sel = f"galReq_{s}.Selected"
-    filt = (f'Filter(Sort(EntraRequests, ID, SortOrder.Descending), Switch(ddFilter_{s}.Selected.Value, '
+    filt = (f'Filter(Sort(EntraRequests, ID, SortOrder.Descending), RequestType.Value <> "lookupApp" && Switch(ddFilter_{s}.Selected.Value, '
             '"Open", Status.Value in ["Submitted", "PendingManagerApproval", "PendingEntraApproval", "Approved", "InProgress"], '
             '"Completed", Status.Value = "Completed", "Rejected / failed", Status.Value in ["Rejected", "Failed"], true))')
 
@@ -686,7 +831,7 @@ def my_requests() -> None:
                   VerticalAlign="VerticalAlign.Top"),
         ]
 
-    onboard = f'{sel}.RequestType.Value = "onboardGroup"'
+    onboard = f'{sel}.RequestType.Value in ["onboardGroup", "tagOwnerGroup"]'
 
     def decision_fill(col: str) -> str:
         return f'Switch({sel}.{col}.Value, "Approved", gTheme.SuccessLight, "Rejected", gTheme.DangerLight, gTheme.Card)'
@@ -703,7 +848,9 @@ If(!IsBlank(Text(r.appId)), "<tr><td style='color:#605e5c; padding:3px 0'>Applic
 If(!IsBlank(Text(r.applicationObjectId)), "<tr><td style='color:#605e5c; padding:3px 0'>Object ID</td><td>" & Text(r.applicationObjectId) & "</td></tr>", "") &
 If(!IsBlank(Text(r.identifierUri)), "<tr><td style='color:#605e5c; padding:3px 0'>Application ID URI</td><td>" & Text(r.identifierUri) & "</td></tr>", "") &
 If(!IsBlank(Text(r.servicePrincipalId)), "<tr><td style='color:#605e5c; padding:3px 0'>Enterprise app</td><td>" & Text(r.servicePrincipalId) & "</td></tr>", "") &
-If(!IsBlank(Text(r.groupId)), "<tr><td style='color:#605e5c; padding:3px 0'>Group</td><td>" & Text(r.groupId) & "</td></tr>", "") &
+If(!IsBlank(Text(r.groupId)), "<tr><td style='color:#605e5c; padding:3px 0'>Group</td><td>" & Coalesce(Text(r.groupDisplayName), "") & " " & Text(r.groupId) & "</td></tr>", "") &
+If(!IsBlank(Text(r.previousTeam)), "<tr><td style='color:#605e5c; padding:3px 0'>Previous owner tag</td><td>" & Text(r.previousTeam) & "</td></tr>", "") &
+If(!IsBlank(Text(r.team)), "<tr><td style='color:#605e5c; padding:3px 0'>Owner tag</td><td>" & Text(r.team) & "</td></tr>", "") &
 If(!IsBlank(Text(r.assignmentsText)), "<tr><td style='color:#605e5c; padding:3px 0'>Role assignments</td><td>" & Text(r.assignmentsText) & "</td></tr>", "") &
 "</table>" &
 If(!IsBlank({sel}.ErrorMessage), "<p style='margin-top:10px; padding:8px 12px; background:#fde7e9; border-left:3px solid #d13438'><b>Error</b><br>" & {sel}.ErrorMessage & "</p>", "") &
@@ -760,5 +907,6 @@ if __name__ == "__main__":
     new_app()
     add_group()
     app_change()
+    tag_group()
     my_requests()
     print("generated:", ", ".join(sorted(p.name for p in OUT.glob("*.pa.yaml"))))

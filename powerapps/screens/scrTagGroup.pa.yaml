@@ -1,0 +1,510 @@
+# Hand an app registration to a group (request type tagOwnerGroup, processed by flow ER-06)
+# Paste into screen scrTagGroup: copy all, select the screen in the Tree view, Ctrl+V.
+- cntRoot_TagGroup:
+    Control: GroupContainer
+    Variant: ManualLayout
+    Properties:
+      X: =0
+      Y: =0
+      Width: =Parent.Width
+      Height: =Parent.Height
+      Fill: =gTheme.Bg
+      BorderThickness: =0
+      DropShadow: =DropShadow.None
+    Children:
+      - recTopBar_TagGroup:
+          Control: Rectangle
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =48
+            Fill: =gTheme.TopBar
+            BorderColor: =gTheme.Border
+            BorderThickness: =0
+      - lblBrand_TagGroup:
+          Control: Label
+          Properties:
+            Text: ="Entra Self-Service"
+            X: =20
+            Y: =0
+            Width: =300
+            Height: =48
+            Size: =13
+            Font: =Font.'Segoe UI'
+            Color: =RGBA(255, 255, 255, 1)
+            FontWeight: =FontWeight.Semibold
+            PaddingLeft: =0
+            PaddingRight: =0
+            OnSelect: =Navigate(scrHome, ScreenTransition.Fade)
+      - lblUser_TagGroup:
+          Control: Label
+          Properties:
+            Text: =gMe.Name
+            X: =Parent.Width - 340
+            Y: =0
+            Width: =320
+            Height: =48
+            Size: =10
+            Font: =Font.'Segoe UI'
+            Color: =RGBA(255, 255, 255, 1)
+            FontWeight: =FontWeight.Normal
+            PaddingLeft: =0
+            PaddingRight: =0
+            Align: =Align.Right
+      - lblCrumb_TagGroup:
+          Control: Label
+          Properties:
+            Text: ="Home  ›  App registrations  ›  Owning group"
+            X: =24
+            Y: =58
+            Width: =Parent.Width - 48
+            Height: =22
+            Size: =9
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Primary
+            FontWeight: =FontWeight.Normal
+            PaddingLeft: =0
+            PaddingRight: =0
+            OnSelect: =Navigate(scrHome, ScreenTransition.Fade)
+      - lblTitle_TagGroup:
+          Control: Label
+          Properties:
+            Text: ="Owning group"
+            X: =24
+            Y: =80
+            Width: =Parent.Width - 48
+            Height: =34
+            Size: =18
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Text
+            FontWeight: =FontWeight.Semibold
+            PaddingLeft: =0
+            PaddingRight: =0
+      - lblSubtitle_TagGroup:
+          Control: Label
+          Properties:
+            Text: ="Hand an app registration you own to one of your groups."
+            X: =24
+            Y: =112
+            Width: =Parent.Width - 48
+            Height: =22
+            Size: =10
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Muted
+            FontWeight: =FontWeight.Normal
+            PaddingLeft: =0
+            PaddingRight: =0
+      - recCard_TagGroup:
+          Control: Rectangle
+          Properties:
+            X: =24
+            Y: =146
+            Width: =Parent.Width - 48
+            Height: =Parent.Height - 146 - 80
+            Fill: =gTheme.Card
+            BorderColor: =gTheme.Border
+            BorderThickness: =1
+      - cntTag_TagGroup:
+          Control: GroupContainer
+          Variant: ManualLayout
+          Properties:
+            X: =48
+            Y: =170
+            Width: =Parent.Width - 96
+            Height: =Parent.Height - 170 - 92
+            Fill: =RGBA(0, 0, 0, 0)
+            BorderThickness: =0
+            DropShadow: =DropShadow.None
+          Children:
+            - lblApp_TagGroup:
+                Control: Label
+                Properties:
+                  Text: |-
+                    ="App registration: Application (client) ID or Object ID *"
+                  X: =0
+                  Y: =0
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - txtApp_TagGroup:
+                Control: Classic/TextInput
+                Properties:
+                  Default: =""
+                  HintText: ="00000000-0000-0000-0000-000000000000"
+                  X: =0
+                  Y: =22
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  HoverBorderColor: =gTheme.Primary
+                  FocusedBorderColor: =gTheme.Primary
+                  FocusedBorderThickness: =2
+                  PaddingLeft: =10
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+                  DisplayMode: =If(varTagBusy, DisplayMode.Disabled, DisplayMode.Edit)
+            - lblMyGroup_TagGroup:
+                Control: Label
+                Properties:
+                  Text: ="Pick one of your groups"
+                  X: =0
+                  Y: =70
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - ddMyGroup_TagGroup:
+                Control: Classic/DropDown
+                Properties:
+                  Items: =AddColumns(gMyTeams, Value, Title)
+                  Default: =""
+                  X: =0
+                  Y: =92
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  ChevronBackground: =gTheme.Card
+                  ChevronFill: =gTheme.Muted
+                  HoverFill: =gTheme.PrimaryLight
+                  SelectionFill: =gTheme.Primary
+                  PaddingLeft: =10
+                  Tooltip: ="Fills in the Object ID below"
+                  AllowEmptySelection: =true
+                  DisplayMode: =If(varTagBusy, DisplayMode.Disabled, DisplayMode.Edit)
+            - lblGroup_TagGroup:
+                Control: Label
+                Properties:
+                  Text: ="or enter the group's Object ID *"
+                  X: =0
+                  Y: =140
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - txtGroup_TagGroup:
+                Control: Classic/TextInput
+                Properties:
+                  Default: =Coalesce(ddMyGroup_TagGroup.Selected.GroupId, "")
+                  HintText: ="00000000-0000-0000-0000-000000000000"
+                  X: =0
+                  Y: =162
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  HoverBorderColor: =gTheme.Primary
+                  FocusedBorderColor: =gTheme.Primary
+                  FocusedBorderThickness: =2
+                  PaddingLeft: =10
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+                  DisplayMode: =If(varTagBusy, DisplayMode.Disabled, DisplayMode.Edit)
+            - lblWorking_TagGroup:
+                Control: Label
+                Properties:
+                  Text: ="Checking ownership and updating the tag in Entra…"
+                  X: =0
+                  Y: =210
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =28
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Primary
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  Visible: =varTagBusy
+            - recInfo_TagGroup:
+                Control: Rectangle
+                Properties:
+                  X: =(Parent.Width + 24) / 2
+                  Y: =0
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =200
+                  Fill: =gTheme.PrimaryLight
+                  BorderColor: =gTheme.PrimaryLight
+                  BorderThickness: =1
+            - lblInfo_TagGroup:
+                Control: Label
+                Properties:
+                  Text: |-
+                    ="An app registration created without an owning group is tagged team:user\<your id>: only you can change it. Hand it to a security group you belong to and its tag becomes team:group\<group id>: every member of that group can then change it. Only the app's current owner can do this (you, or a member of its current group); anyone else gets 'Not authorized owner'. No approval is needed; the enterprise app's tag is updated too."
+                  X: =(Parent.Width + 24) / 2 + 14
+                  Y: =8
+                  Width: =(Parent.Width - 24) / 2 - 28
+                  Height: =184
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  Wrap: =true
+                  VerticalAlign: =VerticalAlign.Top
+            - lblHistory_TagGroup:
+                Control: Label
+                Properties:
+                  Text: ="Your recent changes"
+                  X: =0
+                  Y: =294
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =28
+                  Size: =12
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - lnkRefresh_TagGroup:
+                Control: Label
+                Properties:
+                  Text: ="↻ Refresh"
+                  X: =Parent.Width - 120
+                  Y: =296
+                  Width: =120
+                  Height: =24
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Primary
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  OnSelect: =Refresh(EntraRequests)
+            - galTag_TagGroup:
+                Control: Gallery
+                Variant: Vertical
+                Properties:
+                  Items: =FirstN(Sort(Filter(EntraRequests, RequestType.Value = "tagOwnerGroup"), ID, SortOrder.Descending), 6)
+                  X: =0
+                  Y: =330
+                  Width: =Parent.Width
+                  Height: =Parent.Height - 330
+                  TemplateSize: =64
+                  TemplatePadding: =0
+                  WrapCount: =1
+                  ShowScrollbar: =true
+                  BorderThickness: =0
+                Children:
+                  - lblTName_TagGroup:
+                      Control: Label
+                      Properties:
+                        Text: =ThisItem.TargetDisplayName
+                        X: =12
+                        Y: =6
+                        Width: =Parent.TemplateWidth - 190
+                        Height: =22
+                        Size: =11
+                        Font: =Font.'Segoe UI'
+                        Color: =gTheme.Text
+                        FontWeight: =FontWeight.Semibold
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                  - lblTMeta_TagGroup:
+                      Control: Label
+                      Properties:
+                        Text: =ThisItem.Title & "  ·  " & Text(ThisItem.Created, "dd mmm yyyy hh:mm") & "  ·  " & ThisItem.Justification
+                        X: =12
+                        Y: =28
+                        Width: =Parent.TemplateWidth - 190
+                        Height: =18
+                        Size: =9
+                        Font: =Font.'Segoe UI'
+                        Color: =gTheme.Muted
+                        FontWeight: =FontWeight.Normal
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                  - lblTError_TagGroup:
+                      Control: Label
+                      Properties:
+                        Text: =ThisItem.ErrorMessage
+                        X: =12
+                        Y: =44
+                        Width: =Parent.TemplateWidth - 24
+                        Height: =18
+                        Size: =9
+                        Font: =Font.'Segoe UI'
+                        Color: =gTheme.Danger
+                        FontWeight: =FontWeight.Normal
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        Visible: =!IsBlank(ThisItem.ErrorMessage)
+                  - lblTStatus_TagGroup:
+                      Control: Label
+                      Properties:
+                        Text: =Switch(ThisItem.Status.Value, "PendingManagerApproval", "Awaiting manager", "PendingEntraApproval", "Awaiting Entra team", "InProgress", "In progress", ThisItem.Status.Value)
+                        X: =Parent.TemplateWidth - 166
+                        Y: =8
+                        Width: =150
+                        Height: =22
+                        Size: =9
+                        Font: =Font.'Segoe UI'
+                        Color: =Switch(ThisItem.Status.Value, "Completed", gTheme.Success, "Failed", gTheme.Danger, "Rejected", gTheme.Danger, "InProgress", gTheme.Primary, "Approved", gTheme.Primary, gTheme.Warning)
+                        FontWeight: =FontWeight.Semibold
+                        PaddingLeft: =6
+                        PaddingRight: =6
+                        Fill: =Switch(ThisItem.Status.Value, "Completed", gTheme.SuccessLight, "Failed", gTheme.DangerLight, "Rejected", gTheme.DangerLight, "InProgress", gTheme.PrimaryLight, "Approved", gTheme.PrimaryLight, gTheme.WarningLight)
+                        Align: =Align.Center
+                  - recTSep_TagGroup:
+                      Control: Rectangle
+                      Properties:
+                        X: =12
+                        Y: =Parent.TemplateHeight - 1
+                        Width: =Parent.TemplateWidth - 24
+                        Height: =1
+                        Fill: =gTheme.Border
+                        BorderColor: =gTheme.Border
+                        BorderThickness: =0
+            - lblHistoryEmpty_TagGroup:
+                Control: Label
+                Properties:
+                  Text: ="Nothing changed yet."
+                  X: =0
+                  Y: =334
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =24
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  Visible: =CountRows(galTag_TagGroup.AllItems) = 0
+      - recCmd_TagGroup:
+          Control: Rectangle
+          Properties:
+            X: =0
+            Y: =Parent.Height - 64
+            Width: =Parent.Width
+            Height: =64
+            Fill: =gTheme.Card
+            BorderColor: =gTheme.Border
+            BorderThickness: =1
+      - btnSubmit_TagGroup:
+          Control: Classic/Button
+          Properties:
+            Text: ="Change owning group"
+            OnSelect: |-
+              =If(
+                  !IsMatch(Lower(Trim(txtApp_TagGroup.Text)), "^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$"),
+                      Notify("App registration: enter its Application (client) ID or Object ID.", NotificationType.Warning),
+                  !IsMatch(Lower(Trim(txtGroup_TagGroup.Text)), "^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$"),
+                      Notify("Group: enter its Object ID, or pick one of your groups.", NotificationType.Warning),
+                  varTagBusy,
+                      Notify("Still working on the previous request, one moment.", NotificationType.Information),
+                  Set(varReqId, "REQ-" & Text(Now(), "yymm") & "-" & Upper(Left(Substitute(Text(GUID()), "-", ""), 6)));
+                  IfError(
+                      Set(varTagRec, Patch(EntraRequests, Defaults(EntraRequests), {
+                          Title: varReqId,
+                          RequestType: {Value: "tagOwnerGroup"},
+                          Status: {Value: "Submitted"},
+                          TargetDisplayName: Lower(Trim(txtApp_TagGroup.Text)),
+                          TargetObjectId: Lower(Trim(txtApp_TagGroup.Text)),
+                          Justification: "Hand the app registration to group " & Lower(Trim(txtGroup_TagGroup.Text)),
+                          PayloadJson: JSON({app: Lower(Trim(txtApp_TagGroup.Text)), group: Lower(Trim(txtGroup_TagGroup.Text))}, JSONFormat.Compact)
+                      })),
+                      Notify("The request could not be submitted: " & FirstError.Message, NotificationType.Error),
+                      Set(varTagPolls, 0); Set(varTagBusy, true)
+                  )
+              )
+            X: =24
+            Y: =Parent.Height - 50
+            Width: =210
+            Height: =36
+            Size: =11
+            Font: =Font.'Segoe UI'
+            FontWeight: =FontWeight.Semibold
+            RadiusTopLeft: =4
+            RadiusTopRight: =4
+            RadiusBottomLeft: =4
+            RadiusBottomRight: =4
+            Fill: =gTheme.Primary
+            Color: =RGBA(255, 255, 255, 1)
+            HoverFill: =gTheme.PrimaryHover
+            PressedFill: =gTheme.PrimaryHover
+            BorderThickness: =0
+            HoverColor: =RGBA(255, 255, 255, 1)
+            DisplayMode: =If(varTagBusy, DisplayMode.Disabled, DisplayMode.Edit)
+      - btnBack_TagGroup:
+          Control: Classic/Button
+          Properties:
+            Text: ="Back"
+            OnSelect: =Back()
+            X: =244
+            Y: =Parent.Height - 50
+            Width: =120
+            Height: =36
+            Size: =11
+            Font: =Font.'Segoe UI'
+            FontWeight: =FontWeight.Semibold
+            RadiusTopLeft: =4
+            RadiusTopRight: =4
+            RadiusBottomLeft: =4
+            RadiusBottomRight: =4
+            Fill: =RGBA(0, 0, 0, 0)
+            Color: =gTheme.Text
+            HoverFill: =gTheme.Bg
+            PressedFill: =gTheme.Bg
+            BorderColor: =gTheme.Border
+            BorderThickness: =1
+            HoverColor: =gTheme.Text
+            HoverBorderColor: =gTheme.Muted
+      - tmrTag_TagGroup:
+          Control: Timer
+          Properties:
+            Duration: =3000
+            Repeat: =true
+            AutoStart: =false
+            Start: =varTagBusy
+            OnTimerEnd: |-
+              =Set(varTagPolls, varTagPolls + 1);
+              Refresh(EntraRequests);
+              With({r: LookUp(EntraRequests, ID = varTagRec.ID)},
+                  If(
+                      r.Status.Value = "Completed",
+                          Set(varTagBusy, false); Reset(txtApp_TagGroup); Reset(ddMyGroup_TagGroup); Reset(txtGroup_TagGroup);
+                          Notify("Done: " & r.TargetDisplayName & " is now owned by group " & Text(ParseJSON(r.ResultJson).groupDisplayName) & ".", NotificationType.Success),
+                      r.Status.Value = "Failed",
+                          Set(varTagBusy, false);
+                          Notify(Coalesce(r.ErrorMessage, "Not changed."), NotificationType.Error),
+                      varTagPolls >= 40,
+                          Set(varTagBusy, false);
+                          Notify("Still working. The result will appear in the list below.", NotificationType.Information)
+                  )
+              )
+            Visible: =false
+            X: =0
+            Y: =0
+            Width: =10
+            Height: =10

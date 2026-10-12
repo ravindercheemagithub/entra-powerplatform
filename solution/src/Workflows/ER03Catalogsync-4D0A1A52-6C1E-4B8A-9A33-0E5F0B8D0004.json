@@ -144,11 +144,29 @@
                 ]
               }
             },
-            "Team_id": {
+            "Team_tag": {
               "type": "Compose",
               "inputs": "@if(empty(body('Filter_app_team')), '', substring(first(body('Filter_app_team')), 5))",
               "runAfter": {
                 "Filter_app_appcat": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Team_id": {
+              "type": "Compose",
+              "inputs": "@if(startsWith(outputs('Team_tag'), 'group\\'), substring(outputs('Team_tag'), 6), if(startsWith(outputs('Team_tag'), 'user\\'), '', outputs('Team_tag')))",
+              "runAfter": {
+                "Team_tag": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Owner_user_id": {
+              "type": "Compose",
+              "inputs": "@if(startsWith(outputs('Team_tag'), 'user\\'), substring(outputs('Team_tag'), 5), '')",
+              "runAfter": {
+                "Team_id": [
                   "Succeeded"
                 ]
               }
@@ -160,7 +178,7 @@
                 "value": ""
               },
               "runAfter": {
-                "Team_id": [
+                "Owner_user_id": [
                   "Succeeded"
                 ]
               }
@@ -293,6 +311,57 @@
                 ]
               }
             },
+            "Has_owner_user": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@empty(outputs('Owner_user_id'))",
+                      false
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "HTTP_Owner_user": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                      "connectionName": "shared_webcontents",
+                      "operationId": "InvokeHttp"
+                    },
+                    "parameters": {
+                      "request/method": "GET",
+                      "request/url": "https://graph.microsoft.com/v1.0/users/@{outputs('Owner_user_id')}?$select=userPrincipalName"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "runAfter": {}
+                },
+                "Set_owner_member": {
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "varMembers",
+                    "value": "@concat(';', toLower(body('HTTP_Owner_user')?['userPrincipalName']), ';')"
+                  },
+                  "runAfter": {
+                    "HTTP_Owner_user": [
+                      "Succeeded"
+                    ]
+                  }
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "runAfter": {
+                "Has_team": [
+                  "Succeeded"
+                ]
+              }
+            },
             "HTTP_App_owners": {
               "type": "OpenApiConnection",
               "inputs": {
@@ -308,7 +377,7 @@
                 "authentication": "@parameters('$authentication')"
               },
               "runAfter": {
-                "Has_team": [
+                "Has_owner_user": [
                   "Succeeded"
                 ]
               }

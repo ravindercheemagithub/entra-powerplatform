@@ -29,10 +29,10 @@
         <mxCell id="c8" value="&lt;b&gt;ER-01 Approvals&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;changed: last step sets&lt;br&gt;Status = PendingChange&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="420" y="200" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c9" value="&lt;b&gt;ER-05 Raise change&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;new &amp;middot; trigger: PendingChange&lt;br&gt;writes ChangeNumber back&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c9" value="&lt;b&gt;SN-01 Raise change&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;new &amp;middot; trigger: PendingChange&lt;br&gt;writes ChangeNumber back&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="640" y="200" width="56" height="56" as="geometry"/>
         </mxCell>
-        <mxCell id="c10" value="&lt;b&gt;ER-06 Change sync&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;new &amp;middot; every 15 min&lt;br&gt;mirrors ChangeState&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c10" value="&lt;b&gt;SN-02 Change sync&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;new &amp;middot; every 15 min&lt;br&gt;mirrors ChangeState&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="640" y="400" width="56" height="56" as="geometry"/>
         </mxCell>
         <mxCell id="c11" value="&lt;b&gt;ER-02 Execute&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px'&gt;unchanged &amp;middot; trigger: Approved&lt;/font&gt;" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=11;image=img/lib/azure2/power_platform/PowerAutomate.svg;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;fontColor=#323130;" vertex="1" parent="1">
@@ -56,7 +56,7 @@
         <mxCell id="c17" value="&lt;b&gt;change_request&lt;/b&gt; &amp;middot; type Normal&lt;br&gt;&lt;font style='font-size:10px'&gt;POST /api/sn_chg_rest/change/normal&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#293E40;strokeWidth=1.5;fontSize=12;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1130" y="170" width="280" height="60" as="geometry"/>
         </mxCell>
-        <mxCell id="c18" value="Fields set by ER-05" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#293E40;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
+        <mxCell id="c18" value="Fields set by SN-01" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#293E40;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
           <mxGeometry x="1130" y="260" width="520" height="206" as="geometry"/>
         </mxCell>
         <mxCell id="c19" value="short_description: Entra app registration APPCAT-ENV-BOR-name" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c18">
@@ -83,7 +83,7 @@
         <mxCell id="c26" value="correlation_id: REQ-... (request id)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;" vertex="1" parent="c18">
           <mxGeometry x="0" y="184" width="520" height="22" as="geometry"/>
         </mxCell>
-        <mxCell id="c27" value="Change states ER-06 reacts to" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#293E40;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
+        <mxCell id="c27" value="Change states SN-02 reacts to" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#293E40;strokeWidth=1.5;fontSize=12;fontColor=#323130;swimlaneFillColor=#FFFFFF;" vertex="1" parent="1">
           <mxGeometry x="1130" y="520" width="520" height="140" as="geometry"/>
         </mxCell>
         <mxCell id="c28" value="Assess / Authorize (CAB) ....... keep waiting" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=8;spacingRight=6;overflow=hidden;whiteSpace=wrap;html=1;fontSize=10;fontColor=#323130;fontFamily=Courier New;" vertex="1" parent="c27">
@@ -180,7 +180,7 @@
         <mxCell id="c6" value="EntraRequests" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF6EA;strokeColor=#107C10;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="245" y="80" width="120" height="958" as="geometry"/>
         </mxCell>
-        <mxCell id="c7" value="ER-05 Raise change" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c7" value="SN-01 Raise change" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="450" y="80" width="120" height="958" as="geometry"/>
         </mxCell>
         <mxCell id="c8" value="ServiceNow" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#F3F2F1;strokeColor=#605E5C;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
@@ -195,7 +195,7 @@
             <mxPoint x="920" y="1038" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c11" value="ER-06 Change sync" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
+        <mxCell id="c11" value="SN-02 Change sync" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
           <mxGeometry x="1065" y="80" width="120" height="958" as="geometry"/>
         </mxCell>
         <mxCell id="c12" value="ER-02 Execute" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#EAF3FB;strokeColor=#0078D4;strokeWidth=1.5;fontSize=11;fontStyle=1;fontColor=#323130;" vertex="1" parent="1">
@@ -315,7 +315,7 @@
         <mxCell id="c32" value="&lt;b&gt;ER-02's guard still holds:&lt;/b&gt; only the flow account can set Approved, so a change can't be skipped by editing the list." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
           <mxGeometry x="1145" y="892" width="440" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="c33" value="&lt;b&gt;record mode:&lt;/b&gt; ER-05 sets Status = Approved right after creating the change; ER-06 then only closes changes." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
+        <mxCell id="c33" value="&lt;b&gt;record mode:&lt;/b&gt; SN-01 sets Status = Approved right after creating the change; SN-02 then only closes changes." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#FFF8DC;strokeColor=#D9B300;fontSize=11;align=left;verticalAlign=top;spacing=6;fontColor=#323130;size=14;" vertex="1" parent="1">
           <mxGeometry x="120" y="946" width="420" height="44" as="geometry"/>
         </mxCell>
       </root>

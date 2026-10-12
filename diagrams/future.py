@@ -43,8 +43,8 @@ def page_components() -> Page:
     p.container("Power Automate &middot; owner: flow account", 370, 150, 650, 560, stroke=BLUE, fill="#FFFFFF")
     er1 = p.icon("pauto", "<b>ER-01 Approvals</b><br>" + small("changed: last step sets<br>Status = PendingChange"),
                  420, 200)
-    er5 = p.icon("pauto", "<b>ER-05 Raise change</b><br>" + small("new &middot; trigger: PendingChange<br>writes ChangeNumber back"), 640, 200)
-    er6 = p.icon("pauto", "<b>ER-06 Change sync</b><br>" + small("new &middot; every 15 min<br>mirrors ChangeState"), 640, 400)
+    er5 = p.icon("pauto", "<b>SN-01 Raise change</b><br>" + small("new &middot; trigger: PendingChange<br>writes ChangeNumber back"), 640, 200)
+    er6 = p.icon("pauto", "<b>SN-02 Change sync</b><br>" + small("new &middot; every 15 min<br>mirrors ChangeState"), 640, 400)
     er2 = p.icon("pauto", "<b>ER-02 Execute</b><br>" + small("unchanged &middot; trigger: Approved"), 420, 400)
     for x, y in [(632, 192), (632, 392)]:
         p.node("", x, y, 72, 72, stroke=NEW, fill="none")
@@ -56,7 +56,7 @@ def page_components() -> Page:
     p.container("ServiceNow instance", 1090, 110, 590, 640, stroke=SN, fill=SN_FILL)
     chg = p.node("<b>change_request</b> &middot; type Normal<br>" + small(
         "POST /api/sn_chg_rest/change/normal"), 1130, 170, 280, 60, stroke=SN)
-    p.table("Fields set by ER-05", [
+    p.table("Fields set by SN-01", [
         "short_description: Entra app registration APPCAT-ENV-BOR-name",
         "description: RequestSummary (what was approved)",
         "justification &middot; requested_by (requester)",
@@ -66,7 +66,7 @@ def page_components() -> Page:
         "work_notes: manager + Entra approvals, who and when",
         "correlation_id: REQ-... (request id)",
     ], 1130, 260, 520, SN)
-    p.table("Change states ER-06 reacts to", [
+    p.table("Change states SN-02 reacts to", [
         "Assess / Authorize (CAB) ....... keep waiting",
         "Scheduled ...................... keep waiting",
         "Implement ...................... Status = Approved &#8594; ER-02",
@@ -100,10 +100,10 @@ def page_sequence() -> Page:
     s = Sequence(p, [
         ("er1", "ER-01 Approvals", "azure"),
         ("sp", "EntraRequests", "data"),
-        ("er5", "ER-05 Raise change", "azure"),
+        ("er5", "SN-01 Raise change", "azure"),
         ("sn", "ServiceNow", "ext"),
         ("cab", "Change approvers", "actor"),
-        ("er6", "ER-06 Change sync", "azure"),
+        ("er6", "SN-02 Change sync", "azure"),
         ("er2", "ER-02 Execute", "azure"),
         ("req", "Requester", "actor"),
     ], x0=40, gap=205, y0=80)
@@ -131,7 +131,7 @@ def page_sequence() -> Page:
     s.gap()
     s.note("<b>ER-02's guard still holds:</b> only the flow account can set Approved, so a change can't be "
            "skipped by editing the list.", "er6", w=440, h=44)
-    s.note("<b>record mode:</b> ER-05 sets Status = Approved right after creating the change; ER-06 then only "
+    s.note("<b>record mode:</b> SN-01 sets Status = Approved right after creating the change; SN-02 then only "
            "closes changes.", "er1", w=420, h=44)
     s.finish()
     return p

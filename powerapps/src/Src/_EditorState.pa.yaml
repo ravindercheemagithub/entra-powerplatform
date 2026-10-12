@@ -8,4 +8,5 @@ EditorState:
   - scrNewApp
   - scrAddGroup
   - scrAppChange
+  - scrTagGroup
   - scrMyRequests

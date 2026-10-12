@@ -35,9 +35,13 @@ If(varResetChange,
     Set(varResetChange, false);
     Set(varApp, Blank());
     Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign);
-    Reset(txtSearchApps_Change); Reset(radUri_Change); Reset(txtCustomUri_Change); Reset(ddRole_Change);
+    Set(varLookupBusy, false);
+    Reset(txtAppId_Change); Reset(txtAppCat_Change); Reset(radUri_Change); Reset(txtCustomUri_Change); Reset(ddRole_Change);
     Reset(cmbGroup_Change); Reset(tglAssign_Change); Reset(txtJust_Change); Reset(txtTicket_Change)
 )
+
+// ===== scrTagGroup.OnVisible
+Refresh(EntraRequests)
 
 // ===== scrMyRequests.OnVisible
 Refresh(EntraRequests)

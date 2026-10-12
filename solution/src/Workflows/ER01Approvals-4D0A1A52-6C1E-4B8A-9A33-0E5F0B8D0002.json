@@ -81,7 +81,7 @@
           },
           "conditions": [
             {
-              "expression": "@and(equals(triggerBody()?['Status']?['Value'], 'Submitted'), not(equals(triggerBody()?['RequestType']?['Value'], 'onboardGroup')))"
+              "expression": "@and(equals(triggerBody()?['Status']?['Value'], 'Submitted'), not(contains(createArray('onboardGroup', 'lookupApp', 'tagOwnerGroup'), triggerBody()?['RequestType']?['Value'])))"
             }
           ]
         }

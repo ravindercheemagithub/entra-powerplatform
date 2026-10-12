@@ -65,7 +65,7 @@ Pick one:
 
 | Object | Where | Values |
 |---|---|---|
-| App registration | `tags` | `appCatID:…`, `team:<group id>`, `teamName:…`, `createdBy:<upn>`, `createdById:<oid>`, `createdTimestamp`, `lastUpdatedBy`, `lastUpdatedTimestamp`, `managedBy:entra-pp`, `requestId:REQ-…`, plus optional `key:value` tags |
+| App registration | `tags` | `appCatID:…`, `team:group\<group id>` or `team:user\<user object id>` (who may change the app), `teamName:…`, `createdBy:<upn>`, `createdById:<oid>`, `createdTimestamp`, `lastUpdatedBy`, `lastUpdatedTimestamp`, `managedBy:entra-pp`, `requestId:REQ-…`, plus optional `key:value` tags |
 | | `notes` | `appCatID=…; requestId=…; createdBy=…; managedBy=…` |
 | Enterprise app | `tags` (same) + `WindowsAzureActiveDirectoryIntegratedApp` | |
 | Group | end of `description` | `[appCatID=…; requestId=…; createdBy=…; managedBy=…]` |

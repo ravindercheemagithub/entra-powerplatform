@@ -20,6 +20,8 @@ Sibling of `../entra-portal-next` (Next.js) and `../entra-portal-lite` (Function
    (groups are created elsewhere and onboarded by ER-04; no owners are added)         │
    writes ResultJson, Status = Completed | Failed                                     │
  ER-03 Catalog sync (hourly) ─ HTTP (premium) ─▶ EntraCatalogApps / EntraCatalogGroups ┘
+ ER-05 Find app ─ the change screen's Search: returns an app only to its owner (team tag)
+ ER-06 Tag owning group ─ team:user\<id> → team:group\<id> (owner only, no approval)
    (what each user's groups own → the app's pickers, without premium in the app)
 ```
 
@@ -54,13 +56,14 @@ For comparison, the Azure Function / App Service variants need no Power Platform
 | 1 | App registration `entra-pp-graph` (Graph application permissions + certificate) | Entra | [docs/01-ENTRA.md](docs/01-ENTRA.md) · `entra/setup.sh` |
 | 2 | Service account `svc-entra-flows` (Microsoft 365 + Power Automate Premium) | Entra / M365 admin | [docs/01-ENTRA.md](docs/01-ENTRA.md) |
 | 3 | SharePoint site + 4 lists (`EntraRequests`, `EntraCatalogApps`, `EntraCatalogGroups`, `EntraSettings`) | SharePoint | [docs/02-SHAREPOINT.md](docs/02-SHAREPOINT.md) · `sharepoint/provision.ps1` |
-| 4 | Canvas app "Entra Self-Service" (5 screens): import `powerapps/dist/EntraSelfService.msapp`, or paste the screens | Power Apps | [docs/03-POWER-APPS.md](docs/03-POWER-APPS.md) · `powerapps/` |
+| 4 | Canvas app "Entra Self-Service" (6 screens): import `powerapps/dist/EntraSelfService.msapp`, or paste the screens | Power Apps | [docs/03-POWER-APPS.md](docs/03-POWER-APPS.md) · `powerapps/` |
 | 5 | Flows ER-01 Approvals, ER-02 Execute, ER-03 Catalog sync | Power Automate | [docs/04-POWER-AUTOMATE.md](docs/04-POWER-AUTOMATE.md) · `powerautomate/actions/` |
 | 6 | End-to-end test | Your tenant | [docs/05-TESTING.md](docs/05-TESTING.md) |
 | 6a | Test ER-01 on its own, with copy-paste payloads | Your tenant | [docs/06-TEST-ER01.md](docs/06-TEST-ER01.md) |
 | 6b | Test ER-02 (creates objects in Entra) | Your tenant | [docs/07-TEST-ER02.md](docs/07-TEST-ER02.md) |
 | 6c | Test ER-03 (read-only sync) | Your tenant | [docs/08-TEST-ER03.md](docs/08-TEST-ER03.md) |
 | 6d | Test ER-04 (add an existing group, no approval) | Your tenant | [docs/10-TEST-ER04.md](docs/10-TEST-ER04.md) |
+| 6e | Test ER-05 (Search) and ER-06 (Owning group) | Your tenant | [docs/11-TEST-ER05-ER06.md](docs/11-TEST-ER05-ER06.md) |
 | 5a | Or import the flows as a solution zip (instead of building them by hand) | Power Automate | [docs/09-SOLUTION-IMPORT.md](docs/09-SOLUTION-IMPORT.md) · `solution/dist/` |
 
 ## What can be imported, and how
@@ -78,13 +81,13 @@ Power Automate's importable formats are a solution `.zip` or a legacy package `.
 
 - **Home**: a card per operation, plus your recent requests.
 - **Register an application**, an Azure-portal-style wizard. Submit / Next / Cancel are always at the bottom; only Basics is required.
-  1. **Basics**: appCatID (App BoR ID), environment (P/Q/D/L/U/F/T/S), BoR short name, display name `<appCatID>-<env>-<BoR short name>-<free text>` (the prefix can't be edited), owning team (an existing group you are a member of), justification, description, redirect URI.
+  1. **Basics**: appCatID (App BoR ID), environment (P/Q/D/L/U/F/T/S), BoR short name, display name `<appCatID>-<env>-<BoR short name>-<free text>` (the prefix can't be edited), optional owning group (an existing group you are a member of; without one the app is owned by you), justification, description, redirect URI.
   2. **Expose an API & claims**: Application ID URI (default `api://{appId}` or custom), scopes (one-click `access_as_user`), optional ID/access-token claims, groups claim.
   3. **App roles & groups**: one click for User + Admin roles; custom roles; each role is held by **existing** groups.
   4. **Enterprise app & sign-in**: create the service principal (for the same appId), assignment required, account types, optional tags, change ticket.
   5. **Review + submit**.
-- **No group creation and no owners.** Groups are created outside this app; **Add existing group** makes one selectable (by name or Object ID, if you are a member or owner). App registrations get no owners; access goes through the owning team and role groups.
-- **Expose an API / App roles / Role assignments / Enterprise application** on apps *your groups own* (from the catalog).
+- **No group creation and no owners.** Groups are created outside this app; **Add existing group** makes one selectable (by name or Object ID, if you are a member or owner). App registrations get no owners. **Who may change an app is its team tag**: `team:user\<id>` (the creator) or `team:group\<id>` (members of that group). **Owning group** hands a user-owned app to a group.
+- **Expose an API / App roles / Role assignments / Enterprise application**: **Search** by the app's Application (client) ID or Object ID; you can continue only if its team tag names you or a group you are in.
 - **My requests**: approval stages, the IDs that were created, and errors.
 
 ## Folder map

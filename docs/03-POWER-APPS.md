@@ -1,18 +1,19 @@
 # 3. Power Apps: the canvas app
 
-Five screens, built by pasting YAML into Power Apps Studio. Every control is a classic control, every formula uses English-locale separators (`,` and `;`), and nothing pins a control version. Studio uses the current version of each control.
+Six screens, built by pasting YAML into Power Apps Studio. Every control is a classic control, every formula uses English-locale separators (`,` and `;`), and nothing pins a control version. Studio uses the current version of each control.
 
 | Screen | Purpose |
 |---|---|
 | `scrHome` | operation cards + your recent requests |
 | `scrNewApp` | **Register an application**: 5 sections, Submit / Next / Cancel at the bottom |
-| `scrAppChange` | changes to an existing app your groups own: Expose an API, App roles, Role assignments, Enterprise app |
+| `scrAppChange` | changes to an existing app: **Search** by Application (client) ID or Object ID (flow ER-05 checks you are its authorized owner), then Expose an API, App roles, Role assignments, Enterprise app |
+| `scrTagGroup` | **Owning group**: hand an app registration you own to one of your groups (flow ER-06 replaces `team:user\…` with `team:group\…`; no approval) |
 | `scrAddGroup` | **Add existing group**: enter a group's name or Object ID to make it selectable (flow ER-04 checks you are a member or owner; no approval). Groups are created outside this app. |
 | `scrMyRequests` | history with approval stages, created IDs and errors |
 
 ## 3.0 Fastest: import the packed app (.msapp)
 
-[`powerapps/dist/EntraSelfService.msapp`](../powerapps/dist/EntraSelfService.msapp) is the whole app: all five screens (about 300 controls), App.Formulas, App.OnStart, each screen's Fill and OnVisible, tablet layout 1366 × 768, and data row limit 2000. Importing it replaces 3.1 to 3.3.
+[`powerapps/dist/EntraSelfService.msapp`](../powerapps/dist/EntraSelfService.msapp) is the whole app: all six screens (about 340 controls), App.Formulas, App.OnStart, each screen's Fill and OnVisible, tablet layout 1366 × 768, and data row limit 2000. Importing it replaces 3.1 to 3.3.
 
 It contains **no data sources**: a SharePoint data source embeds each list's GUID and column schema from your tenant, so you add them after opening (step 4). Until then Studio shows formula errors, which is expected.
 
@@ -59,7 +60,7 @@ In the Tree view select **App**:
 
 ## 3.3 Screens
 
-For each screen, in this order: **scrHome, scrMyRequests, scrAddGroup, scrNewApp, scrAppChange**. The order avoids "screen not found" errors while you paste, since formulas navigate between screens; any order works once all exist.
+For each screen, in this order: **scrHome, scrMyRequests, scrAddGroup, scrTagGroup, scrNewApp, scrAppChange**. The order avoids "screen not found" errors while you paste, since formulas navigate between screens; any order works once all exist.
 
 1. **New screen → Blank**, rename it exactly (e.g. `scrHome`). Delete `Screen1` at the end; `scrHome` must be first in the Tree view, which makes it the start screen.
 2. Select the screen. Set **Fill** = `gTheme.Bg`, and **OnVisible** = its formula from [`powerapps/Screens.OnVisible.fx`](../powerapps/Screens.OnVisible.fx).
@@ -74,15 +75,15 @@ Studio validates the code before creating controls. If a paste is refused:
 ## 3.4 What each screen does
 
 ### scrHome
-- **galOps_Home**: cards from `gOperations` (3 per row). Clicking a card navigates: *App registration* → `scrNewApp`; *Add existing group* → `scrAddGroup`; *My requests* → `scrMyRequests`; the other four → `scrAppChange`, with `varOp` = the operation. There is no group-creation card: groups are created outside this app.
-- **galRecent_Home**: your last 7 requests (item-level security means the list only returns your items). Click one to open it.
+- **galOps_Home**: cards from `gOperations` (3 per row). Clicking a card navigates: *App registration* → `scrNewApp`; *Add existing group* → `scrAddGroup`; *Owning group* → `scrTagGroup`; *My requests* → `scrMyRequests`; the other four → `scrAppChange`, with `varOp` = the operation. There is no group-creation card: groups are created outside this app.
+- **galRecent_Home**: your last 7 requests (item-level security means the list only returns your items; Search lookups are left out). Click one to open it.
 
 ### scrNewApp: Register an application
 Left: a step list (`galSteps_NewApp`). You can click back to any step you've visited. Right: one container per section; the bottom bar has **Submit request**, **Next ›**, **‹ Previous**, **Cancel**.
 
 | Section | Fields (control name) | Required |
 |---|---|---|
-| 1 Basics | **App BoR ID** (appCatID) `txtAppCatId_NewApp`; **App environment** `ddEnv_NewApp`; **App BoR short name** `txtBorShort_NewApp`; **Owning team** `cmbTeam_NewApp` (+ link *Group not listed? Add an existing group*); **Display name**: read-only prefix `lblNamePrefix_NewApp` + free text `txtAppName_NewApp`; Justification; Description; Redirect URI platform + URIs | appCatID, environment, BoR short name, free-text name, team, justification |
+| 1 Basics | **App BoR ID** (appCatID) `txtAppCatId_NewApp`; **App environment** `ddEnv_NewApp`; **App BoR short name** `txtBorShort_NewApp`; **Owning group (optional)** `cmbTeam_NewApp` (+ link *Group not listed? Add an existing group*); **Display name**: read-only prefix `lblNamePrefix_NewApp` + free text `txtAppName_NewApp`; Justification; Description; Redirect URI platform + URIs | appCatID, environment, BoR short name, free-text name, justification |
 | 2 Expose an API & claims | Expose an API `chkExpose_NewApp`; App ID URI (`api://{appId}` or custom); scopes editor (**＋ access_as_user**, **＋ Custom scope**); optional claims in ID / access token; groups claim | – |
 | 3 App roles & groups | **＋ User + Admin roles** (adds `<Name>.User` / `<Name>.Admin`); **＋ Custom role**; per role: value, display name, members, description, and the **existing** groups that hold it (pick from your groups; *Group not listed?* opens Add existing group) | – |
 | 4 Enterprise app & sign-in | Create the enterprise application (forced on when any role has groups); **Assignment required** (`appRoleAssignmentRequired`); Supported account types; Optional tags; Change ticket | – |
@@ -91,15 +92,16 @@ Left: a step list (`galSteps_NewApp`). You can click back to any step you've vis
 - **Display name follows the naming convention** `<App BoR ID>-<App Env>-<App BoR short name>-<free text>`, e.g. `APP-1234-Q-ORDERS-orders-api`. The prefix is built from the three fields above it and can't be typed over; only the free text is editable. Environments: **P** production, **Q** QA, **D** development, **L** lab, **U** UAT, **F** performance, **T** dev integration testing, **S** system integration testing (`gEnvironments`). The full name is in the hidden label `lblFullName_NewApp`, max 120 characters. The payload also carries `appEnv` and `borShortName`; ER-02 stamps them as tags.
 - **Next** validates the current section (hidden labels `lblErr1/2/3_NewApp` hold the rules). If something is missing, the message appears in red next to the buttons, as well as in a banner.
 - **Submit** validates everything, builds `PayloadJson` with `JSON()`, and **Patches** `EntraRequests` with `Status = Submitted`. Then it opens My requests.
-- **No group creation and no owners.** The owning team and role groups are always existing groups. *Group not listed?* opens `scrAddGroup`; when you come back everything typed is kept (`scrNewApp.OnVisible` resets only when `varResetNewApp` is true) and the pickers are refreshed. The app registration gets no owners.
+- **Owning group is optional, and decides who may change the app.** With one, the app is tagged `team:group\<group id>` and every member can change it; you must be a member. Without one, it is tagged `team:user\<your object id>` and only you can change it, until you hand it to a group with **Owning group**.
+- **No group creation and no owners.** The owning group and role groups are always existing groups. *Group not listed?* opens `scrAddGroup`; when you come back everything typed is kept (`scrNewApp.OnVisible` resets only when `varResetNewApp` is true) and the pickers are refreshed. The app registration gets no owners.
 
-#### Where the Owning team list comes from
+#### Where the Owning group list comes from
 `cmbTeam_NewApp` lists rows of the **EntraCatalogGroups** SharePoint list (not Entra directly) where your UPN is in **MemberUpns** (formula `gMyTeams`). Rows get there three ways:
 - **You add it in the app:** *Add existing group* (ER-04) looks the group up by name or Object ID and adds it if you are a member or owner.
 - **An admin onboards it:** a row with **Title** and **GroupId** in EntraCatalogGroups, then **ER-03** fills in MemberUpns, OwnerUpns and the appCatID.
 - **ER-03** keeps all rows current every hour, and adds the team group of every app the platform manages.
 
-So a group that already exists in Entra appears only after it has been onboarded, and only for its members. Users onboard groups themselves: **Group not listed? Add an existing group** next to the picker, or the **Add existing group** card on Home, opens `scrAddGroup`. To use it as the owning team you must be a member, because ER-02 checks membership.
+So a group that already exists in Entra appears only after it has been onboarded, and only for its members. Users onboard groups themselves: **Group not listed? Add an existing group** next to the picker, or the **Add existing group** card on Home, opens `scrAddGroup`. To use it as the owning group you must be a member, because ER-02 checks membership.
 
 ### scrAddGroup: Add an existing group
 - One field, **Group name or Object ID** (`txtGroup_AddGroup`). **Add group** checks the field isn't empty and the group isn't already in your pickers, then Patches `EntraRequests` with `RequestType = onboardGroup`, `Status = Submitted`, `TargetDisplayName` = what you typed (and `TargetObjectId` when it is a GUID).
@@ -108,13 +110,18 @@ So a group that already exists in Entra appears only after it has been onboarded
 - The list at the bottom shows your recent additions with status and error; **↻ Refresh** reloads it.
 
 ### scrAppChange
-- Left: **your applications** (`gMyApps`: catalog rows where you're in the team group or an owner), with search.
-- Right: app details, plus the section for `varOp`:
+- Left: **Find the app registration**. Type its **Application (client) ID or Object ID** and click **Search**. The app writes a `lookupApp` item; **ER-05** finds the app in Entra and returns it only if its team tag is `team:user\<your id>`, or `team:group\<id>` of a group you are a member of (1.2 apps tagged `team:<group id>` count as that group). Otherwise you see *Not authorized owner…*. The timer `tmrLookup_Change` checks every 3 seconds, for up to 2 minutes; the answer usually takes under a minute (the SharePoint trigger is the slow part).
+- Right, once found: app details (App ID, owner tag, App ID URI, enterprise app), plus the section for `varOp`:
   - **Expose an API**: URI (added; existing ones are kept) + new scopes
   - **App roles**: new roles, each with existing groups
-  - **Role assignments**: pick an app role (from `AppRolesJson`) and one of your groups, **Add**; *Group not listed?* opens Add existing group
+  - **Role assignments**: pick an app role (from the app's roles) and one of your groups, **Add**; *Group not listed?* opens Add existing group
   - **Enterprise application**: assignment required toggle (disabled if one exists)
-- Justification + **Submit request** → `exposeApi` / `addAppRoles` / `assignGroupsToAppRoles` / `createServicePrincipal`.
+- Justification, change ticket, and **appCatID** (read-only when the app has one; required when it doesn't, and then added) + **Submit request** → `exposeApi` / `addAppRoles` / `assignGroupsToAppRoles` / `createServicePrincipal`. ER-02 checks ownership again before changing anything.
+
+### scrTagGroup: Owning group
+- **App registration** (Application (client) ID or Object ID) and the **group's Object ID**. *Pick one of your groups* fills the Object ID in for you.
+- **Change owning group** writes a `tagOwnerGroup` item (PayloadJson `{"app": "…", "group": "…"}`). **ER-06** checks you are the app's authorized owner and a member or owner of the new group (a security group), then replaces the app's `team:` and `teamName:` tags, on the app registration and its enterprise app. Anyone else gets *Not authorized owner…*.
+- The result appears as a banner (timer `tmrTag_TagGroup`) and in the list below.
 
 ### scrMyRequests
 - Filter (All / Open / Completed / Rejected-failed), Refresh, list.
@@ -128,7 +135,7 @@ Same shapes as `entra-portal-next`, with string lists as `;`-separated strings s
 {
   "displayName": "APP-1234-Q-ORDERS-orders-api", "appEnv": "Q", "borShortName": "ORDERS", "nameText": "orders-api",
   "description": "Orders REST API", "signInAudience": "AzureADMyOrg",
-  "owningGroup": { "mode": "existing", "id": "<group object id>", "displayName": "team-orders" },
+  "owningGroup": { "mode": "existing", "id": "<group object id>", "displayName": "team-orders" },   // or null: owned by the requester
   "redirectUrisWeb": "", "redirectUrisSpa": "https://orders.contoso.com",
   "exposeApi": { "enabled": true, "identifierUriTemplate": "api://{appId}",
                  "scopes": [ { "value": "access_as_user", "type": "User", "adminConsentDisplayName": "Access orders-api", "adminConsentDescription": "…" } ] },

@@ -25,7 +25,7 @@ The `roles` claim must list the five permissions from doc 01.
 Run **ER-03 Catalog sync** manually. Expected:
 - Run succeeds. With no managed apps yet, `Apply to each app` has 0 iterations.
 - Add a row to `EntraCatalogGroups` with Title + GroupId of a group **you** are a member of, run ER-03 again: MemberUpns contains `;you@contoso.com;`.
-- In the app, the wizard's **Owning team** box now lists that group.
+- In the app, the wizard's **Owning group** box now lists that group.
 
 ## 5.4 A security group, end to end (the smallest request)
 
@@ -40,7 +40,7 @@ Run **ER-03 Catalog sync** manually. Expected:
 
 ## 5.5 The full app registration
 
-Wizard: name `pp-orders-api`, your appCatID, owning team = the group from 5.4. Then:
+Wizard: name `pp-orders-api`, your appCatID, owning group = the group from 5.4. Then:
 - **Section 2:** tick Expose an API, add `access_as_user`, tick `email` (ID token), groups claim `ApplicationGroup`.
 - **Section 3:** *User + Admin roles with groups*.
 - **Section 4:** defaults.
@@ -81,6 +81,6 @@ After the next ER-03 run (or right away, through ER-02's catalog insert), the ap
 | `POST /servicePrincipals` 400 *does not reference a valid application* | replication lag; the Do-until retries. Raise the count if your tenant is slow. |
 | `appRoleAssignedTo` 400/404 right after creating a group | replication lag; increase *Wait for group replication* to 30 s |
 | ER-01 `Break inheritance` 403 | svc-entra-flows is not a site owner |
-| App: Owning team box empty | no catalog group contains you: run ER-03 / add your group to EntraCatalogGroups |
+| App: Owning group box empty | no catalog group contains you: run ER-03 / add your group to EntraCatalogGroups |
 | App paste error on a control | see doc 03 §3.3 |
 | Flow designer leaves `@{…}` as text | switch off *New designer*, paste, switch back (doc 04) |

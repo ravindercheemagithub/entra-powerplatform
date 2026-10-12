@@ -183,7 +183,7 @@ Screens:
             Control: Gallery@2.15.0
             Variant: Vertical
             Properties:
-              Items: =Filter(Sort(EntraRequests, ID, SortOrder.Descending), Switch(ddFilter_My.Selected.Value, "Open", Status.Value in ["Submitted", "PendingManagerApproval", "PendingEntraApproval", "Approved", "InProgress"], "Completed", Status.Value = "Completed", "Rejected / failed", Status.Value in ["Rejected", "Failed"], true))
+              Items: =Filter(Sort(EntraRequests, ID, SortOrder.Descending), RequestType.Value <> "lookupApp" && Switch(ddFilter_My.Selected.Value, "Open", Status.Value in ["Submitted", "PendingManagerApproval", "PendingEntraApproval", "Approved", "InProgress"], "Completed", Status.Value = "Completed", "Rejected / failed", Status.Value in ["Rejected", "Failed"], true))
               X: =24
               Y: =196
               Width: =420
@@ -406,7 +406,7 @@ Screens:
                   Y: =70
                   Width: =(Parent.Width - 36) / 4
                   Height: =72
-                  Fill: =If(galReq_My.Selected.RequestType.Value = "onboardGroup", gTheme.Bg, Switch(galReq_My.Selected.ManagerDecision.Value, "Approved", gTheme.SuccessLight, "Rejected", gTheme.DangerLight, gTheme.Card))
+                  Fill: =If(galReq_My.Selected.RequestType.Value in ["onboardGroup", "tagOwnerGroup"], gTheme.Bg, Switch(galReq_My.Selected.ManagerDecision.Value, "Approved", gTheme.SuccessLight, "Rejected", gTheme.DangerLight, gTheme.Card))
                   BorderColor: =gTheme.Border
                   BorderThickness: =1
             - lblStage1T_My:
@@ -426,7 +426,7 @@ Screens:
             - lblStage1S_My:
                 Control: Label@2.5.1
                 Properties:
-                  Text: =If(galReq_My.Selected.RequestType.Value = "onboardGroup", "Not needed", galReq_My.Selected.ManagerDecision.Value & If(!IsBlank(galReq_My.Selected.ManagerName), " · " & galReq_My.Selected.ManagerName, ""))
+                  Text: =If(galReq_My.Selected.RequestType.Value in ["onboardGroup", "tagOwnerGroup"], "Not needed", galReq_My.Selected.ManagerDecision.Value & If(!IsBlank(galReq_My.Selected.ManagerName), " · " & galReq_My.Selected.ManagerName, ""))
                   X: =1 * ((Parent.Width - 36) / 4 + 12) + 12
                   Y: =102
                   Width: =(Parent.Width - 36) / 4 - 24
@@ -446,7 +446,7 @@ Screens:
                   Y: =70
                   Width: =(Parent.Width - 36) / 4
                   Height: =72
-                  Fill: =If(galReq_My.Selected.RequestType.Value = "onboardGroup", gTheme.Bg, Switch(galReq_My.Selected.EntraDecision.Value, "Approved", gTheme.SuccessLight, "Rejected", gTheme.DangerLight, gTheme.Card))
+                  Fill: =If(galReq_My.Selected.RequestType.Value in ["onboardGroup", "tagOwnerGroup"], gTheme.Bg, Switch(galReq_My.Selected.EntraDecision.Value, "Approved", gTheme.SuccessLight, "Rejected", gTheme.DangerLight, gTheme.Card))
                   BorderColor: =gTheme.Border
                   BorderThickness: =1
             - lblStage2T_My:
@@ -466,7 +466,7 @@ Screens:
             - lblStage2S_My:
                 Control: Label@2.5.1
                 Properties:
-                  Text: =If(galReq_My.Selected.RequestType.Value = "onboardGroup", "Not needed", galReq_My.Selected.EntraDecision.Value & If(!IsBlank(galReq_My.Selected.EntraDecisionBy), " · " & galReq_My.Selected.EntraDecisionBy, ""))
+                  Text: =If(galReq_My.Selected.RequestType.Value in ["onboardGroup", "tagOwnerGroup"], "Not needed", galReq_My.Selected.EntraDecision.Value & If(!IsBlank(galReq_My.Selected.EntraDecisionBy), " · " & galReq_My.Selected.EntraDecisionBy, ""))
                   X: =2 * ((Parent.Width - 36) / 4 + 12) + 12
                   Y: =102
                   Width: =(Parent.Width - 36) / 4 - 24
@@ -535,7 +535,9 @@ Screens:
                     If(!IsBlank(Text(r.applicationObjectId)), "<tr><td style='color:#605e5c; padding:3px 0'>Object ID</td><td>" & Text(r.applicationObjectId) & "</td></tr>", "") &
                     If(!IsBlank(Text(r.identifierUri)), "<tr><td style='color:#605e5c; padding:3px 0'>Application ID URI</td><td>" & Text(r.identifierUri) & "</td></tr>", "") &
                     If(!IsBlank(Text(r.servicePrincipalId)), "<tr><td style='color:#605e5c; padding:3px 0'>Enterprise app</td><td>" & Text(r.servicePrincipalId) & "</td></tr>", "") &
-                    If(!IsBlank(Text(r.groupId)), "<tr><td style='color:#605e5c; padding:3px 0'>Group</td><td>" & Text(r.groupId) & "</td></tr>", "") &
+                    If(!IsBlank(Text(r.groupId)), "<tr><td style='color:#605e5c; padding:3px 0'>Group</td><td>" & Coalesce(Text(r.groupDisplayName), "") & " " & Text(r.groupId) & "</td></tr>", "") &
+                    If(!IsBlank(Text(r.previousTeam)), "<tr><td style='color:#605e5c; padding:3px 0'>Previous owner tag</td><td>" & Text(r.previousTeam) & "</td></tr>", "") &
+                    If(!IsBlank(Text(r.team)), "<tr><td style='color:#605e5c; padding:3px 0'>Owner tag</td><td>" & Text(r.team) & "</td></tr>", "") &
                     If(!IsBlank(Text(r.assignmentsText)), "<tr><td style='color:#605e5c; padding:3px 0'>Role assignments</td><td>" & Text(r.assignmentsText) & "</td></tr>", "") &
                     "</table>" &
                     If(!IsBlank(galReq_My.Selected.ErrorMessage), "<p style='margin-top:10px; padding:8px 12px; background:#fde7e9; border-left:3px solid #d13438'><b>Error</b><br>" & galReq_My.Selected.ErrorMessage & "</p>", "") &

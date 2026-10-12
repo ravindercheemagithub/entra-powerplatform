@@ -11,7 +11,8 @@ Screens:
             Set(varResetChange, false);
             Set(varApp, Blank());
             Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign);
-            Reset(txtSearchApps_Change); Reset(radUri_Change); Reset(txtCustomUri_Change); Reset(ddRole_Change);
+            Set(varLookupBusy, false);
+            Reset(txtAppId_Change); Reset(txtAppCat_Change); Reset(radUri_Change); Reset(txtCustomUri_Change); Reset(ddRole_Change);
             Reset(cmbGroup_Change); Reset(tglAssign_Change); Reset(txtJust_Change); Reset(txtTicket_Change)
         )
     Children:
@@ -123,7 +124,7 @@ Screens:
         - lblAppsHead_Change:
             Control: Label@2.5.1
             Properties:
-              Text: ="Your applications"
+              Text: ="Find the app registration"
               X: =40
               Y: =156
               Width: =288
@@ -134,13 +135,27 @@ Screens:
               FontWeight: =FontWeight.Semibold
               PaddingLeft: =0
               PaddingRight: =0
-        - txtSearchApps_Change:
+        - lblAppId_Change:
+            Control: Label@2.5.1
+            Properties:
+              Text: ="Application (client) ID or Object ID *"
+              X: =40
+              Y: =190
+              Width: =288
+              Height: =20
+              Size: =10
+              Font: =Font.'Segoe UI'
+              Color: =gTheme.Text
+              FontWeight: =FontWeight.Semibold
+              PaddingLeft: =0
+              PaddingRight: =0
+        - txtAppId_Change:
             Control: Classic/TextInput@2.3.2
             Properties:
               Default: =""
-              HintText: ="Search by name or appCatID"
+              HintText: ="00000000-0000-0000-0000-000000000000"
               X: =40
-              Y: =186
+              Y: =212
               Width: =288
               Height: =34
               Size: =11
@@ -157,79 +172,133 @@ Screens:
               RadiusTopRight: =4
               RadiusBottomLeft: =4
               RadiusBottomRight: =4
-        - galApps_Change:
-            Control: Gallery@2.15.0
-            Variant: Vertical
+              DisplayMode: =If(varLookupBusy, DisplayMode.Disabled, DisplayMode.Edit)
+        - btnFind_Change:
+            Control: Classic/Button@2.2.0
             Properties:
-              Items: =Filter(Sort(gMyApps, Title), IsBlank(txtSearchApps_Change.Text) || StartsWith(Title, txtSearchApps_Change.Text) || txtSearchApps_Change.Text in AppCatId)
-              X: =24
-              Y: =228
-              Width: =320
-              Height: =Parent.Height - 228 - 88
-              TemplateSize: =64
-              TemplatePadding: =0
-              WrapCount: =1
-              ShowScrollbar: =true
+              Text: ="Search"
+              OnSelect: |-
+                =If(
+                    !IsMatch(Lower(Trim(txtAppId_Change.Text)), "^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$"),
+                        Notify("Enter the app registration's Application (client) ID or Object ID (a GUID).", NotificationType.Warning),
+                    varLookupBusy,
+                        Notify("Still searching, one moment.", NotificationType.Information),
+                    Set(varReqId, "REQ-" & Text(Now(), "yymm") & "-" & Upper(Left(Substitute(Text(GUID()), "-", ""), 6)));
+                    Set(varApp, Blank()); Set(varLookupMsg, ""); Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign);
+                    IfError(
+                        Set(varLookupRec, Patch(EntraRequests, Defaults(EntraRequests), {
+                            Title: varReqId,
+                            RequestType: {Value: "lookupApp"},
+                            Status: {Value: "Submitted"},
+                            TargetDisplayName: Lower(Trim(txtAppId_Change.Text)),
+                            TargetObjectId: Lower(Trim(txtAppId_Change.Text)),
+                            Justification: "Find an app registration to change"
+                        })),
+                        Notify("The search could not start: " & FirstError.Message, NotificationType.Error),
+                        Set(varLookupPolls, 0); Set(varLookupBusy, true)
+                    )
+                )
+              X: =40
+              Y: =256
+              Width: =120
+              Height: =34
+              Size: =11
+              Font: =Font.'Segoe UI'
+              FontWeight: =FontWeight.Semibold
+              RadiusTopLeft: =4
+              RadiusTopRight: =4
+              RadiusBottomLeft: =4
+              RadiusBottomRight: =4
+              Fill: =gTheme.Primary
+              Color: =RGBA(255, 255, 255, 1)
+              HoverFill: =gTheme.PrimaryHover
+              PressedFill: =gTheme.PrimaryHover
               BorderThickness: =0
-              OnSelect: =Set(varApp, ThisItem); Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign)
-            Children:
-            - recAppSel_Change:
-                Control: Rectangle@2.3.0
-                Properties:
-                  X: =0
-                  Y: =6
-                  Width: =4
-                  Height: =52
-                  Fill: =If(varApp.ObjectId = ThisItem.ObjectId, gTheme.Primary, RGBA(0, 0, 0, 0))
-                  BorderColor: =gTheme.Border
-                  BorderThickness: =0
-                  OnSelect: =Select(Parent)
-            - lblAppName_Change:
-                Control: Label@2.5.1
-                Properties:
-                  Text: =ThisItem.Title
-                  X: =16
-                  Y: =10
-                  Width: =Parent.TemplateWidth - 32
-                  Height: =24
-                  Size: =11
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Text
-                  FontWeight: =FontWeight.Semibold
-                  PaddingLeft: =0
-                  PaddingRight: =0
-                  OnSelect: =Select(Parent)
-            - lblAppMeta_Change:
-                Control: Label@2.5.1
-                Properties:
-                  Text: =ThisItem.AppCatId & "  ·  " & Coalesce(ThisItem.TeamGroupName, "you are an owner")
-                  X: =16
-                  Y: =34
-                  Width: =Parent.TemplateWidth - 32
-                  Height: =20
-                  Size: =9
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Muted
-                  FontWeight: =FontWeight.Normal
-                  PaddingLeft: =0
-                  PaddingRight: =0
-                  OnSelect: =Select(Parent)
-        - lblNoApps_Change:
+              HoverColor: =RGBA(255, 255, 255, 1)
+              DisplayMode: =If(varLookupBusy, DisplayMode.Disabled, DisplayMode.Edit)
+        - lblLookupBusy_Change:
             Control: Label@2.5.1
             Properties:
-              Text: ="No app registrations owned by your groups yet. The catalog refreshes every hour."
-              X: =40
-              Y: =236
-              Width: =288
-              Height: =60
+              Text: ="Searching Entra…"
+              X: =170
+              Y: =256
+              Width: =158
+              Height: =34
               Size: =10
+              Font: =Font.'Segoe UI'
+              Color: =gTheme.Primary
+              FontWeight: =FontWeight.Semibold
+              PaddingLeft: =0
+              PaddingRight: =0
+              Visible: =varLookupBusy
+        - lblLookupMsg_Change:
+            Control: Label@2.5.1
+            Properties:
+              Text: =varLookupMsg
+              X: =40
+              Y: =300
+              Width: =288
+              Height: =96
+              Size: =10
+              Font: =Font.'Segoe UI'
+              Color: =gTheme.Danger
+              FontWeight: =FontWeight.Semibold
+              PaddingLeft: =0
+              PaddingRight: =0
+              Wrap: =true
+              VerticalAlign: =VerticalAlign.Top
+              Visible: =!IsBlank(varLookupMsg)
+        - lblLookupInfo_Change:
+            Control: Label@2.5.1
+            Properties:
+              Text: '="Only the app''s owner can change it: the user named in its team:user\… tag, or a member of the group in its team:group\… tag. The search checks this in Entra and usually answers within a minute."'
+              X: =40
+              Y: =404
+              Width: =288
+              Height: =110
+              Size: =9
               Font: =Font.'Segoe UI'
               Color: =gTheme.Muted
               FontWeight: =FontWeight.Normal
               PaddingLeft: =0
               PaddingRight: =0
               Wrap: =true
-              Visible: =CountRows(galApps_Change.AllItems) = 0
+              VerticalAlign: =VerticalAlign.Top
+        - tmrLookup_Change:
+            Control: Timer@2.1.0
+            Properties:
+              Duration: =3000
+              Repeat: =true
+              AutoStart: =false
+              Start: =varLookupBusy
+              OnTimerEnd: |-
+                =Set(varLookupPolls, varLookupPolls + 1);
+                Refresh(EntraRequests);
+                With({r: LookUp(EntraRequests, ID = varLookupRec.ID)},
+                    If(
+                        r.Status.Value = "Completed",
+                            With({j: ParseJSON(r.ResultJson)},
+                                Set(varApp, {
+                                    Title: Text(j.displayName), ObjectId: Text(j.objectId), AppId: Text(j.appId), AppCatId: Text(j.appCatId),
+                                    Team: Text(j.team), TeamName: Text(j.teamName), IdentifierUri: Text(j.identifierUri),
+                                    ServicePrincipalId: Text(j.servicePrincipalId), AppRolesJson: Text(j.appRolesJson), ScopesJson: Text(j.scopesJson)
+                                })
+                            );
+                            Set(varLookupBusy, false); Set(varLookupMsg, ""); Reset(txtAppCat_Change),
+                        r.Status.Value = "Failed",
+                            Set(varLookupBusy, false);
+                            Set(varLookupMsg, Coalesce(r.ErrorMessage, "Not found, or you are not an authorized owner of this app registration."));
+                            Notify(varLookupMsg, NotificationType.Error),
+                        varLookupPolls >= 40,
+                            Set(varLookupBusy, false);
+                            Set(varLookupMsg, "No answer yet. Search again in a minute.")
+                    )
+                )
+              Visible: =false
+              X: =0
+              Y: =0
+              Width: =10
+              Height: =10
         - recDetail_Change:
             Control: Rectangle@2.3.0
             Properties:
@@ -243,7 +312,7 @@ Screens:
         - lblPick_Change:
             Control: Label@2.5.1
             Properties:
-              Text: ="Choose one of your applications on the left."
+              Text: ="Search for an app registration on the left."
               X: =376
               Y: =170
               Width: =500
@@ -285,7 +354,7 @@ Screens:
             - lblAppInfo_Change:
                 Control: Label@2.5.1
                 Properties:
-                  Text: ="App ID " & varApp.AppId & "    ·    appCatID " & varApp.AppCatId & "    ·    Team " & Coalesce(varApp.TeamGroupName, "-")
+                  Text: ="App ID " & varApp.AppId & "    ·    Owner tag " & varApp.Team & If(IsBlank(varApp.TeamName), "", " (" & varApp.TeamName & ")")
                   X: =0
                   Y: =32
                   Width: =Parent.Width
@@ -1299,6 +1368,44 @@ Screens:
                   RadiusTopRight: =4
                   RadiusBottomLeft: =4
                   RadiusBottomRight: =4
+            - lblAppCat_Change:
+                Control: Label@2.5.1
+                Properties:
+                  Text: ="appCatID *"
+                  X: =(Parent.Width + 24) / 2
+                  Y: =Parent.Height - 76
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - txtAppCat_Change:
+                Control: Classic/TextInput@2.3.2
+                Properties:
+                  Default: =varApp.AppCatId
+                  HintText: '="APPCAT-001 (the app has none yet: it is added with this change)"'
+                  X: =(Parent.Width + 24) / 2
+                  Y: =Parent.Height - 54
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  HoverBorderColor: =gTheme.Primary
+                  FocusedBorderColor: =gTheme.Primary
+                  FocusedBorderThickness: =2
+                  PaddingLeft: =10
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+                  DisplayMode: =If(IsBlank(varApp.AppCatId), DisplayMode.Edit, DisplayMode.View)
         - recCmd_Change:
             Control: Rectangle@2.3.0
             Properties:
@@ -1315,7 +1422,8 @@ Screens:
               Text: ="Submit request"
               OnSelect: |-
                 =With({err: Coalesce(
-                        If(IsBlank(varApp), "Choose an application on the left."),
+                        If(IsBlank(varApp), "Search for the app registration on the left first."),
+                        If(!IsMatch(Upper(Trim(txtAppCat_Change.Text)), gAppCatPattern), "appCatID looks like APPCAT-001."),
                         If(Len(Trim(txtJust_Change.Text)) < 10, "Business justification is required (10+ characters)."),
                         If(varOp = "exposeApi" && radUri_Change.Selected.Value = "Custom" && !IsMatch(Trim(txtCustomUri_Change.Text), "^(api://|https://)\S+$"), "The custom Application ID URI must start with api:// or https://"),
                         If(varOp = "exposeApi" && CountRows(Filter(colScopes, !IsMatch(Value, gValuePattern) || IsBlank(Trim(AdminName)) || IsBlank(Trim(AdminDesc)))) > 0, "Each scope needs a name, an admin consent display name and a description."),
@@ -1340,7 +1448,7 @@ Screens:
                                     Title: varReqId,
                                     RequestType: {Value: type},
                                     Status: {Value: "Submitted"},
-                                    AppCatId: varApp.AppCatId,
+                                    AppCatId: Upper(Trim(txtAppCat_Change.Text)),
                                     TargetDisplayName: varApp.Title,
                                     TargetObjectId: varApp.ObjectId,
                                     Justification: Trim(txtJust_Change.Text),

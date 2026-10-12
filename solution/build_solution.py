@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Builds an importable, UNMANAGED Power Platform solution with the four cloud flows:
+Builds an importable, UNMANAGED Power Platform solution with these cloud flows:
 
     SP-00 Create lists     (instant)   creates the SharePoint lists from lists-schema.json
     ER-01 Approvals        (automated) lock, manager approval, Entra team approval
     ER-02 Execute          (automated) Microsoft Graph calls through HTTP with Microsoft Entra ID
     ER-03 Catalog sync     (scheduled) refreshes the catalog lists
     ER-04 Onboard group    (automated) adds an existing group to the catalog for its members/owners
+    ER-05 Find app         (automated) Search on the change screen: returns an app only to its authorized owner
+    ER-06 Tag owning group (automated) replaces an app's team:user\\<id> tag with team:group\\<id>
 
 plus five connection references and one environment variable (the SharePoint site URL).
 
@@ -31,7 +33,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.2.1.0"
+VERSION = "1.3.0.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -54,6 +56,8 @@ FLOW_IDS = {
     "ER-02 Execute": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0003",
     "ER-03 Catalog sync": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0004",
     "ER-04 Onboard group": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0005",
+    "ER-05 Find app": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0006",
+    "ER-06 Tag owning group": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0007",
 }
 
 ID = "@int(triggerOutputs()?['body/ID'])"
@@ -385,7 +389,7 @@ def er01() -> dict:
     s.cond("Manager approved", eq("@outputs('Manager_outcome')", "Approve"), yes=approved, no=rejected)
 
     trig = {"When_an_item_is_created": sp_trigger("GetOnNewItems", "EntraRequests",
-                                                  "@and(equals(triggerBody()?['Status']?['Value'], 'Submitted'), not(equals(triggerBody()?['RequestType']?['Value'], 'onboardGroup')))")}
+                                                  "@and(equals(triggerBody()?['Status']?['Value'], 'Submitted'), not(contains(createArray('onboardGroup', 'lookupApp', 'tagOwnerGroup'), triggerBody()?['RequestType']?['Value'])))")}
     return flow(trig, s, ["shared_sharepointonline", "shared_office365users", "shared_approvals", "shared_office365"])
 
 
@@ -430,6 +434,51 @@ def graph_until_ok(seq: "Seq", name: str, method: str, url: str, body: str, ok_s
     return seq
 
 
+# ---------------------------------------------------------------------------
+# Ownership: an app registration belongs to whoever its team tag names.
+#   team:user\<user object id>    the user who created it (no owning group chosen)
+#   team:group\<group object id>  every member of that group
+#   team:<group object id>        the 1.2 format, treated as a group
+# Owners of the app registration object itself are not used: the platform never adds any.
+# ---------------------------------------------------------------------------
+APP_SELECT = "id,appId,displayName,tags,identifierUris,appRoles,api"
+GUID_CHECK = "@and(equals(length({q}), 36), equals(length(split({q}, '-')), 5))"
+
+
+def find_app(seq: "Seq", p: str, query: str, var: str, fail_name: str, stop_name: str) -> "Seq":
+    """Looks the app up by Application (client) ID, then by Object ID; stores it in `var` (object)."""
+    by_app = f"HTTP {p} by appId"
+    by_obj = f"HTTP {p} by object id"
+    seq.graph(by_app, "GET", f"{GRAPH}/applications?$filter=appId eq '@{{{query}}}'&$select={APP_SELECT}")
+    obj = Seq().graph(by_obj, "GET", f"{GRAPH}/applications?$filter=id eq '@{{{query}}}'&$select={APP_SELECT}")
+    obj.cond(f"{p} found by object id", eq(f"@empty(body('{key(by_obj)}')?['value'])", False),
+             yes=Seq().set_var(f"Set {p} from object id", var, f"@first(body('{key(by_obj)}')?['value'])"),
+             no=fail_item(Seq(), fail_name, stop_name,
+                          f"@concat('No app registration has the Application (client) ID or Object ID ', {query}, '.')", "AppNotFound"))
+    seq.cond(f"{p} found by appId", eq(f"@empty(body('{key(by_app)}')?['value'])", False),
+             yes=Seq().set_var(f"Set {p} from appId", var, f"@first(body('{key(by_app)}')?['value'])"),
+             no=obj)
+    return seq
+
+
+def owner_check(seq: "Seq", p: str, tags: str, user_id: str, flag: str) -> str:
+    """Adds the actions that decide whether `user_id` is an authorized owner of an app with `tags`.
+    `flag` is a string variable initialized to 'no' at the top of the flow. Returns the expression to test."""
+    tt, gi, gf, chk = f"{p} team tags", f"{p} group values", f"{p} group ids", f"HTTP {p} check groups"
+    seq.filter(tt, f"@coalesce({tags}, json('[]'))", "@startsWith(item(), 'team:')")
+    seq.select(gi, f"@body('{key(tt)}')",
+               "@if(startsWith(item(), 'team:group\\'), substring(item(), 11), if(startsWith(item(), 'team:user\\'), '', substring(item(), 5)))")
+    seq.filter(gf, f"@body('{key(gi)}')", "@not(empty(item()))")
+    seq.set_var(f"Reset {flag} {p}", flag, "no")
+    grp = Seq().graph(chk, "POST", f"{GRAPH}/users/@{{{user_id}}}/checkMemberGroups",
+                      f"{{\"groupIds\": @{{take(body('{key(gf)}'), 20)}}}}")
+    grp.cond(f"{p} member of a team group", {"and": [{"greater": [f"@length(body('{key(chk)}')?['value'])", 0]}]},
+             yes=Seq().set_var(f"Set {flag} {p}", flag, "yes"))
+    seq.cond(f"{p} has team groups", {"and": [{"greater": [f"@length(body('{key(gf)}'))", 0]}]}, yes=grp)
+    return (f"@or(contains(body('{key(tt)}'), concat('team:user\\', toLower({user_id}))), "
+            f"equals(variables('{flag}'), 'yes'))")
+
+
 def queue(role_loop, group_loop, filt):
     return {"roleId": f"@{{first(body('{filt}'))?['id']}}", "roleValue": f"@{{items('{role_loop}')?['value']}}",
             "mode": f"@{{items('{group_loop}')?['mode']}}", "id": f"@{{items('{group_loop}')?['id']}}",
@@ -454,7 +503,7 @@ def er02() -> dict:
                           ("varGroupId", "string", ""), ("varRoleId", "string", ""), ("varAssignTodo", "array", []),
                           ("varAssignments", "array", []), ("varResult", "object", {}),
                           ("varExposeOk", "string", "no"), ("varAssignOk", "string", "no"),
-                          ("varAssignError", "string", "")]:
+                          ("varAssignError", "string", ""), ("varTeamTag", "string", ""), ("varGroupOwner", "string", "no")]:
         s.init_var(f"Init {var}", var, typ, val)
 
     t = Seq()  # Try
@@ -467,35 +516,39 @@ def er02() -> dict:
     ta.filter("Filter team tag", "@body('HTTP_Get_target_app')?['tags']", "@startsWith(item(), 'team:')")
     ta.filter("Filter appcat tag", "@body('HTTP_Get_target_app')?['tags']", "@startsWith(item(), 'appCatID:')")
     ta.filter("Filter kept tags", "@body('HTTP_Get_target_app')?['tags']", "@not(or(startsWith(item(), 'lastUpdatedBy:'), startsWith(item(), 'lastUpdatedTimestamp:'), startsWith(item(), 'requestId:')))")
-    ta.graph("HTTP Check target team", "POST", f"{GRAPH}/users/@{{body('HTTP_Get_requester')?['id']}}/checkMemberGroups", body_file("HTTP_Check_target_team"))
-    ta.graph("HTTP Target owners", "GET", f"{GRAPH}/applications/@{{triggerOutputs()?['body/TargetObjectId']}}/owners?$select=id")
+    is_owner = owner_check(ta, "Target", "body('HTTP_Get_target_app')?['tags']", "body('HTTP_Get_requester')?['id']", "varGroupOwner")
     not_owner = fail_item(Seq(), "Fail not owner", "Stop not owner",
-                          "The app is not owned by any of your groups, or its appCatID differs.", "NotOwner")
-    ta.cond("Requester may change", is_true("@and(or(not(empty(body('HTTP_Check_target_team')?['value'])), contains(string(body('HTTP_Target_owners')?['value']), body('HTTP_Get_requester')?['id'])), or(empty(body('Filter_appcat_tag')), equals(first(body('Filter_appcat_tag')), concat('appCatID:', triggerOutputs()?['body/AppCatId']))))"), no=not_owner)
-    ta.compose("Updated tags", "@union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId']), concat('managedBy:', body('Get_settings')?['ManagedByTag'])), json('[]')))")
+                          "Not an authorized owner: the app's team tag names neither you (team:user\\<your id>) nor a group you are a member of (team:group\\<group id>), or its appCatID differs.", "NotOwner")
+    ta.cond("Requester may change", is_true(f"@and({is_owner[1:]}, or(empty(body('Filter_appcat_tag')), empty(triggerOutputs()?['body/AppCatId']), equals(first(body('Filter_appcat_tag')), concat('appCatID:', triggerOutputs()?['body/AppCatId']))))"), no=not_owner)
+    ta.compose("Updated tags", "@union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('managedBy:', body('Get_settings')?['ManagedByTag'])), json('[]')), if(and(empty(body('Filter_appcat_tag')), not(empty(triggerOutputs()?['body/AppCatId']))), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId'])), json('[]')))")
     ta.graph("HTTP Find target SP", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{body('HTTP_Get_target_app')?['appId']}}'&$select=id")
     ta.set_var("Set target SP", "varSpId", "@coalesce(first(body('HTTP_Find_target_SP')?['value'])?['id'], '')")
     t.cond("Has target app", eq("@empty(triggerOutputs()?['body/TargetObjectId'])", False), yes=ta)
 
     # -- createAppRegistration
     c1 = Seq()
-    # Groups are created outside this platform: the owning team must be an existing group the requester belongs to.
-    c1.cond("Owning team missing", is_true("@empty(outputs('Payload')?['owningGroup']?['id'])"),
-            yes=fail_item(Seq(), "Fail no team", "Stop no team", "The request has no owning team. Choose an existing group you are a member of.", "NoOwningTeam"))
-    c1.graph("HTTP Check team membership", "POST", f"{GRAPH}/users/@{{body('HTTP_Get_requester')?['id']}}/checkMemberGroups",
-             "{\"groupIds\": [\"@{outputs('Payload')?['owningGroup']?['id']}\"]}")
-    c1.cond("Is team member", {"and": [{"greater": ["@length(body('HTTP_Check_team_membership')?['value'])", 0]}]},
-            no=fail_item(Seq(), "Fail not team member", "Stop not team member", "You are not a member of the owning team.", "NotTeamMember"))
-    c1.graph("HTTP Get team group", "GET", f"{GRAPH}/groups/@{{outputs('Payload')?['owningGroup']?['id']}}?$select=id,displayName")
-    c1.set_var("Set team id", "varTeamGroupId", "@body('HTTP_Get_team_group')?['id']")
-    c1.set_var("Set team name", "varTeamGroupName", "@body('HTTP_Get_team_group')?['displayName']")
+    # The owning group is optional. With one: team:group\<id>, and the requester must be a member of it (groups are
+    # created outside this platform). Without one: team:user\<requester object id>; hand it to a group later (ER-06).
+    grp = Seq()
+    grp.graph("HTTP Check team membership", "POST", f"{GRAPH}/users/@{{body('HTTP_Get_requester')?['id']}}/checkMemberGroups",
+              "{\"groupIds\": [\"@{outputs('Payload')?['owningGroup']?['id']}\"]}")
+    grp.cond("Is team member", {"and": [{"greater": ["@length(body('HTTP_Check_team_membership')?['value'])", 0]}]},
+             no=fail_item(Seq(), "Fail not team member", "Stop not team member", "You are not a member of the owning group.", "NotTeamMember"))
+    grp.graph("HTTP Get team group", "GET", f"{GRAPH}/groups/@{{outputs('Payload')?['owningGroup']?['id']}}?$select=id,displayName")
+    grp.set_var("Set team id", "varTeamGroupId", "@body('HTTP_Get_team_group')?['id']")
+    grp.set_var("Set team name", "varTeamGroupName", "@body('HTTP_Get_team_group')?['displayName']")
+    grp.set_var("Set group team tag", "varTeamTag", "@concat('team:group\\', body('HTTP_Get_team_group')?['id'])")
+    usr = Seq()
+    usr.set_var("Set user team name", "varTeamGroupName", "@outputs('Requester')")
+    usr.set_var("Set user team tag", "varTeamTag", "@concat('team:user\\', toLower(body('HTTP_Get_requester')?['id']))")
+    c1.cond("Has owning group", is_true("@not(empty(outputs('Payload')?['owningGroup']?['id']))"), yes=grp, no=usr)
     c1.select("Select app roles", "@coalesce(outputs('Payload')?['appRoles'], json('[]'))", ROLE_MAP)
     c1.select("Select scopes", "@if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), coalesce(outputs('Payload')?['exposeApi']?['scopes'], json('[]')), json('[]'))", SCOPE_MAP)
     c1.select("Select id token claims", "@if(empty(outputs('Payload')?['optionalClaimsIdToken']), json('[]'), split(outputs('Payload')?['optionalClaimsIdToken'], ','))", {"name": "@item()", "essential": False})
     c1.select("Select access token claims", "@if(empty(outputs('Payload')?['optionalClaimsAccessToken']), json('[]'), split(outputs('Payload')?['optionalClaimsAccessToken'], ','))", {"name": "@item()", "essential": False})
     c1.filter("Filter optional tags", "@split(coalesce(outputs('Payload')?['tags'], ''), ';')", "@and(contains(item(), '='), greater(length(trim(item())), 2))")
     c1.select("Select optional tags", "@body('Filter_optional_tags')", "@concat(trim(first(split(item(), '='))), ':', trim(last(split(item(), '='))))")
-    c1.compose("App tags", "@union(outputs('Base_tags'), createArray(concat('team:', variables('varTeamGroupId')), concat('teamName:', variables('varTeamGroupName'))), if(empty(outputs('Payload')?['appEnv']), json('[]'), createArray(concat('appEnv:', outputs('Payload')?['appEnv']))), if(empty(outputs('Payload')?['borShortName']), json('[]'), createArray(concat('borShortName:', outputs('Payload')?['borShortName']))), body('Select_optional_tags'))")
+    c1.compose("App tags", "@union(outputs('Base_tags'), createArray(variables('varTeamTag'), concat('teamName:', variables('varTeamGroupName'))), if(empty(outputs('Payload')?['appEnv']), json('[]'), createArray(concat('appEnv:', outputs('Payload')?['appEnv']))), if(empty(outputs('Payload')?['borShortName']), json('[]'), createArray(concat('borShortName:', outputs('Payload')?['borShortName']))), body('Select_optional_tags'))")
     c1.graph("HTTP Create application", "POST", f"{GRAPH}/applications", body_file("HTTP_Create_application"))
     c1.delay("Wait for app replication", 15)
     expose = graph_until_ok(Seq(), "HTTP Expose API", "PATCH", f"{GRAPH}/applications/@{{body('HTTP_Create_application')?['id']}}",
@@ -520,7 +573,7 @@ def er02() -> dict:
         "applicationObjectId": "@{body('HTTP_Create_application')?['id']}",
         "appId": "@{body('HTTP_Create_application')?['appId']}",
         "identifierUri": "@{if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId']), '')}",
-        "servicePrincipalId": "@{variables('varSpId')}", "teamGroupId": "@{variables('varTeamGroupId')}"})
+        "servicePrincipalId": "@{variables('varSpId')}", "teamGroupId": "@{variables('varTeamGroupId')}", "team": "@{variables('varTeamTag')}"})
     c1.sp_post("Catalog new app", "EntraCatalogApps", {
         "Title": "@outputs('Payload')?['displayName']", "ObjectId": "@body('HTTP_Create_application')?['id']",
         "AppId": "@body('HTTP_Create_application')?['appId']", "AppCatId": "@triggerOutputs()?['body/AppCatId']",
@@ -682,9 +735,15 @@ def er03() -> dict:
     app.filter("Filter app team", f"@{A}?['tags']", "@startsWith(item(), 'team:')")
     app.filter("Filter app team name", f"@{A}?['tags']", "@startsWith(item(), 'teamName:')")
     app.filter("Filter app appcat", f"@{A}?['tags']", "@startsWith(item(), 'appCatID:')")
-    app.compose("Team id", "@if(empty(body('Filter_app_team')), '', substring(first(body('Filter_app_team')), 5))")
+    # team:group\<id> (or the 1.2 form team:<id>) -> group members; team:user\<object id> -> that user only.
+    app.compose("Team tag", "@if(empty(body('Filter_app_team')), '', substring(first(body('Filter_app_team')), 5))")
+    app.compose("Team id", "@if(startsWith(outputs('Team_tag'), 'group\\'), substring(outputs('Team_tag'), 6), if(startsWith(outputs('Team_tag'), 'user\\'), '', outputs('Team_tag')))")
+    app.compose("Owner user id", "@if(startsWith(outputs('Team_tag'), 'user\\'), substring(outputs('Team_tag'), 5), '')")
     app.set_var("Reset members", "varMembers", "")
     app.cond("Has team", eq("@empty(outputs('Team_id'))", False), yes=team)
+    owner = Seq().graph("HTTP Owner user", "GET", f"{GRAPH}/users/@{{outputs('Owner_user_id')}}?$select=userPrincipalName")
+    owner.set_var("Set owner member", "varMembers", "@concat(';', toLower(body('HTTP_Owner_user')?['userPrincipalName']), ';')")
+    app.cond("Has owner user", eq("@empty(outputs('Owner_user_id'))", False), yes=owner)
     app.graph("HTTP App owners", "GET", f"{GRAPH}/applications/@{{{A}?['id']}}/owners/microsoft.graph.user?$select=userPrincipalName")
     app.select("Select owner upns", "@body('HTTP_App_owners')?['value']", "@toLower(item()?['userPrincipalName'])")
     app.graph("HTTP App SP", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{{A}?['appId']}}'&$select=id")
@@ -800,6 +859,129 @@ def er04() -> dict:
     return flow(trig, s, ["shared_sharepointonline", "shared_webcontents"])
 
 
+def instant_catch(seq: "Seq", flow_label: str) -> None:
+    c = Seq()
+    c.filter("Failed actions", "@result('Try')", "@equals(item()?['status'], 'Failed')")
+    c.compose("Error text", f"@concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the {flow_label} run history'))")
+    c.sp_patch("Mark failed", "EntraRequests", ID, {"Title": TITLE, "Status/Value": "Failed", "ErrorMessage": "@outputs('Error_text')"})
+    seq.scope("Catch", c, run_after={"Try": ["Failed", "TimedOut"]})
+
+
+NOT_OWNER = ("@concat('Not authorized owner: ', variables('varApp')?['displayName'], ' is tagged ', "
+             "coalesce(first(body('App_team_tags')), 'with no team'), '. Only that user, or a member of that group, can use it here.')")
+
+
+# ---------------------------------------------------------------------------
+# ER-05 Find app: the Search button on the change screen
+# ---------------------------------------------------------------------------
+def er05() -> dict:
+    s = Seq()
+    s.sp_patch("Mark in progress", "EntraRequests", ID, {"Title": TITLE, "Status/Value": "InProgress"})
+    s.compose("Requester", f"@toLower({REQ_UPN})")
+    # What the user typed in the app: the Application (client) ID or the Object ID.
+    s.compose("App query", "@toLower(trim(coalesce(triggerOutputs()?['body/TargetDisplayName'], triggerOutputs()?['body/TargetObjectId'], '')))")
+    s.init_var("Init varApp", "varApp", "object", {})
+    s.init_var("Init varGroupOwner", "varGroupOwner", "string", "no")
+
+    t = Seq()
+    t.cond("Query is a GUID", is_true(GUID_CHECK.format(q="outputs('App_query')")),
+           no=fail_item(Seq(), "Fail not a GUID", "Stop not a GUID",
+                        "Enter the app registration's Application (client) ID or Object ID, for example 00000000-0000-0000-0000-000000000000.", "NotAGuid"))
+    t.graph("HTTP Get requester", "GET", f"{GRAPH}/users/@{{outputs('Requester')}}?$select=id")
+    find_app(t, "App", "outputs('App_query')", "varApp", "Fail app not found", "Stop app not found")
+    is_owner = owner_check(t, "App", "variables('varApp')?['tags']", "body('HTTP_Get_requester')?['id']", "varGroupOwner")
+    t.cond("Requester is owner", is_true(is_owner), no=fail_item(Seq(), "Fail not owner", "Stop not owner", NOT_OWNER, "NotAuthorizedOwner"))
+    t.graph("HTTP Find SP", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{variables('varApp')?['appId']}}'&$select=id")
+    t.filter("Filter appcat tag", "@coalesce(variables('varApp')?['tags'], json('[]'))", "@startsWith(item(), 'appCatID:')")
+    t.filter("Filter team name tag", "@coalesce(variables('varApp')?['tags'], json('[]'))", "@startsWith(item(), 'teamName:')")
+    t.compose("App catid", "@if(empty(body('Filter_appcat_tag')), '', substring(first(body('Filter_appcat_tag')), 9))")
+    t.compose("Result", {
+        "objectId": "@{variables('varApp')?['id']}", "appId": "@{variables('varApp')?['appId']}",
+        "displayName": "@{variables('varApp')?['displayName']}", "appCatId": "@{outputs('App_catid')}",
+        "team": "@{coalesce(first(body('App_team_tags')), '')}",
+        "teamName": "@{if(empty(body('Filter_team_name_tag')), '', substring(first(body('Filter_team_name_tag')), 9))}",
+        "identifierUri": "@{coalesce(first(variables('varApp')?['identifierUris']), '')}",
+        "servicePrincipalId": "@{coalesce(first(body('HTTP_Find_SP')?['value'])?['id'], '')}",
+        "appRolesJson": "@{string(coalesce(variables('varApp')?['appRoles'], json('[]')))}",
+        "scopesJson": "@{string(coalesce(variables('varApp')?['api']?['oauth2PermissionScopes'], json('[]')))}"})
+    t.sp_patch("Mark completed", "EntraRequests", ID, {
+        "Title": TITLE, "Status/Value": "Completed", "CompletedAt": "@utcNow()",
+        "TargetDisplayName": "@variables('varApp')?['displayName']", "TargetObjectId": "@variables('varApp')?['id']",
+        "AppCatId": "@outputs('App_catid')", "ResultJson": "@string(outputs('Result'))"})
+    s.scope("Try", t)
+    instant_catch(s, "ER-05")
+
+    trig = {"When_an_item_is_created": sp_trigger(
+        "GetOnNewItems", "EntraRequests",
+        "@and(equals(triggerBody()?['Status']?['Value'], 'Submitted'), equals(triggerBody()?['RequestType']?['Value'], 'lookupApp'))")}
+    return flow(trig, s, ["shared_sharepointonline", "shared_webcontents"])
+
+
+# ---------------------------------------------------------------------------
+# ER-06 Tag owning group: replace the app's team tag (team:user\... or another group) with team:group\<id>
+# ---------------------------------------------------------------------------
+def er06() -> dict:
+    s = Seq()
+    s.sp_patch("Mark in progress", "EntraRequests", ID, {"Title": TITLE, "Status/Value": "InProgress"})
+    s.compose("Requester", f"@toLower({REQ_UPN})")
+    s.compose("Payload", "@json(coalesce(triggerOutputs()?['body/PayloadJson'], '{}'))")
+    s.compose("App query", "@toLower(trim(coalesce(outputs('Payload')?['app'], triggerOutputs()?['body/TargetObjectId'], '')))")
+    s.compose("Group query", "@toLower(trim(coalesce(outputs('Payload')?['group'], '')))")
+    s.compose("Now", "@utcNow()")
+    s.init_var("Init varApp", "varApp", "object", {})
+    s.init_var("Init varGroupOwner", "varGroupOwner", "string", "no")
+
+    t = Seq()
+    app_guid = GUID_CHECK.format(q="outputs('App_query')")[1:]
+    group_guid = GUID_CHECK.format(q="outputs('Group_query')")[1:]
+    t.cond("Inputs are GUIDs", is_true(f"@and({app_guid}, {group_guid})"),
+           no=fail_item(Seq(), "Fail not GUIDs", "Stop not GUIDs",
+                        "Enter the app registration's Application (client) ID or Object ID and the group's Object ID (both look like 00000000-0000-0000-0000-000000000000).", "NotAGuid"))
+    t.graph("HTTP Get requester", "GET", f"{GRAPH}/users/@{{outputs('Requester')}}?$select=id")
+    find_app(t, "App", "outputs('App_query')", "varApp", "Fail app not found", "Stop app not found")
+    is_owner = owner_check(t, "App", "variables('varApp')?['tags']", "body('HTTP_Get_requester')?['id']", "varGroupOwner")
+    t.cond("Requester is owner", is_true(is_owner), no=fail_item(Seq(), "Fail not owner", "Stop not owner", NOT_OWNER, "NotAuthorizedOwner"))
+
+    t.graph("HTTP Get group", "GET", f"{GRAPH}/groups/@{{outputs('Group_query')}}?$select=id,displayName,securityEnabled", retry={"type": "none"})
+    t.cond("Group found", eq("@outputs('HTTP_Get_group')?['statusCode']", 200),
+           no=fail_item(Seq(), "Fail group not found", "Stop group not found",
+                        "@concat('No group has the Object ID ', outputs('Group_query'), '.')", "GroupNotFound"),
+           run_after={"HTTP_Get_group": ["Succeeded", "Failed"]})
+    t.cond("Group security enabled", eq("@body('HTTP_Get_group')?['securityEnabled']", True),
+           no=fail_item(Seq(), "Fail not security", "Stop not security",
+                        "@concat(body('HTTP_Get_group')?['displayName'], ' is not a security group. Only security groups can own app registrations.')", "NotSecurityGroup"))
+    t.graph("HTTP Check new group", "POST", f"{GRAPH}/users/@{{body('HTTP_Get_requester')?['id']}}/checkMemberGroups",
+            "{\"groupIds\": [\"@{body('HTTP_Get_group')?['id']}\"]}")
+    t.graph("HTTP New group owners", "GET", f"{GRAPH}/groups/@{{body('HTTP_Get_group')?['id']}}/owners?$select=id")
+    t.cond("Member of new group", is_true("@or(not(empty(body('HTTP_Check_new_group')?['value'])), contains(string(body('HTTP_New_group_owners')?['value']), body('HTTP_Get_requester')?['id']))"),
+           no=fail_item(Seq(), "Fail not in group", "Stop not in group",
+                        "@concat('You are neither a member nor an owner of ', body('HTTP_Get_group')?['displayName'], '. You can only hand an app registration to a group you belong to.')", "NotGroupMember"))
+
+    keep = "@not(or(startsWith(item(), 'team:'), startsWith(item(), 'teamName:'), startsWith(item(), 'lastUpdatedBy:'), startsWith(item(), 'lastUpdatedTimestamp:'), startsWith(item(), 'requestId:')))"
+    t.filter("Kept app tags", "@coalesce(variables('varApp')?['tags'], json('[]'))", keep)
+    t.compose("Team tags", "@createArray(concat('team:group\\', body('HTTP_Get_group')?['id']), concat('teamName:', body('HTTP_Get_group')?['displayName']))")
+    t.compose("New app tags", "@union(body('Kept_app_tags'), outputs('Team_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])))")
+    t.graph("HTTP Patch app tags", "PATCH", f"{GRAPH}/applications/@{{variables('varApp')?['id']}}", "{\"tags\": @{outputs('New_app_tags')}}")
+    t.graph("HTTP Find SP", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{variables('varApp')?['appId']}}'&$select=id,tags")
+    sp = Seq()
+    sp.filter("Kept SP tags", "@coalesce(first(body('HTTP_Find_SP')?['value'])?['tags'], json('[]'))",
+              "@not(or(startsWith(item(), 'team:'), startsWith(item(), 'teamName:')))")
+    sp.graph("HTTP Patch SP tags", "PATCH", f"{GRAPH}/servicePrincipals/@{{first(body('HTTP_Find_SP')?['value'])?['id']}}",
+             "{\"tags\": @{union(body('Kept_SP_tags'), outputs('Team_tags'))}}")
+    t.cond("Has SP", eq("@empty(body('HTTP_Find_SP')?['value'])", False), yes=sp)
+    t.sp_patch("Mark completed", "EntraRequests", ID, {
+        "Title": TITLE, "Status/Value": "Completed", "CompletedAt": "@utcNow()",
+        "TargetDisplayName": "@variables('varApp')?['displayName']", "TargetObjectId": "@variables('varApp')?['id']",
+        "ResultJson": "@string(setProperty(setProperty(setProperty(setProperty(setProperty(json('{}'), 'applicationObjectId', variables('varApp')?['id']), 'appId', variables('varApp')?['appId']), 'previousTeam', coalesce(first(body('App_team_tags')), '')), 'groupId', body('HTTP_Get_group')?['id']), 'groupDisplayName', body('HTTP_Get_group')?['displayName']))"})
+    s.scope("Try", t)
+    instant_catch(s, "ER-06")
+
+    trig = {"When_an_item_is_created": sp_trigger(
+        "GetOnNewItems", "EntraRequests",
+        "@and(equals(triggerBody()?['Status']?['Value'], 'Submitted'), equals(triggerBody()?['RequestType']?['Value'], 'tagOwnerGroup'))")}
+    return flow(trig, s, ["shared_sharepointonline", "shared_webcontents"])
+
+
 # ---------------------------------------------------------------------------
 # Solution files
 # ---------------------------------------------------------------------------
@@ -813,6 +995,8 @@ DESCRIPTIONS = {
     "ER-02 Execute": "Applies an approved request in Entra ID through Microsoft Graph (HTTP with Microsoft Entra ID, client certificate).",
     "ER-03 Catalog sync": "Hourly: refreshes EntraCatalogApps and EntraCatalogGroups from Entra ID. Read-only in Entra.",
     "ER-04 Onboard group": "Finds an existing group by name or Object ID and adds it to EntraCatalogGroups when the requester is a member or owner. Read-only in Entra; no approval.",
+    "ER-05 Find app": "Search on the change screen: finds an app registration by Application (client) ID or Object ID and returns it only to an authorized owner (team:user\\<id> or team:group\\<id> tag). Read-only in Entra; no approval.",
+    "ER-06 Tag owning group": "Replaces an app registration's team tag with team:group\\<id> when the requester is its authorized owner and a member of that group. No approval.",
 }
 
 
@@ -943,7 +1127,7 @@ def build():
     env_dir.mkdir(parents=True)
 
     flows = {"SP-00 Create lists": sp00(), "ER-01 Approvals": er01(), "ER-02 Execute": er02(), "ER-03 Catalog sync": er03(),
-             "ER-04 Onboard group": er04()}
+             "ER-04 Onboard group": er04(), "ER-05 Find app": er05(), "ER-06 Tag owning group": er06()}
     for name, definition in flows.items():
         wid = FLOW_IDS[name]
         file = f"{name.replace(' ', '').replace('-', '')}-{wid.upper()}.json"

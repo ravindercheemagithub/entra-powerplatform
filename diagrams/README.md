@@ -25,7 +25,7 @@
 
 | # | Page | What it shows |
 |---|---|---|
-| F1 | ServiceNow components | New flows ER-05 Raise change and ER-06 Change sync, the ServiceNow connector, new list columns, the fields set on the normal change, and the gated / record modes |
+| F1 | ServiceNow components | New flows SN-01 Raise change and SN-02 Change sync, the ServiceNow connector, new list columns, the fields set on the normal change, and the gated / record modes |
 | F2 | ServiceNow sequence | Entra approval → PendingChange → normal change → CAB → Implement → ER-02 → change closed |
 
 See [docs/00-OVERVIEW.md §8](../docs/00-OVERVIEW.md#8-future-extensions).

@@ -121,6 +121,7 @@ Screens:
                 =Switch(ThisItem.Key,
                     "newApp", Set(varResetNewApp, true); Navigate(scrNewApp, ScreenTransition.Fade),
                     "onboardGroup", Navigate(scrAddGroup, ScreenTransition.Fade),
+                    "tagOwnerGroup", Navigate(scrTagGroup, ScreenTransition.Fade),
                     "myRequests", Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade),
                     Set(varOp, ThisItem.Key); Set(varResetChange, true); Navigate(scrAppChange, ScreenTransition.Fade)
                 )
@@ -150,7 +151,7 @@ Screens:
             - icoCard_Home:
                 Control: Classic/Icon@2.5.0
                 Properties:
-                  Icon: =Switch(ThisItem.Key, "newApp", Icon.AddDocument, "exposeApi", Icon.Settings, "addAppRoles", Icon.Lock, "assignGroups", Icon.People, "createSP", Icon.Waffle, "onboardGroup", Icon.AddUser, Icon.DetailList)
+                  Icon: =Switch(ThisItem.Key, "newApp", Icon.AddDocument, "exposeApi", Icon.Settings, "addAppRoles", Icon.Lock, "assignGroups", Icon.People, "createSP", Icon.Waffle, "onboardGroup", Icon.AddUser, "tagOwnerGroup", Icon.Edit, Icon.DetailList)
                   X: =28
                   Y: =28
                   Width: =44
@@ -254,7 +255,7 @@ Screens:
             Control: Gallery@2.15.0
             Variant: Vertical
             Properties:
-              Items: =FirstN(Sort(EntraRequests, ID, SortOrder.Descending), 7)
+              Items: =FirstN(Sort(Filter(EntraRequests, RequestType.Value <> "lookupApp"), ID, SortOrder.Descending), 7)
               X: =Parent.Width - 368
               Y: =196
               Width: =336

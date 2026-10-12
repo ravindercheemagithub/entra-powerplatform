@@ -1,6 +1,6 @@
 # 9. Import the flows as a solution
 
-Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_2_1_0.zip`](../solution/dist/EntraSelfService_1_2_1_0.zip) (version 1.2.1) is an **unmanaged** solution containing:
+Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_3_0_0.zip`](../solution/dist/EntraSelfService_1_3_0_0.zip) (version 1.3) is an **unmanaged** solution containing:
 
 | Component | What it is |
 |---|---|
@@ -9,6 +9,8 @@ Instead of building the flows by hand from doc 04, import them. [`solution/dist/
 | **ER-02 Execute** | applies approved requests in Entra through Microsoft Graph |
 | **ER-03 Catalog sync** | hourly refresh of the catalog lists |
 | **ER-04 Onboard group** | finds an existing group by name or Object ID and adds it to the catalog when the requester is a member or owner (no approval) |
+| **ER-05 Find app** | the change screen's **Search**: finds an app registration by Application (client) ID or Object ID and returns it only to its authorized owner (no approval, read-only) |
+| **ER-06 Tag owning group** | hands an app registration to a group: replaces its team tag with `team:group\<id>` (no approval) |
 | 5 connection references | SharePoint, Office 365 Users, Approvals, Office 365 Outlook, HTTP with Microsoft Entra ID |
 | Environment variable **SharePoint site URL** (`esp_SiteUrl`) | the site that holds the lists |
 
@@ -35,7 +37,7 @@ Import **as the account that should own the flows** (your account while testing,
 
 ## 9.2 Download the zip
 
-On GitHub open [`solution/dist/EntraSelfService_1_2_1_0.zip`](../solution/dist/EntraSelfService_1_2_1_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
+On GitHub open [`solution/dist/EntraSelfService_1_3_0_0.zip`](../solution/dist/EntraSelfService_1_3_0_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
 
 ## 9.3 Import
 
@@ -58,7 +60,7 @@ On GitHub open [`solution/dist/EntraSelfService_1_2_1_0.zip`](../solution/dist/E
 
 ## 9.4 After import
 
-1. **Solutions → Entra Self-Service → Cloud flows.** The four flows are listed, all **Off**.
+1. **Solutions → Entra Self-Service → Cloud flows.** The flows are listed, all **Off**.
 2. **Create the lists** (skip if they exist already):
    1. Open **SP-00 Create lists** → **Turn on** → **Run** → **Run flow**.
    2. Then do the *Finish by hand* steps in [doc 02 §2.2b](02-SHAREPOINT.md#finish-by-hand-about-5-minutes): permissions, settings item values, and checking the indexes.
@@ -71,6 +73,7 @@ On GitHub open [`solution/dist/EntraSelfService_1_2_1_0.zip`](../solution/dist/E
 5. **Turn on ER-01** and test it with [doc 06](06-TEST-ER01.md).
 6. **Turn on ER-03** and test it with [doc 08](08-TEST-ER03.md). It's read-only in Entra.
    Turn on **ER-04** too, and test it with [doc 10](10-TEST-ER04.md). It's read-only in Entra and needs no approval.
+   Turn on **ER-05** and **ER-06** as well, and test them with [doc 11](11-TEST-ER05-ER06.md). ER-05 is read-only; ER-06 changes only an app's team tag.
 7. **Turn on ER-02** when you are ready for it to create objects in Entra, and test it with [doc 07](07-TEST-ER02.md).
 
 Open each flow once in the designer and check it has no errors before turning it on. If the designer warns that a list can't be found, check the **SharePoint site URL** environment variable (Solutions → Entra Self-Service → **Environment variables** → SharePoint site URL → *Current value*).
@@ -86,6 +89,18 @@ Open each flow once in the designer and check it has no errors before turning it
 | SharePoint actions fail with *List not found* | The site URL variable is wrong, or SP-00 hasn't created the lists yet |
 
 ## 9.6 Updating
+
+**1.3:** the owning group is optional, and ownership is the team tag.
+- A new app with an owning group is tagged `team:group\<group id>`; without one, `team:user\<requester object id>`.
+- Changes start with **Search** on the change screen: the requester types the app's Application (client) ID or Object ID, and **ER-05** returns it only if its team tag names them, or a group they are a member of. ER-02 checks the same again before changing anything. Owners of the app registration object are no longer used.
+- New **Owning group** card and **ER-06**: hand an app registration to a group (`team:user\…` → `team:group\…`).
+- Apps from 1.2, tagged `team:<group id>`, count as group-owned.
+
+To upgrade:
+1. EntraRequests → **List settings → RequestType** → add the choices `lookupApp` and `tagOwnerGroup`.
+2. Import the 1.3 zip over the existing solution (publish or discard open drafts first).
+3. Turn on **ER-05** and **ER-06**.
+4. Re-import the app (`EntraSelfService.msapp`): it has the new Search box and the Owning group screen.
 
 **1.2.1:** fixes the import warning *the workflow run action 'Stop_no_group_id' has type 'Terminate' that could not be nested under an action of type 'Foreach'* (ER-02 imported but stayed off). The role-assignment loop now records a failure in `varAssignError` and fails the request once, after the loop. Import over 1.2; then turn ER-02 on.
 

@@ -379,6 +379,40 @@
             ]
           }
         },
+        "Init_varTeamTag": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varTeamTag",
+                "type": "string",
+                "value": ""
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varAssignError": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Init_varGroupOwner": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varGroupOwner",
+                "type": "string",
+                "value": "no"
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varTeamTag": [
+              "Succeeded"
+            ]
+          }
+        },
         "Try": {
           "type": "Scope",
           "actions": {
@@ -481,23 +515,11 @@
                     ]
                   }
                 },
-                "HTTP_Check_target_team": {
-                  "type": "OpenApiConnection",
+                "Target_team_tags": {
+                  "type": "Query",
                   "inputs": {
-                    "host": {
-                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                      "connectionName": "shared_webcontents",
-                      "operationId": "InvokeHttp"
-                    },
-                    "parameters": {
-                      "request/method": "POST",
-                      "request/url": "https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups",
-                      "request/headers": {
-                        "Content-Type": "application/json"
-                      },
-                      "request/body": "{\n  \"groupIds\": [\"@{if(empty(body('Filter_team_tag')), '00000000-0000-0000-0000-000000000000', substring(first(body('Filter_team_tag')), 5))}\"]\n}"
-                    },
-                    "authentication": "@parameters('$authentication')"
+                    "from": "@coalesce(body('HTTP_Get_target_app')?['tags'], json('[]'))",
+                    "where": "@startsWith(item(), 'team:')"
                   },
                   "runAfter": {
                     "Filter_kept_tags": [
@@ -505,22 +527,112 @@
                     ]
                   }
                 },
-                "HTTP_Target_owners": {
-                  "type": "OpenApiConnection",
+                "Target_group_values": {
+                  "type": "Select",
                   "inputs": {
-                    "host": {
-                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                      "connectionName": "shared_webcontents",
-                      "operationId": "InvokeHttp"
-                    },
-                    "parameters": {
-                      "request/method": "GET",
-                      "request/url": "https://graph.microsoft.com/v1.0/applications/@{triggerOutputs()?['body/TargetObjectId']}/owners?$select=id"
-                    },
-                    "authentication": "@parameters('$authentication')"
+                    "from": "@body('Target_team_tags')",
+                    "select": "@if(startsWith(item(), 'team:group\\'), substring(item(), 11), if(startsWith(item(), 'team:user\\'), '', substring(item(), 5)))"
                   },
                   "runAfter": {
-                    "HTTP_Check_target_team": [
+                    "Target_team_tags": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Target_group_ids": {
+                  "type": "Query",
+                  "inputs": {
+                    "from": "@body('Target_group_values')",
+                    "where": "@not(empty(item()))"
+                  },
+                  "runAfter": {
+                    "Target_group_values": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Reset_varGroupOwner_Target": {
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "varGroupOwner",
+                    "value": "no"
+                  },
+                  "runAfter": {
+                    "Target_group_ids": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Target_has_team_groups": {
+                  "type": "If",
+                  "expression": {
+                    "and": [
+                      {
+                        "greater": [
+                          "@length(body('Target_group_ids'))",
+                          0
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "HTTP_Target_check_groups": {
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                          "connectionName": "shared_webcontents",
+                          "operationId": "InvokeHttp"
+                        },
+                        "parameters": {
+                          "request/method": "POST",
+                          "request/url": "https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups",
+                          "request/headers": {
+                            "Content-Type": "application/json"
+                          },
+                          "request/body": "{\"groupIds\": @{take(body('Target_group_ids'), 20)}}"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      },
+                      "runAfter": {}
+                    },
+                    "Target_member_of_a_team_group": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "greater": [
+                              "@length(body('HTTP_Target_check_groups')?['value'])",
+                              0
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "Set_varGroupOwner_Target": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "varGroupOwner",
+                            "value": "yes"
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "else": {
+                        "actions": {}
+                      },
+                      "runAfter": {
+                        "HTTP_Target_check_groups": [
+                          "Succeeded"
+                        ]
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {}
+                  },
+                  "runAfter": {
+                    "Reset_varGroupOwner_Target": [
                       "Succeeded"
                     ]
                   }
@@ -531,7 +643,7 @@
                     "and": [
                       {
                         "equals": [
-                          "@and(or(not(empty(body('HTTP_Check_target_team')?['value'])), contains(string(body('HTTP_Target_owners')?['value']), body('HTTP_Get_requester')?['id'])), or(empty(body('Filter_appcat_tag')), equals(first(body('Filter_appcat_tag')), concat('appCatID:', triggerOutputs()?['body/AppCatId']))))",
+                          "@and(or(contains(body('Target_team_tags'), concat('team:user\\', toLower(body('HTTP_Get_requester')?['id']))), equals(variables('varGroupOwner'), 'yes')), or(empty(body('Filter_appcat_tag')), empty(triggerOutputs()?['body/AppCatId']), equals(first(body('Filter_appcat_tag')), concat('appCatID:', triggerOutputs()?['body/AppCatId']))))",
                           true
                         ]
                       }
@@ -554,7 +666,7 @@
                             "id": "@int(triggerOutputs()?['body/ID'])",
                             "item/Title": "@triggerOutputs()?['body/Title']",
                             "item/Status/Value": "Failed",
-                            "item/ErrorMessage": "The app is not owned by any of your groups, or its appCatID differs."
+                            "item/ErrorMessage": "Not an authorized owner: the app's team tag names neither you (team:user\\<your id>) nor a group you are a member of (team:group\\<group id>), or its appCatID differs."
                           },
                           "authentication": "@parameters('$authentication')"
                         },
@@ -566,7 +678,7 @@
                           "runStatus": "Failed",
                           "runError": {
                             "code": "NotOwner",
-                            "message": "The app is not owned by any of your groups, or its appCatID differs."
+                            "message": "Not an authorized owner: the app's team tag names neither you (team:user\\<your id>) nor a group you are a member of (team:group\\<group id>), or its appCatID differs."
                           }
                         },
                         "runAfter": {
@@ -578,14 +690,14 @@
                     }
                   },
                   "runAfter": {
-                    "HTTP_Target_owners": [
+                    "Target_has_team_groups": [
                       "Succeeded"
                     ]
                   }
                 },
                 "Updated_tags": {
                   "type": "Compose",
-                  "inputs": "@union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId']), concat('managedBy:', body('Get_settings')?['ManagedByTag'])), json('[]')))",
+                  "inputs": "@union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('managedBy:', body('Get_settings')?['ManagedByTag'])), json('[]')), if(and(empty(body('Filter_appcat_tag')), not(empty(triggerOutputs()?['body/AppCatId']))), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId'])), json('[]')))",
                   "runAfter": {
                     "Requester_may_change": [
                       "Succeeded"
@@ -644,185 +756,179 @@
                     "Do_createAppRegistration": {
                       "type": "Scope",
                       "actions": {
-                        "Owning_team_missing": {
+                        "Has_owning_group": {
                           "type": "If",
                           "expression": {
                             "and": [
                               {
                                 "equals": [
-                                  "@empty(outputs('Payload')?['owningGroup']?['id'])",
+                                  "@not(empty(outputs('Payload')?['owningGroup']?['id']))",
                                   true
                                 ]
                               }
                             ]
                           },
                           "actions": {
-                            "Fail_no_team": {
+                            "HTTP_Check_team_membership": {
                               "type": "OpenApiConnection",
                               "inputs": {
                                 "host": {
-                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
-                                  "connectionName": "shared_sharepointonline",
-                                  "operationId": "PatchItem"
+                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                                  "connectionName": "shared_webcontents",
+                                  "operationId": "InvokeHttp"
                                 },
                                 "parameters": {
-                                  "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                                  "table": "EntraRequests",
-                                  "id": "@int(triggerOutputs()?['body/ID'])",
-                                  "item/Title": "@triggerOutputs()?['body/Title']",
-                                  "item/Status/Value": "Failed",
-                                  "item/ErrorMessage": "The request has no owning team. Choose an existing group you are a member of."
+                                  "request/method": "POST",
+                                  "request/url": "https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups",
+                                  "request/headers": {
+                                    "Content-Type": "application/json"
+                                  },
+                                  "request/body": "{\"groupIds\": [\"@{outputs('Payload')?['owningGroup']?['id']}\"]}"
                                 },
                                 "authentication": "@parameters('$authentication')"
                               },
                               "runAfter": {}
                             },
-                            "Stop_no_team": {
-                              "type": "Terminate",
-                              "inputs": {
-                                "runStatus": "Failed",
-                                "runError": {
-                                  "code": "NoOwningTeam",
-                                  "message": "The request has no owning team. Choose an existing group you are a member of."
+                            "Is_team_member": {
+                              "type": "If",
+                              "expression": {
+                                "and": [
+                                  {
+                                    "greater": [
+                                      "@length(body('HTTP_Check_team_membership')?['value'])",
+                                      0
+                                    ]
+                                  }
+                                ]
+                              },
+                              "actions": {},
+                              "else": {
+                                "actions": {
+                                  "Fail_not_team_member": {
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                      "host": {
+                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                        "connectionName": "shared_sharepointonline",
+                                        "operationId": "PatchItem"
+                                      },
+                                      "parameters": {
+                                        "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                                        "table": "EntraRequests",
+                                        "id": "@int(triggerOutputs()?['body/ID'])",
+                                        "item/Title": "@triggerOutputs()?['body/Title']",
+                                        "item/Status/Value": "Failed",
+                                        "item/ErrorMessage": "You are not a member of the owning group."
+                                      },
+                                      "authentication": "@parameters('$authentication')"
+                                    },
+                                    "runAfter": {}
+                                  },
+                                  "Stop_not_team_member": {
+                                    "type": "Terminate",
+                                    "inputs": {
+                                      "runStatus": "Failed",
+                                      "runError": {
+                                        "code": "NotTeamMember",
+                                        "message": "You are not a member of the owning group."
+                                      }
+                                    },
+                                    "runAfter": {
+                                      "Fail_not_team_member": [
+                                        "Succeeded"
+                                      ]
+                                    }
+                                  }
                                 }
                               },
                               "runAfter": {
-                                "Fail_no_team": [
+                                "HTTP_Check_team_membership": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "HTTP_Get_team_group": {
+                              "type": "OpenApiConnection",
+                              "inputs": {
+                                "host": {
+                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                                  "connectionName": "shared_webcontents",
+                                  "operationId": "InvokeHttp"
+                                },
+                                "parameters": {
+                                  "request/method": "GET",
+                                  "request/url": "https://graph.microsoft.com/v1.0/groups/@{outputs('Payload')?['owningGroup']?['id']}?$select=id,displayName"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                              },
+                              "runAfter": {
+                                "Is_team_member": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Set_team_id": {
+                              "type": "SetVariable",
+                              "inputs": {
+                                "name": "varTeamGroupId",
+                                "value": "@body('HTTP_Get_team_group')?['id']"
+                              },
+                              "runAfter": {
+                                "HTTP_Get_team_group": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Set_team_name": {
+                              "type": "SetVariable",
+                              "inputs": {
+                                "name": "varTeamGroupName",
+                                "value": "@body('HTTP_Get_team_group')?['displayName']"
+                              },
+                              "runAfter": {
+                                "Set_team_id": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Set_group_team_tag": {
+                              "type": "SetVariable",
+                              "inputs": {
+                                "name": "varTeamTag",
+                                "value": "@concat('team:group\\', body('HTTP_Get_team_group')?['id'])"
+                              },
+                              "runAfter": {
+                                "Set_team_name": [
                                   "Succeeded"
                                 ]
                               }
                             }
                           },
                           "else": {
-                            "actions": {}
-                          },
-                          "runAfter": {}
-                        },
-                        "HTTP_Check_team_membership": {
-                          "type": "OpenApiConnection",
-                          "inputs": {
-                            "host": {
-                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                              "connectionName": "shared_webcontents",
-                              "operationId": "InvokeHttp"
-                            },
-                            "parameters": {
-                              "request/method": "POST",
-                              "request/url": "https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups",
-                              "request/headers": {
-                                "Content-Type": "application/json"
-                              },
-                              "request/body": "{\"groupIds\": [\"@{outputs('Payload')?['owningGroup']?['id']}\"]}"
-                            },
-                            "authentication": "@parameters('$authentication')"
-                          },
-                          "runAfter": {
-                            "Owning_team_missing": [
-                              "Succeeded"
-                            ]
-                          }
-                        },
-                        "Is_team_member": {
-                          "type": "If",
-                          "expression": {
-                            "and": [
-                              {
-                                "greater": [
-                                  "@length(body('HTTP_Check_team_membership')?['value'])",
-                                  0
-                                ]
-                              }
-                            ]
-                          },
-                          "actions": {},
-                          "else": {
                             "actions": {
-                              "Fail_not_team_member": {
-                                "type": "OpenApiConnection",
+                              "Set_user_team_name": {
+                                "type": "SetVariable",
                                 "inputs": {
-                                  "host": {
-                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
-                                    "connectionName": "shared_sharepointonline",
-                                    "operationId": "PatchItem"
-                                  },
-                                  "parameters": {
-                                    "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                                    "table": "EntraRequests",
-                                    "id": "@int(triggerOutputs()?['body/ID'])",
-                                    "item/Title": "@triggerOutputs()?['body/Title']",
-                                    "item/Status/Value": "Failed",
-                                    "item/ErrorMessage": "You are not a member of the owning team."
-                                  },
-                                  "authentication": "@parameters('$authentication')"
+                                  "name": "varTeamGroupName",
+                                  "value": "@outputs('Requester')"
                                 },
                                 "runAfter": {}
                               },
-                              "Stop_not_team_member": {
-                                "type": "Terminate",
+                              "Set_user_team_tag": {
+                                "type": "SetVariable",
                                 "inputs": {
-                                  "runStatus": "Failed",
-                                  "runError": {
-                                    "code": "NotTeamMember",
-                                    "message": "You are not a member of the owning team."
-                                  }
+                                  "name": "varTeamTag",
+                                  "value": "@concat('team:user\\', toLower(body('HTTP_Get_requester')?['id']))"
                                 },
                                 "runAfter": {
-                                  "Fail_not_team_member": [
+                                  "Set_user_team_name": [
                                     "Succeeded"
                                   ]
                                 }
                               }
                             }
                           },
-                          "runAfter": {
-                            "HTTP_Check_team_membership": [
-                              "Succeeded"
-                            ]
-                          }
-                        },
-                        "HTTP_Get_team_group": {
-                          "type": "OpenApiConnection",
-                          "inputs": {
-                            "host": {
-                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                              "connectionName": "shared_webcontents",
-                              "operationId": "InvokeHttp"
-                            },
-                            "parameters": {
-                              "request/method": "GET",
-                              "request/url": "https://graph.microsoft.com/v1.0/groups/@{outputs('Payload')?['owningGroup']?['id']}?$select=id,displayName"
-                            },
-                            "authentication": "@parameters('$authentication')"
-                          },
-                          "runAfter": {
-                            "Is_team_member": [
-                              "Succeeded"
-                            ]
-                          }
-                        },
-                        "Set_team_id": {
-                          "type": "SetVariable",
-                          "inputs": {
-                            "name": "varTeamGroupId",
-                            "value": "@body('HTTP_Get_team_group')?['id']"
-                          },
-                          "runAfter": {
-                            "HTTP_Get_team_group": [
-                              "Succeeded"
-                            ]
-                          }
-                        },
-                        "Set_team_name": {
-                          "type": "SetVariable",
-                          "inputs": {
-                            "name": "varTeamGroupName",
-                            "value": "@body('HTTP_Get_team_group')?['displayName']"
-                          },
-                          "runAfter": {
-                            "Set_team_id": [
-                              "Succeeded"
-                            ]
-                          }
+                          "runAfter": {}
                         },
                         "Select_app_roles": {
                           "type": "Select",
@@ -838,7 +944,7 @@
                             }
                           },
                           "runAfter": {
-                            "Set_team_name": [
+                            "Has_owning_group": [
                               "Succeeded"
                             ]
                           }
@@ -920,7 +1026,7 @@
                         },
                         "App_tags": {
                           "type": "Compose",
-                          "inputs": "@union(outputs('Base_tags'), createArray(concat('team:', variables('varTeamGroupId')), concat('teamName:', variables('varTeamGroupName'))), if(empty(outputs('Payload')?['appEnv']), json('[]'), createArray(concat('appEnv:', outputs('Payload')?['appEnv']))), if(empty(outputs('Payload')?['borShortName']), json('[]'), createArray(concat('borShortName:', outputs('Payload')?['borShortName']))), body('Select_optional_tags'))",
+                          "inputs": "@union(outputs('Base_tags'), createArray(variables('varTeamTag'), concat('teamName:', variables('varTeamGroupName'))), if(empty(outputs('Payload')?['appEnv']), json('[]'), createArray(concat('appEnv:', outputs('Payload')?['appEnv']))), if(empty(outputs('Payload')?['borShortName']), json('[]'), createArray(concat('borShortName:', outputs('Payload')?['borShortName']))), body('Select_optional_tags'))",
                           "runAfter": {
                             "Select_optional_tags": [
                               "Succeeded"
@@ -1314,7 +1420,8 @@
                               "appId": "@{body('HTTP_Create_application')?['appId']}",
                               "identifierUri": "@{if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId']), '')}",
                               "servicePrincipalId": "@{variables('varSpId')}",
-                              "teamGroupId": "@{variables('varTeamGroupId')}"
+                              "teamGroupId": "@{variables('varTeamGroupId')}",
+                              "team": "@{variables('varTeamTag')}"
                             }
                           },
                           "runAfter": {
@@ -2199,7 +2306,7 @@
                       "request/headers": {
                         "Content-Type": "application/json"
                       },
-                      "request/body": "{\n  \"principalId\": \"@{variables('varTeamGroupId')}\",\n  \"resourceId\": \"@{variables('varSpId')}\",\n  \"appRoleId\": \"00000000-0000-0000-0000-000000000000\"\n}"
+                      "request/body": "{\n  \"principalId\": \"@{if(empty(variables('varTeamGroupId')), body('HTTP_Get_requester')?['id'], variables('varTeamGroupId'))}\",\n  \"resourceId\": \"@{variables('varSpId')}\",\n  \"appRoleId\": \"00000000-0000-0000-0000-000000000000\"\n}"
                     },
                     "authentication": "@parameters('$authentication')"
                   },
@@ -2264,7 +2371,7 @@
             }
           },
           "runAfter": {
-            "Init_varAssignError": [
+            "Init_varGroupOwner": [
               "Succeeded"
             ]
           }
