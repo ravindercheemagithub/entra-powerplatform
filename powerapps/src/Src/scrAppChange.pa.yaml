@@ -913,14 +913,10 @@ Screens:
                           PaddingLeft: =0
                           PaddingRight: =0
                     - cmbRoleGroup_Change:
-                        Control: Classic/ComboBox@2.4.0
+                        Control: Classic/DropDown@2.3.1
                         Properties:
-                          Items: =gMyGroups
-                          DisplayFields: =["Title"]
-                          SearchFields: =["Title"]
-                          SelectMultiple: =false
-                          IsSearchable: =true
-                          InputTextPlaceholder: ="Add existing group"
+                          Items: =AddColumns(gMyGroups, Value, Title)
+                          Default: =""
                           X: =Parent.TemplateWidth - 480
                           Y: =94
                           Width: =210
@@ -933,8 +929,11 @@ Screens:
                           BorderThickness: =1
                           ChevronBackground: =gTheme.Card
                           ChevronFill: =gTheme.Muted
-                          SelectionFill: =gTheme.Primary
                           HoverFill: =gTheme.PrimaryLight
+                          SelectionFill: =gTheme.Primary
+                          PaddingLeft: =10
+                          Tooltip: ="Add one of your groups to this role"
+                          AllowEmptySelection: =true
                           OnChange: '=If(!IsBlank(Self.Selected.GroupId) && CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key && GroupId = Self.Selected.GroupId)) = 0, Collect(colRoleGroups, {RoleKey: ThisItem.Key, Mode: "existing", GroupId: Self.Selected.GroupId, DisplayName: Self.Selected.Title, Description: "", OwnerIds: ""})); Reset(Self)'
                     - lnkRoleAddGroup_Change:
                         Control: Label@2.5.1
@@ -1029,14 +1028,10 @@ Screens:
                       PaddingLeft: =0
                       PaddingRight: =0
                 - cmbGroup_Change:
-                    Control: Classic/ComboBox@2.4.0
+                    Control: Classic/DropDown@2.3.1
                     Properties:
-                      Items: =gMyGroups
-                      DisplayFields: =["Title"]
-                      SearchFields: =["Title"]
-                      SelectMultiple: =false
-                      IsSearchable: =true
-                      InputTextPlaceholder: ="Choose one of your groups"
+                      Items: =AddColumns(gMyGroups, Value, Title)
+                      Default: =""
                       X: =250
                       Y: =22
                       Width: =300
@@ -1049,8 +1044,11 @@ Screens:
                       BorderThickness: =1
                       ChevronBackground: =gTheme.Card
                       ChevronFill: =gTheme.Muted
-                      SelectionFill: =gTheme.Primary
                       HoverFill: =gTheme.PrimaryLight
+                      SelectionFill: =gTheme.Primary
+                      PaddingLeft: =10
+                      Tooltip: ="Choose one of your groups"
+                      AllowEmptySelection: =true
                 - btnAddAssign_Change:
                     Control: Classic/Button@2.2.0
                     Properties:

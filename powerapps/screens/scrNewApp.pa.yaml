@@ -412,14 +412,10 @@
                   PaddingLeft: =0
                   PaddingRight: =0
             - cmbTeam_NewApp:
-                Control: Classic/ComboBox
+                Control: Classic/DropDown
                 Properties:
-                  Items: =gMyTeams
-                  DisplayFields: =["Title"]
-                  SearchFields: =["Title"]
-                  SelectMultiple: =false
-                  IsSearchable: =true
-                  InputTextPlaceholder: ="Choose a group you are a member of"
+                  Items: =AddColumns(gMyTeams, Value, Title)
+                  Default: =""
                   X: =(Parent.Width + 24) / 2
                   Y: =176
                   Width: =(Parent.Width - 24) / 2
@@ -432,8 +428,11 @@
                   BorderThickness: =1
                   ChevronBackground: =gTheme.Card
                   ChevronFill: =gTheme.Muted
-                  SelectionFill: =gTheme.Primary
                   HoverFill: =gTheme.PrimaryLight
+                  SelectionFill: =gTheme.Primary
+                  PaddingLeft: =10
+                  Tooltip: ="Choose a group you are a member of"
+                  AllowEmptySelection: =true
             - lnkAddExisting_NewApp:
                 Control: Label
                 Properties:
@@ -1544,14 +1543,10 @@
                         PaddingLeft: =0
                         PaddingRight: =0
                   - cmbRoleGroup_NewApp:
-                      Control: Classic/ComboBox
+                      Control: Classic/DropDown
                       Properties:
-                        Items: =gMyGroups
-                        DisplayFields: =["Title"]
-                        SearchFields: =["Title"]
-                        SelectMultiple: =false
-                        IsSearchable: =true
-                        InputTextPlaceholder: ="Add existing group"
+                        Items: =AddColumns(gMyGroups, Value, Title)
+                        Default: =""
                         X: =Parent.TemplateWidth - 480
                         Y: =94
                         Width: =210
@@ -1564,8 +1559,11 @@
                         BorderThickness: =1
                         ChevronBackground: =gTheme.Card
                         ChevronFill: =gTheme.Muted
-                        SelectionFill: =gTheme.Primary
                         HoverFill: =gTheme.PrimaryLight
+                        SelectionFill: =gTheme.Primary
+                        PaddingLeft: =10
+                        Tooltip: ="Add one of your groups to this role"
+                        AllowEmptySelection: =true
                         OnChange: |-
                           =If(!IsBlank(Self.Selected.GroupId) && CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key && GroupId = Self.Selected.GroupId)) = 0, Collect(colRoleGroups, {RoleKey: ThisItem.Key, Mode: "existing", GroupId: Self.Selected.GroupId, DisplayName: Self.Selected.Title, Description: "", OwnerIds: ""})); Reset(Self)
                   - lnkRoleAddGroup_NewApp:

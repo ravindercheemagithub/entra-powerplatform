@@ -31,14 +31,6 @@ It contains **no data sources**: a SharePoint data source embeds each list's GUI
 
    The data source names must be exactly these list names; the formulas refer to them.
 5. **Tree view → App → … → Run OnStart.**
-5b. **Set SearchItems on the four combo boxes.** Studio upgrades the combo box control after import and fills its new **SearchItems** property with a sample formula (`Search(ComboBoxSample, Self.SearchText, Value1)`), which the App checker reports as 3 errors per combo box. The file can't set it (the import rejects the property for the pinned control version). Select each one, pick **SearchItems** in the property list, and paste:
-
-   | Screen | Combo box | SearchItems |
-   |---|---|---|
-   | scrNewApp | `cmbTeam_NewApp` | `Search(gMyTeams, Self.SearchText, Title)` |
-   | scrNewApp | `cmbRoleGroup_NewApp` (first row of the roles list) | `Search(gMyGroups, Self.SearchText, Title)` |
-   | scrAppChange | `cmbRoleGroup_Change` (first row of the roles list) | `Search(gMyGroups, Self.SearchText, Title)` |
-   | scrAppChange | `cmbGroup_Change` | `Search(gMyGroups, Self.SearchText, Title)` |
 6. **App checker** (stethoscope icon, top right): expect **0 errors**. Warnings (delegation, accessibility) are fine. If errors about the lists remain, save, close Studio and open the app again so every formula re-binds.
 7. **Save to the cloud:** **File → Save** (or Ctrl+S). The first save asks for a name: `Entra Self-Service` → **Save**. Then **Publish**. Only now does the app show up under **Apps** (refresh the page). Share it as in 3.6 and put its web link into `EntraSettings.PowerAppUrl`.
 8. Optional: add it to the solution so it moves with the flows: **Solutions → Entra Self-Service → Add existing → App → Canvas app → Outside Dataverse** → select it.

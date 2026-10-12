@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pa import (button, checkbox, combobox, container, dropdown, emit, field_label, frame, gallery, hint, html, icon,
+from pa import (button, checkbox, container, dropdown, group_dropdown, emit, field_label, frame, gallery, hint, html, icon,
                 label, link, q, radio, rect, status_badge, text_input, timer, toggle)
 
 OUT = Path(__file__).resolve().parent.parent / "screens"
@@ -189,8 +189,8 @@ def roles_editor(s: str, top: int) -> list:
                   'Coalesce(Concat(Filter(colRoleGroups, RoleKey = ThisItem.Key), DisplayName, ",  "), '
                   '"None — nobody holds this role yet")', 72, 98, "Parent.TemplateWidth - 560", 24, size=10,
                   color='If(CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key)) = 0, gTheme.Muted, gTheme.Text)'),
-            combobox(f"cmbRoleGroup_{s}", "gMyGroups", '["Title"]', '["Title"]', "Parent.TemplateWidth - 480", 94, 210, 32,
-                     placeholder="Add existing group",
+            group_dropdown(f"cmbRoleGroup_{s}", "gMyGroups", "Title", "Parent.TemplateWidth - 480", 94, 210, 32,
+                     hint="Add one of your groups to this role",
                      OnChange='If(!IsBlank(Self.Selected.GroupId) && CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key && GroupId = Self.Selected.GroupId)) = 0, '
                               'Collect(colRoleGroups, {RoleKey: ThisItem.Key, Mode: "existing", GroupId: Self.Selected.GroupId, DisplayName: Self.Selected.Title, '
                               'Description: "", OwnerIds: ""})); Reset(Self)'),
@@ -222,7 +222,7 @@ def new_app() -> None:
         text_input(f"txtBorShort_{s}", '""', q("ORDERS"), COL1_X, 176, COL_W),
         hint(f"hntBorShort_{s}", q("Short name of the application in the book of record: 2–20 letters or digits."), COL1_X, 214, COL_W),
         field_label(f"lblTeam_{s}", "Owning team", COL2_X, 154, COL_W, required=True),
-        combobox(f"cmbTeam_{s}", "gMyTeams", '["Title"]', '["Title"]', COL2_X, 176, COL_W, placeholder="Choose a group you are a member of"),
+        group_dropdown(f"cmbTeam_{s}", "gMyTeams", "Title", COL2_X, 176, COL_W, hint="Choose a group you are a member of"),
         link(f"lnkAddExisting_{s}", q("Group not listed? Add an existing group"), ADD_EXISTING, COL2_X, 214, COL_W),
 
         field_label(f"lblName_{s}", "Display name", COL1_X, 248, "Parent.Width", required=True),
@@ -606,7 +606,7 @@ def app_change() -> None:
         field_label(f"lblARole_{s}", "App role", 0, 0, 240),
         dropdown(f"ddRole_{s}", role_items, '""', 0, 22, 240),
         field_label(f"lblAGroup_{s}", "Group", 250, 0, 300),
-        combobox(f"cmbGroup_{s}", "gMyGroups", '["Title"]', '["Title"]', 250, 22, 300, placeholder="Choose one of your groups"),
+        group_dropdown(f"cmbGroup_{s}", "gMyGroups", "Title", 250, 22, 300, hint="Choose one of your groups"),
         button(f"btnAddAssign_{s}", q("Add"),
                f'If(!IsBlank(ddRole_{s}.Selected.Id) && !IsBlank(cmbGroup_{s}.Selected.GroupId), Collect(colAssign, {{RoleId: ddRole_{s}.Selected.Id, RoleValue: ddRole_{s}.Selected.Value, '
                f'Mode: "existing", GroupId: cmbGroup_{s}.Selected.GroupId, DisplayName: cmbGroup_{s}.Selected.Title, Description: "", OwnerIds: ""}}); Reset(cmbGroup_{s}))',

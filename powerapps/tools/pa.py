@@ -125,9 +125,17 @@ def dropdown(name, items, default, x, y, w, h=36, **extra):
     return node(name, "Classic/DropDown", props)
 
 
+def group_dropdown(name, items, column, x, y, w, h=36, hint="", **extra):
+    """Group picker. A Classic/DropDown, not a ComboBox: after import Studio upgrades Classic/ComboBox and gives
+    it a hidden SearchItems property with a sample formula (ComboBoxSample, Value1) that can't be edited and
+    doesn't compile, while the import itself rejects SearchItems for the pinned version (PA2108).
+    The dropdown shows the Value column, so the items get one copied from `column`; other columns are kept."""
+    props = {"Tooltip": q(hint) if hint else '""', "AllowEmptySelection": "true"}
+    props.update(extra)
+    return dropdown(name, f"AddColumns({items}, Value, {column})", '""', x, y, w, h, **props)
+
+
 def combobox(name, items, display, search, x, y, w, h=36, multi=False, placeholder="Search", **extra):
-    # No SearchItems: Classic/ComboBox@2.4.0 rejects it on import (PA2108). Studio upgrades the control after
-    # loading and fills SearchItems with a sample default; set it in Studio (docs/03 section 3.0, step 6).
     props = {"Items": items, "DisplayFields": display, "SearchFields": search, "SelectMultiple": "true" if multi else "false",
              "IsSearchable": "true", "InputTextPlaceholder": placeholder if placeholder.startswith("If(") else q(placeholder), "X": x, "Y": y, "Width": w, "Height": h,
              "Size": 11, "Font": FONT, "Color": "gTheme.Text", "Fill": "gTheme.Card", "BorderColor": "gTheme.Border",
