@@ -126,7 +126,11 @@ def dropdown(name, items, default, x, y, w, h=36, **extra):
 
 
 def combobox(name, items, display, search, x, y, w, h=36, multi=False, placeholder="Search", **extra):
-    props = {"Items": items, "DisplayFields": display, "SearchFields": search, "SelectMultiple": "true" if multi else "false",
+    # SearchItems must be set: Studio otherwise fills in its sample default
+    # Search(ComboBoxSample, Self.SearchText, Value1), which doesn't compile.
+    columns = ", ".join(c.strip().strip('"') for c in search.strip("[]").split(","))
+    props = {"Items": items, "SearchItems": f"Search({items}, Self.SearchText, {columns})",
+             "DisplayFields": display, "SearchFields": search, "SelectMultiple": "true" if multi else "false",
              "IsSearchable": "true", "InputTextPlaceholder": placeholder if placeholder.startswith("If(") else q(placeholder), "X": x, "Y": y, "Width": w, "Height": h,
              "Size": 11, "Font": FONT, "Color": "gTheme.Text", "Fill": "gTheme.Card", "BorderColor": "gTheme.Border",
              "BorderThickness": 1, "ChevronBackground": "gTheme.Card", "ChevronFill": "gTheme.Muted",
