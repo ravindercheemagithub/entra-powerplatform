@@ -13,7 +13,24 @@ Screens:
             Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign);
             Set(varLookupBusy, false);
             Reset(txtAppId_Change); Reset(txtAppCat_Change); Reset(radUri_Change); Reset(txtCustomUri_Change); Reset(ddRole_Change);
-            Reset(cmbGroup_Change); Reset(tglAssign_Change); Reset(txtJust_Change); Reset(txtTicket_Change)
+            Reset(cmbGroup_Change); Reset(tglAssign_Change); Reset(txtJust_Change); Reset(txtTicket_Change);
+            If(!IsBlank(varCloneChange),
+                With({j: ParseJSON(Coalesce(varCloneChange.payload, "{}"))},
+                    ForAll(Table(j.scopes) As sc,
+                        Collect(colScopes, {Key: Text(GUID()), Value: Text(sc.Value.value), Type: Coalesce(Text(sc.Value.type), "User"),
+                            AdminName: Text(sc.Value.adminConsentDisplayName), AdminDesc: Text(sc.Value.adminConsentDescription)}));
+                    ForAll(Table(j.appRoles) As r,
+                        With({k: Text(GUID())},
+                            Collect(colRoles, {Key: k, Value: Text(r.Value.value), DisplayName: Text(r.Value.displayName), Description: Text(r.Value.description),
+                                Members: Switch(Text(r.Value.allowedMemberTypes), "Application", "Applications", "User,Application", "Both", "Users/Groups")});
+                            ForAll(Table(r.Value.assignGroups) As g,
+                                Collect(colRoleGroups, {RoleKey: k, Mode: "existing", GroupId: Text(g.Value.id), DisplayName: Text(g.Value.displayName),
+                                    Description: "", OwnerIds: ""}))));
+                    ForAll(Table(j.assignments) As a,
+                        Collect(colAssign, {RoleId: Text(a.Value.appRoleId), RoleValue: Text(a.Value.appRoleValue), Mode: "existing",
+                            GroupId: Text(a.Value.id), DisplayName: Text(a.Value.displayName), Description: "", OwnerIds: ""}))
+                )
+            )
         )
     Children:
     - cntRoot_Change:
@@ -152,7 +169,7 @@ Screens:
         - txtAppId_Change:
             Control: Classic/TextInput@2.3.2
             Properties:
-              Default: =""
+              Default: =Coalesce(varCloneChange.appId, "")
               HintText: ="00000000-0000-0000-0000-000000000000"
               X: =40
               Y: =212
@@ -184,7 +201,8 @@ Screens:
                     varLookupBusy,
                         Notify("Still searching, one moment.", NotificationType.Information),
                     Set(varReqId, "REQ-" & Text(Now(), "yymm") & "-" & Upper(Left(Substitute(Text(GUID()), "-", ""), 6)));
-                    Set(varApp, Blank()); Set(varLookupMsg, ""); Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign);
+                    Set(varApp, Blank()); Set(varLookupMsg, "");
+                    If(Lower(Trim(txtAppId_Change.Text)) <> Coalesce(varCloneChange.appId, ""), Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign));
                     IfError(
                         Set(varLookupRec, Patch(EntraRequests, Defaults(EntraRequests), {
                             Title: varReqId,
@@ -420,7 +438,7 @@ Screens:
                     Control: Classic/Radio@2.3.0
                     Properties:
                       Items: =["api://{appId} (recommended)", "Custom"]
-                      Default: ="api://{appId} (recommended)"
+                      Default: =If(IsBlank(varCloneChange.uriTemplate) || varCloneChange.uriTemplate = "api://{appId}", "api://{appId} (recommended)", "Custom")
                       X: =0
                       Y: =22
                       Width: =420
@@ -435,7 +453,7 @@ Screens:
                 - txtCustomUri_Change:
                     Control: Classic/TextInput@2.3.2
                     Properties:
-                      Default: ="api://{appId}"
+                      Default: =If(IsBlank(varCloneChange.uriTemplate), "api://{appId}", varCloneChange.uriTemplate)
                       HintText: ="api://{tenantId}/orders"
                       X: =440
                       Y: =22
@@ -1267,7 +1285,7 @@ Screens:
                 - tglAssign_Change:
                     Control: Classic/Toggle@2.1.0
                     Properties:
-                      Default: =true
+                      Default: =Coalesce(varCloneChange.assignReq, true)
                       X: =0
                       Y: =62
                       Width: =220
@@ -1310,7 +1328,7 @@ Screens:
             - txtJust_Change:
                 Control: Classic/TextInput@2.3.2
                 Properties:
-                  Default: =""
+                  Default: =Coalesce(varCloneChange.justification, "")
                   HintText: ="Why is this change needed?"
                   X: =0
                   Y: =Parent.Height - 118
@@ -1348,7 +1366,7 @@ Screens:
             - txtTicket_Change:
                 Control: Classic/TextInput@2.3.2
                 Properties:
-                  Default: =""
+                  Default: =Coalesce(varCloneChange.ticket, "")
                   HintText: ="Optional"
                   X: =(Parent.Width + 24) / 2
                   Y: =Parent.Height - 118

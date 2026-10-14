@@ -20,7 +20,22 @@ Screens:
             Reset(chkExpose_NewApp); Reset(radUri_NewApp); Reset(txtCustomUri_NewApp);
             Reset(chkIdEmail_NewApp); Reset(chkIdUpn_NewApp); Reset(chkIdGiven_NewApp); Reset(chkIdFamily_NewApp);
             Reset(chkAtEmail_NewApp); Reset(chkAtUpn_NewApp); Reset(chkAtIdtyp_NewApp); Reset(ddGroupsClaim_NewApp);
-            Reset(tglCreateSp_NewApp); Reset(tglAssign_NewApp); Reset(radAudience_NewApp); Reset(txtTags_NewApp); Reset(txtTicket_NewApp)
+            Reset(tglCreateSp_NewApp); Reset(tglAssign_NewApp); Reset(radAudience_NewApp); Reset(txtTags_NewApp); Reset(txtTicket_NewApp);
+            If(!IsBlank(varClone),
+                Set(varMaxStep, 5);
+                With({j: ParseJSON(Coalesce(varClone.payload, "{}"))},
+                    ForAll(Table(j.exposeApi.scopes) As sc,
+                        Collect(colScopes, {Key: Text(GUID()), Value: Text(sc.Value.value), Type: Coalesce(Text(sc.Value.type), "User"),
+                            AdminName: Text(sc.Value.adminConsentDisplayName), AdminDesc: Text(sc.Value.adminConsentDescription)}));
+                    ForAll(Table(j.appRoles) As r,
+                        With({k: Text(GUID())},
+                            Collect(colRoles, {Key: k, Value: Text(r.Value.value), DisplayName: Text(r.Value.displayName), Description: Text(r.Value.description),
+                                Members: Switch(Text(r.Value.allowedMemberTypes), "Application", "Applications", "User,Application", "Both", "Users/Groups")});
+                            ForAll(Table(r.Value.assignGroups) As g,
+                                Collect(colRoleGroups, {RoleKey: k, Mode: "existing", GroupId: Text(g.Value.id), DisplayName: Text(g.Value.displayName),
+                                    Description: "", OwnerIds: ""}))))
+                )
+            )
         )
     Children:
     - cntRoot_NewApp:
@@ -286,7 +301,7 @@ Screens:
             - txtAppCatId_NewApp:
                 Control: Classic/TextInput@2.3.2
                 Properties:
-                  Default: =Coalesce(First(Filter(gMyGroups, !IsBlank(AppCatId))).AppCatId, "")
+                  Default: =If(!IsBlank(varClone), varClone.appCatId, Coalesce(First(Filter(gMyGroups, !IsBlank(AppCatId))).AppCatId, ""))
                   HintText: ="APPCAT-001"
                   X: =0
                   Y: =86
@@ -338,7 +353,7 @@ Screens:
                 Control: Classic/DropDown@2.3.1
                 Properties:
                   Items: =gEnvironments
-                  Default: ="D – Development"
+                  Default: =Coalesce(LookUp(gEnvironments, Left(Value, 1) = varClone.env).Value, "D – Development")
                   X: =(Parent.Width + 24) / 2
                   Y: =86
                   Width: =(Parent.Width - 24) / 2
@@ -385,7 +400,7 @@ Screens:
             - txtBorShort_NewApp:
                 Control: Classic/TextInput@2.3.2
                 Properties:
-                  Default: =""
+                  Default: =Coalesce(varClone.bor, "")
                   HintText: ="ORDERS"
                   X: =0
                   Y: =176
@@ -437,7 +452,7 @@ Screens:
                 Control: Classic/DropDown@2.3.1
                 Properties:
                   Items: =AddColumns(gMyTeams, Value, Title)
-                  Default: =""
+                  Default: =Coalesce(LookUp(gMyTeams, GroupId = varClone.teamId).Title, "")
                   X: =(Parent.Width + 24) / 2
                   Y: =176
                   Width: =(Parent.Width - 24) / 2
@@ -505,7 +520,7 @@ Screens:
             - txtAppName_NewApp:
                 Control: Classic/TextInput@2.3.2
                 Properties:
-                  Default: =""
+                  Default: =Coalesce(varClone.name, "")
                   HintText: ="free text, e.g. orders-api"
                   X: =308
                   Y: =270
@@ -556,7 +571,7 @@ Screens:
             - txtJustification_NewApp:
                 Control: Classic/TextInput@2.3.2
                 Properties:
-                  Default: =""
+                  Default: =Coalesce(varClone.justification, "")
                   HintText: ="Why is this needed, and for which service? Your manager and the Entra ID team read this."
                   X: =0
                   Y: =360
@@ -594,7 +609,7 @@ Screens:
             - txtDescription_NewApp:
                 Control: Classic/TextInput@2.3.2
                 Properties:
-                  Default: =""
+                  Default: =Coalesce(varClone.description, "")
                   HintText: ="Optional"
                   X: =(Parent.Width + 24) / 2
                   Y: =360
@@ -633,7 +648,7 @@ Screens:
                 Control: Classic/DropDown@2.3.1
                 Properties:
                   Items: =["None", "Web", "Single-page app"]
-                  Default: ="None"
+                  Default: =Coalesce(varClone.platform, "None")
                   X: =0
                   Y: =458
                   Width: =(Parent.Width - 24) / 2
@@ -666,7 +681,7 @@ Screens:
             - txtRedirect_NewApp:
                 Control: Classic/TextInput@2.3.2
                 Properties:
-                  Default: =""
+                  Default: =Coalesce(varClone.redirect, "")
                   HintText: ="https://app.contoso.com/signin-oidc   (separate several with ;)"
                   X: =(Parent.Width + 24) / 2
                   Y: =458
@@ -732,7 +747,7 @@ Screens:
                 Control: Classic/CheckBox@2.1.0
                 Properties:
                   Text: ="Expose an API (set an Application ID URI so other apps can call this one)"
-                  Default: =false
+                  Default: =Coalesce(varClone.expose, false)
                   X: =0
                   Y: =60
                   Width: =Parent.Width
@@ -761,7 +776,7 @@ Screens:
                 Control: Classic/Radio@2.3.0
                 Properties:
                   Items: =["api://{appId} (recommended)", "Custom"]
-                  Default: ="api://{appId} (recommended)"
+                  Default: =If(IsBlank(varClone.uriTemplate) || varClone.uriTemplate = "api://{appId}", "api://{appId} (recommended)", "Custom")
                   X: =0
                   Y: =122
                   Width: =420
@@ -777,7 +792,7 @@ Screens:
             - txtCustomUri_NewApp:
                 Control: Classic/TextInput@2.3.2
                 Properties:
-                  Default: ="api://{appId}"
+                  Default: =If(IsBlank(varClone.uriTemplate), "api://{appId}", varClone.uriTemplate)
                   HintText: ="api://{tenantId}/orders  or  api://orders/{appId}"
                   X: =440
                   Y: =122
@@ -1088,7 +1103,7 @@ Screens:
                 Control: Classic/CheckBox@2.1.0
                 Properties:
                   Text: ="email"
-                  Default: =false
+                  Default: =",email," in "," & Coalesce(varClone.idClaims, "") & ","
                   X: =230
                   Y: =390
                   Width: =100
@@ -1103,7 +1118,7 @@ Screens:
                 Control: Classic/CheckBox@2.1.0
                 Properties:
                   Text: ="upn"
-                  Default: =false
+                  Default: =",upn," in "," & Coalesce(varClone.idClaims, "") & ","
                   X: =330
                   Y: =390
                   Width: =90
@@ -1118,7 +1133,7 @@ Screens:
                 Control: Classic/CheckBox@2.1.0
                 Properties:
                   Text: ="given_name"
-                  Default: =false
+                  Default: =",given_name," in "," & Coalesce(varClone.idClaims, "") & ","
                   X: =420
                   Y: =390
                   Width: =130
@@ -1133,7 +1148,7 @@ Screens:
                 Control: Classic/CheckBox@2.1.0
                 Properties:
                   Text: ="family_name"
-                  Default: =false
+                  Default: =",family_name," in "," & Coalesce(varClone.idClaims, "") & ","
                   X: =550
                   Y: =390
                   Width: =140
@@ -1162,7 +1177,7 @@ Screens:
                 Control: Classic/CheckBox@2.1.0
                 Properties:
                   Text: ="email"
-                  Default: =false
+                  Default: =",email," in "," & Coalesce(varClone.atClaims, "") & ","
                   X: =230
                   Y: =424
                   Width: =100
@@ -1177,7 +1192,7 @@ Screens:
                 Control: Classic/CheckBox@2.1.0
                 Properties:
                   Text: ="upn"
-                  Default: =false
+                  Default: =",upn," in "," & Coalesce(varClone.atClaims, "") & ","
                   X: =330
                   Y: =424
                   Width: =90
@@ -1192,7 +1207,7 @@ Screens:
                 Control: Classic/CheckBox@2.1.0
                 Properties:
                   Text: ="idtyp (app or user token)"
-                  Default: =false
+                  Default: =",idtyp," in "," & Coalesce(varClone.atClaims, "") & ","
                   X: =420
                   Y: =424
                   Width: =240
@@ -1221,7 +1236,7 @@ Screens:
                 Control: Classic/DropDown@2.3.1
                 Properties:
                   Items: =["None", "SecurityGroup", "ApplicationGroup", "All"]
-                  Default: ="None"
+                  Default: =Coalesce(varClone.groupsClaim, "None")
                   X: =230
                   Y: =458
                   Width: =220
@@ -1680,7 +1695,7 @@ Screens:
             - tglCreateSp_NewApp:
                 Control: Classic/Toggle@2.1.0
                 Properties:
-                  Default: =true
+                  Default: =Coalesce(varClone.createSp, true)
                   X: =0
                   Y: =86
                   Width: =220
@@ -1724,7 +1739,7 @@ Screens:
             - tglAssign_NewApp:
                 Control: Classic/Toggle@2.1.0
                 Properties:
-                  Default: =true
+                  Default: =Coalesce(varClone.assignReq, true)
                   X: =0
                   Y: =178
                   Width: =220
@@ -1768,7 +1783,7 @@ Screens:
                 Control: Classic/Radio@2.3.0
                 Properties:
                   Items: =["Single tenant", "Multitenant"]
-                  Default: ="Single tenant"
+                  Default: =Coalesce(varClone.audience, "Single tenant")
                   X: =0
                   Y: =270
                   Width: =(Parent.Width - 24) / 2
@@ -1811,7 +1826,7 @@ Screens:
             - txtTags_NewApp:
                 Control: Classic/TextInput@2.3.2
                 Properties:
-                  Default: =""
+                  Default: =Coalesce(varClone.tags, "")
                   HintText: ="costCentre=CC-4410; project=atlas"
                   X: =0
                   Y: =362
@@ -1862,7 +1877,7 @@ Screens:
             - txtTicket_NewApp:
                 Control: Classic/TextInput@2.3.2
                 Properties:
-                  Default: =""
+                  Default: =Coalesce(varClone.ticket, "")
                   HintText: ="Optional, e.g. CHG0012345"
                   X: =0
                   Y: =456

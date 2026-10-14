@@ -136,7 +136,7 @@
       - txtAppId_Change:
           Control: Classic/TextInput
           Properties:
-            Default: =""
+            Default: =Coalesce(varCloneChange.appId, "")
             HintText: ="00000000-0000-0000-0000-000000000000"
             X: =40
             Y: =212
@@ -168,7 +168,8 @@
                   varLookupBusy,
                       Notify("Still searching, one moment.", NotificationType.Information),
                   Set(varReqId, "REQ-" & Text(Now(), "yymm") & "-" & Upper(Left(Substitute(Text(GUID()), "-", ""), 6)));
-                  Set(varApp, Blank()); Set(varLookupMsg, ""); Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign);
+                  Set(varApp, Blank()); Set(varLookupMsg, "");
+                  If(Lower(Trim(txtAppId_Change.Text)) <> Coalesce(varCloneChange.appId, ""), Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign));
                   IfError(
                       Set(varLookupRec, Patch(EntraRequests, Defaults(EntraRequests), {
                           Title: varReqId,
@@ -406,7 +407,7 @@
                       Control: Classic/Radio
                       Properties:
                         Items: =["api://{appId} (recommended)", "Custom"]
-                        Default: ="api://{appId} (recommended)"
+                        Default: =If(IsBlank(varCloneChange.uriTemplate) || varCloneChange.uriTemplate = "api://{appId}", "api://{appId} (recommended)", "Custom")
                         X: =0
                         Y: =22
                         Width: =420
@@ -421,7 +422,7 @@
                   - txtCustomUri_Change:
                       Control: Classic/TextInput
                       Properties:
-                        Default: ="api://{appId}"
+                        Default: =If(IsBlank(varCloneChange.uriTemplate), "api://{appId}", varCloneChange.uriTemplate)
                         HintText: ="api://{tenantId}/orders"
                         X: =440
                         Y: =22
@@ -1269,7 +1270,7 @@
                   - tglAssign_Change:
                       Control: Classic/Toggle
                       Properties:
-                        Default: =true
+                        Default: =Coalesce(varCloneChange.assignReq, true)
                         X: =0
                         Y: =62
                         Width: =220
@@ -1312,7 +1313,7 @@
             - txtJust_Change:
                 Control: Classic/TextInput
                 Properties:
-                  Default: =""
+                  Default: =Coalesce(varCloneChange.justification, "")
                   HintText: ="Why is this change needed?"
                   X: =0
                   Y: =Parent.Height - 118
@@ -1350,7 +1351,7 @@
             - txtTicket_Change:
                 Control: Classic/TextInput
                 Properties:
-                  Default: =""
+                  Default: =Coalesce(varCloneChange.ticket, "")
                   HintText: ="Optional"
                   X: =(Parent.Width + 24) / 2
                   Y: =Parent.Height - 118

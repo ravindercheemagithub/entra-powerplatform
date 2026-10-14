@@ -26,4 +26,6 @@ Set(varOp, "exposeApi");
 Set(varReqId, "");
 Set(varSelectedReqId, Blank());
 Set(varResetNewApp, true);
+Set(varClone, Blank());
+Set(varCloneChange, Blank());
 Set(varResetChange, true);

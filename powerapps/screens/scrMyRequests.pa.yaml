@@ -568,3 +568,56 @@
                   HoverColor: =gTheme.PrimaryHover
                   HoverBorderColor: =gTheme.PrimaryHover
                   Visible: =!IsBlank(Text(ParseJSON(Coalesce(galReq_My.Selected.ResultJson, "{}")).appId))
+            - btnClone_My:
+                Control: Classic/Button
+                Properties:
+                  Text: ="Clone as new request"
+                  OnSelect: |-
+                    =With({r: galReq_My.Selected, j: ParseJSON(Coalesce(galReq_My.Selected.PayloadJson, "{}"))},
+                        If(r.RequestType.Value = "createAppRegistration",
+                            Set(varClone, {
+                                source: r.Title, payload: r.PayloadJson, appCatId: r.AppCatId, justification: r.Justification, ticket: r.TicketReference,
+                                env: Text(j.appEnv), bor: Text(j.borShortName), name: Text(j.nameText), description: Text(j.description),
+                                teamId: Text(j.owningGroup.id),
+                                platform: If(!IsBlank(Text(j.redirectUrisWeb)), "Web", !IsBlank(Text(j.redirectUrisSpa)), "Single-page app", "None"),
+                                redirect: Coalesce(Text(j.redirectUrisWeb), Text(j.redirectUrisSpa)),
+                                expose: Boolean(j.exposeApi.enabled), uriTemplate: Text(j.exposeApi.identifierUriTemplate),
+                                idClaims: Text(j.optionalClaimsIdToken), atClaims: Text(j.optionalClaimsAccessToken), groupsClaim: Text(j.groupMembershipClaims),
+                                createSp: Boolean(j.createServicePrincipal), assignReq: Boolean(j.appRoleAssignmentRequired),
+                                audience: If(Text(j.signInAudience) = "AzureADMultipleOrgs", "Multitenant", "Single tenant"), tags: Text(j.tags)
+                            });
+                            Set(varResetNewApp, true);
+                            Notify("Copied from " & r.Title & ". Review every section, change the display name, then Submit.", NotificationType.Information);
+                            Navigate(scrNewApp, ScreenTransition.Fade),
+                            Set(varCloneChange, {
+                                source: r.Title, payload: r.PayloadJson, appId: Lower(Coalesce(Text(j.applicationObjectId), r.TargetObjectId)),
+                                justification: r.Justification, ticket: r.TicketReference,
+                                uriTemplate: Text(j.identifierUriTemplate), assignReq: Boolean(j.appRoleAssignmentRequired)
+                            });
+                            Set(varOp, Switch(r.RequestType.Value, "exposeApi", "exposeApi", "addAppRoles", "addAppRoles", "assignGroupsToAppRoles", "assignGroups", "createSP"));
+                            Set(varResetChange, true);
+                            Notify("Copied from " & r.Title & ". Click Search to confirm you still own the app, review, then Submit.", NotificationType.Information);
+                            Navigate(scrAppChange, ScreenTransition.Fade)
+                        )
+                    )
+                  X: =240
+                  Y: =Parent.Height - 40
+                  Width: =200
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  FontWeight: =FontWeight.Semibold
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+                  Fill: =gTheme.Card
+                  Color: =gTheme.Primary
+                  HoverFill: =gTheme.PrimaryLight
+                  PressedFill: =gTheme.PrimaryLight
+                  BorderColor: =gTheme.Primary
+                  BorderThickness: =1
+                  HoverColor: =gTheme.PrimaryHover
+                  HoverBorderColor: =gTheme.PrimaryHover
+                  Visible: =galReq_My.Selected.RequestType.Value = "createAppRegistration" || galReq_My.Selected.RequestType.Value in ["exposeApi", "addAppRoles", "assignGroupsToAppRoles", "createServicePrincipal"]
+                  Tooltip: ="Open a new request with all the details of this one filled in"

@@ -50,11 +50,11 @@ def home() -> None:
         "galOps_Home", "gOperations", 16, 146, "Parent.Width - 16 - 400", "Parent.Height - 160", 160,
         wrap=3,
         on_select="""Switch(ThisItem.Key,
-    "newApp", Set(varResetNewApp, true); Navigate(scrNewApp, ScreenTransition.Fade),
+    "newApp", Set(varClone, Blank()); Set(varResetNewApp, true); Navigate(scrNewApp, ScreenTransition.Fade),
     "onboardGroup", Navigate(scrAddGroup, ScreenTransition.Fade),
     "tagOwnerGroup", Navigate(scrTagGroup, ScreenTransition.Fade),
     "myRequests", Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade),
-    Set(varOp, ThisItem.Key); Set(varResetChange, true); Navigate(scrAppChange, ScreenTransition.Fade)
+    Set(varCloneChange, Blank()); Set(varOp, ThisItem.Key); Set(varResetChange, true); Navigate(scrAppChange, ScreenTransition.Fade)
 )""",
         children=[
             rect("recCard_Home", 8, 8, "Parent.TemplateWidth - 16", "Parent.TemplateHeight - 16",
@@ -216,60 +216,60 @@ def new_app() -> None:
 
     step1 = step_container(s, 1, section_head(f"S1_{s}", "Basics", "The minimum needed to register the application. Everything after this step is optional.") + [
         field_label(f"lblAppCat_{s}", "App BoR ID (appCatID)", COL1_X, 64, COL_W, required=True),
-        text_input(f"txtAppCatId_{s}", 'Coalesce(First(Filter(gMyGroups, !IsBlank(AppCatId))).AppCatId, "")', q("APPCAT-001"), COL1_X, 86, COL_W),
+        text_input(f"txtAppCatId_{s}", 'If(!IsBlank(varClone), varClone.appCatId, Coalesce(First(Filter(gMyGroups, !IsBlank(AppCatId))).AppCatId, ""))', q("APPCAT-001"), COL1_X, 86, COL_W),
         hint(f"hntAppCat_{s}", q("Book of record id of the application. Stamped on every object this request creates."), COL1_X, 124, COL_W),
         field_label(f"lblEnv_{s}", "App environment", COL2_X, 64, COL_W, required=True),
-        dropdown(f"ddEnv_{s}", "gEnvironments", q("D – Development"), COL2_X, 86, COL_W),
+        dropdown(f"ddEnv_{s}", "gEnvironments", 'Coalesce(LookUp(gEnvironments, Left(Value, 1) = varClone.env).Value, "D – Development")', COL2_X, 86, COL_W),
         hint(f"hntEnv_{s}", q("P production · Q QA · D development · L lab · U UAT · F performance · T dev integration · S system integration"), COL2_X, 124, COL_W),
 
         field_label(f"lblBorShort_{s}", "App BoR short name", COL1_X, 154, COL_W, required=True),
-        text_input(f"txtBorShort_{s}", '""', q("ORDERS"), COL1_X, 176, COL_W),
+        text_input(f"txtBorShort_{s}", 'Coalesce(varClone.bor, "")', q("ORDERS"), COL1_X, 176, COL_W),
         hint(f"hntBorShort_{s}", q("Short name of the application in the book of record: 2–20 letters or digits."), COL1_X, 214, COL_W),
         field_label(f"lblTeam_{s}", "Owning group (optional)", COL2_X, 154, COL_W),
-        group_dropdown(f"cmbTeam_{s}", "gMyTeams", "Title", COL2_X, 176, COL_W,
+        group_dropdown(f"cmbTeam_{s}", "gMyTeams", "Title", COL2_X, 176, COL_W, default='Coalesce(LookUp(gMyTeams, GroupId = varClone.teamId).Title, "")',
                        hint="Optional. Tagged team:group\\<group id>. Leave empty and the app is tagged team:user\\<your id>; hand it to a group later with Owning group."),
         link(f"lnkAddExisting_{s}", q("Group not listed? Add an existing group"), ADD_EXISTING, COL2_X, 214, COL_W),
 
         field_label(f"lblName_{s}", "Display name", COL1_X, 248, "Parent.Width", required=True),
         label(f"lblNamePrefix_{s}", prefix, COL1_X, 270, 300, 36, size=11, bold=True, color="gTheme.Muted", Fill="gTheme.Bg",
               BorderColor="gTheme.Border", BorderThickness=1, PaddingLeft=10, Tooltip=q("Built from the fields above; it can't be edited here.")),
-        text_input(f"txtAppName_{s}", '""', q("free text, e.g. orders-api"), 308, 270, "Parent.Width - 308"),
+        text_input(f"txtAppName_{s}", 'Coalesce(varClone.name, "")', q("free text, e.g. orders-api"), 308, 270, "Parent.Width - 308"),
         hint(f"hntName_{s}", f'"Full name: " & {full} & "   ·   shown in the Entra admin center and on consent screens"', COL1_X, 308, "Parent.Width"),
 
         field_label(f"lblJust_{s}", "Business justification", COL1_X, 338, COL_W, required=True),
-        text_input(f"txtJustification_{s}", '""', q("Why is this needed, and for which service? Your manager and the Entra ID team read this."),
+        text_input(f"txtJustification_{s}", 'Coalesce(varClone.justification, "")', q("Why is this needed, and for which service? Your manager and the Entra ID team read this."),
                    COL1_X, 360, COL_W, 64, multiline=True),
         field_label(f"lblDesc_{s}", "Description", COL2_X, 338, COL_W),
-        text_input(f"txtDescription_{s}", '""', q("Optional"), COL2_X, 360, COL_W, 64, multiline=True),
+        text_input(f"txtDescription_{s}", 'Coalesce(varClone.description, "")', q("Optional"), COL2_X, 360, COL_W, 64, multiline=True),
 
         field_label(f"lblPlatform_{s}", "Redirect URI platform", COL1_X, 436, COL_W),
-        dropdown(f"ddPlatform_{s}", '["None", "Web", "Single-page app"]', q("None"), COL1_X, 458, COL_W),
+        dropdown(f"ddPlatform_{s}", '["None", "Web", "Single-page app"]', 'Coalesce(varClone.platform, "None")', COL1_X, 458, COL_W),
         field_label(f"lblRedirect_{s}", "Redirect URI(s)", COL2_X, 436, COL_W),
-        text_input(f"txtRedirect_{s}", '""', q("https://app.contoso.com/signin-oidc   (separate several with ;)"), COL2_X, 458, COL_W,
+        text_input(f"txtRedirect_{s}", 'Coalesce(varClone.redirect, "")', q("https://app.contoso.com/signin-oidc   (separate several with ;)"), COL2_X, 458, COL_W,
                    DisplayMode=f'If(ddPlatform_{s}.Selected.Value = "None", DisplayMode.Disabled, DisplayMode.Edit)'),
     ])
 
     step2 = step_container(s, 2, section_head(f"S2_{s}", "Expose an API & token claims",
                                               "Let other applications request tokens for this app, and choose extra claims in the tokens it receives.") + [
-        checkbox(f"chkExpose_{s}", q("Expose an API (set an Application ID URI so other apps can call this one)"), "false", 0, 60, "Parent.Width"),
+        checkbox(f"chkExpose_{s}", q("Expose an API (set an Application ID URI so other apps can call this one)"), "Coalesce(varClone.expose, false)", 0, 60, "Parent.Width"),
         field_label(f"lblUri_{s}", "Application ID URI", 0, 100, 300),
-        radio(f"radUri_{s}", '["api://{appId} (recommended)", "Custom"]', q("api://{appId} (recommended)"), 0, 122, 420, 36,
+        radio(f"radUri_{s}", '["api://{appId} (recommended)", "Custom"]', 'If(IsBlank(varClone.uriTemplate) || varClone.uriTemplate = "api://{appId}", "api://{appId} (recommended)", "Custom")', 0, 122, 420, 36,
               DisplayMode=f"If(chkExpose_{s}.Value, DisplayMode.Edit, DisplayMode.Disabled)"),
-        text_input(f"txtCustomUri_{s}", q("api://{appId}"), q("api://{tenantId}/orders  or  api://orders/{appId}"), 440, 122, 380,
+        text_input(f"txtCustomUri_{s}", 'If(IsBlank(varClone.uriTemplate), "api://{appId}", varClone.uriTemplate)', q("api://{tenantId}/orders  or  api://orders/{appId}"), 440, 122, 380,
                    Visible=f'chkExpose_{s}.Value && radUri_{s}.Selected.Value = "Custom"'),
         *scopes_editor(s, 176, f"chkExpose_{s}.Value"),
         label(f"lblClaims_{s}", q("Token claims"), 0, 362, 300, 24, size=11, bold=True),
         label(f"lblIdClaims_{s}", q("Optional claims in the ID token:"), 0, 392, 230, 30, size=10),
-        checkbox(f"chkIdEmail_{s}", q("email"), "false", 230, 390, 100),
-        checkbox(f"chkIdUpn_{s}", q("upn"), "false", 330, 390, 90),
-        checkbox(f"chkIdGiven_{s}", q("given_name"), "false", 420, 390, 130),
-        checkbox(f"chkIdFamily_{s}", q("family_name"), "false", 550, 390, 140),
+        checkbox(f"chkIdEmail_{s}", q("email"), '",email," in "," & Coalesce(varClone.idClaims, "") & ","', 230, 390, 100),
+        checkbox(f"chkIdUpn_{s}", q("upn"), '",upn," in "," & Coalesce(varClone.idClaims, "") & ","', 330, 390, 90),
+        checkbox(f"chkIdGiven_{s}", q("given_name"), '",given_name," in "," & Coalesce(varClone.idClaims, "") & ","', 420, 390, 130),
+        checkbox(f"chkIdFamily_{s}", q("family_name"), '",family_name," in "," & Coalesce(varClone.idClaims, "") & ","', 550, 390, 140),
         label(f"lblAtClaims_{s}", q("Optional claims in the access token:"), 0, 426, 230, 30, size=10),
-        checkbox(f"chkAtEmail_{s}", q("email"), "false", 230, 424, 100),
-        checkbox(f"chkAtUpn_{s}", q("upn"), "false", 330, 424, 90),
-        checkbox(f"chkAtIdtyp_{s}", q("idtyp (app or user token)"), "false", 420, 424, 240),
+        checkbox(f"chkAtEmail_{s}", q("email"), '",email," in "," & Coalesce(varClone.atClaims, "") & ","', 230, 424, 100),
+        checkbox(f"chkAtUpn_{s}", q("upn"), '",upn," in "," & Coalesce(varClone.atClaims, "") & ","', 330, 424, 90),
+        checkbox(f"chkAtIdtyp_{s}", q("idtyp (app or user token)"), '",idtyp," in "," & Coalesce(varClone.atClaims, "") & ","', 420, 424, 240),
         label(f"lblGroupsClaim_{s}", q("Groups claim:"), 0, 462, 230, 30, size=10),
-        dropdown(f"ddGroupsClaim_{s}", '["None", "SecurityGroup", "ApplicationGroup", "All"]', q("None"), 230, 458, 220, 34),
+        dropdown(f"ddGroupsClaim_{s}", '["None", "SecurityGroup", "ApplicationGroup", "All"]', 'Coalesce(varClone.groupsClaim, "None")', 230, 458, 220, 34),
         hint(f"hntGroupsClaim_{s}", q("ApplicationGroup = only groups assigned to this app. Prefer app roles over group claims."), 460, 464, "Parent.Width - 460"),
     ])
 
@@ -296,19 +296,19 @@ def new_app() -> None:
     step4 = step_container(s, 4, section_head(f"S4_{s}", "Enterprise application & sign-in",
                                               "The enterprise application (service principal) is what users sign in to and what holds role assignments.") + [
         field_label(f"lblCreateSp_{s}", "Create the enterprise application", 0, 64, 400),
-        toggle(f"tglCreateSp_{s}", "true", 0, 86, DisplayMode="If(CountRows(colRoleGroups) > 0, DisplayMode.Disabled, DisplayMode.Edit)"),
+        toggle(f"tglCreateSp_{s}", "Coalesce(varClone.createSp, true)", 0, 86, DisplayMode="If(CountRows(colRoleGroups) > 0, DisplayMode.Disabled, DisplayMode.Edit)"),
         hint(f"hntCreateSp_{s}", q("Created for this app registration (same appId). Required for role assignments — always created when any role has groups."), 0, 122, "Parent.Width"),
         field_label(f"lblAssign_{s}", "Assignment required (appRoleAssignmentRequired)", 0, 156, 500),
-        toggle(f"tglAssign_{s}", "true", 0, 178),
+        toggle(f"tglAssign_{s}", "Coalesce(varClone.assignReq, true)", 0, 178),
         hint(f"hntAssign_{s}", q("Yes: only users in an assigned group can sign in or get tokens (recommended). No: any user in the tenant can."), 0, 214, "Parent.Width"),
         field_label(f"lblAudience_{s}", "Supported account types", 0, 248, COL_W),
-        radio(f"radAudience_{s}", '["Single tenant", "Multitenant"]', q("Single tenant"), 0, 270, COL_W, 36),
+        radio(f"radAudience_{s}", '["Single tenant", "Multitenant"]', 'Coalesce(varClone.audience, "Single tenant")', 0, 270, COL_W, 36),
         hint(f"hntAudience_{s}", q("Single tenant: only accounts in this organization (recommended)."), 0, 306, COL_W),
         field_label(f"lblTags_{s}", "Optional tags", 0, 340, "Parent.Width"),
-        text_input(f"txtTags_{s}", '""', q("costCentre=CC-4410; project=atlas"), 0, 362, "Parent.Width"),
+        text_input(f"txtTags_{s}", 'Coalesce(varClone.tags, "")', q("costCentre=CC-4410; project=atlas"), 0, 362, "Parent.Width"),
         hint(f"hntTags_{s}", q("appCatID, team, appEnv, createdBy, requestId and the other platform tags are added automatically."), 0, 400, "Parent.Width"),
         field_label(f"lblTicket_{s}", "Change ticket", 0, 434, COL_W),
-        text_input(f"txtTicket_{s}", '""', q("Optional, e.g. CHG0012345"), 0, 456, COL_W),
+        text_input(f"txtTicket_{s}", 'Coalesce(varClone.ticket, "")', q("Optional, e.g. CHG0012345"), 0, 456, COL_W),
     ])
 
     review_html = f"""With({{team: {team}}},
@@ -592,8 +592,8 @@ def app_change() -> None:
     sections_h = "Parent.Height - 96 - 150"
     expose = container(f"cntExpose_{s}", 0, 96, "Parent.Width", sections_h, [
         field_label(f"lblUri_{s}", "Application ID URI (added; existing URIs are kept)", 0, 0, 420),
-        radio(f"radUri_{s}", '["api://{appId} (recommended)", "Custom"]', q("api://{appId} (recommended)"), 0, 22, 420, 36),
-        text_input(f"txtCustomUri_{s}", q("api://{appId}"), q("api://{tenantId}/orders"), 440, 22, 360, Visible=f'radUri_{s}.Selected.Value = "Custom"'),
+        radio(f"radUri_{s}", '["api://{appId} (recommended)", "Custom"]', 'If(IsBlank(varCloneChange.uriTemplate) || varCloneChange.uriTemplate = "api://{appId}", "api://{appId} (recommended)", "Custom")', 0, 22, 420, 36),
+        text_input(f"txtCustomUri_{s}", 'If(IsBlank(varCloneChange.uriTemplate), "api://{appId}", varCloneChange.uriTemplate)', q("api://{tenantId}/orders"), 440, 22, 360, Visible=f'radUri_{s}.Selected.Value = "Custom"'),
         hint(f"lblExistingScopes_{s}",
              '"Existing scopes: " & Coalesce(Concat(Table(ParseJSON(Coalesce(varApp.ScopesJson, "[]"))), Text(ThisRecord.Value.value), ", "), "none")',
              0, 66, "Parent.Width"),
@@ -630,7 +630,7 @@ def app_change() -> None:
         label(f"lblSpState_{s}", 'If(IsBlank(varApp.ServicePrincipalId), "This app has no enterprise application yet.", "This app already has an enterprise application.")',
               0, 0, "Parent.Width", 28, size=11, bold=True),
         field_label(f"lblSpAssign_{s}", "Assignment required", 0, 40, 300),
-        toggle(f"tglAssign_{s}", "true", 0, 62),
+        toggle(f"tglAssign_{s}", "Coalesce(varCloneChange.assignReq, true)", 0, 62),
         hint(f"hntSpAssign_{s}", q("Only users in an assigned group can sign in or get tokens. Recommended."), 0, 98, "Parent.Width"),
     ], Visible='varOp = "createSP"')
 
@@ -641,9 +641,9 @@ def app_change() -> None:
         rect(f"recDetailSep_{s}", 0, 84, "Parent.Width", 1, fill="gTheme.Border", thickness=0),
         expose, roles, assign, sp,
         field_label(f"lblJust_{s}", "Business justification", COL1_X, "Parent.Height - 140", COL_W, required=True),
-        text_input(f"txtJust_{s}", '""', q("Why is this change needed?"), COL1_X, "Parent.Height - 118", COL_W, 72, multiline=True),
+        text_input(f"txtJust_{s}", 'Coalesce(varCloneChange.justification, "")', q("Why is this change needed?"), COL1_X, "Parent.Height - 118", COL_W, 72, multiline=True),
         field_label(f"lblTicket_{s}", "Change ticket", COL2_X, "Parent.Height - 140", COL_W),
-        text_input(f"txtTicket_{s}", '""', q("Optional"), COL2_X, "Parent.Height - 118", COL_W),
+        text_input(f"txtTicket_{s}", 'Coalesce(varCloneChange.ticket, "")', q("Optional"), COL2_X, "Parent.Height - 118", COL_W),
         field_label(f"lblAppCat_{s}", "appCatID", COL2_X, "Parent.Height - 76", COL_W, required=True),
         text_input(f"txtAppCat_{s}", "varApp.AppCatId", q("APPCAT-001 (the app has none yet: it is added with this change)"), COL2_X, "Parent.Height - 54", COL_W,
                    DisplayMode="If(IsBlank(varApp.AppCatId), DisplayMode.Edit, DisplayMode.View)"),
@@ -658,7 +658,8 @@ def app_change() -> None:
     varLookupBusy,
         Notify("Still searching, one moment.", NotificationType.Information),
     {NEW_REQ_ID};
-    Set(varApp, Blank()); Set(varLookupMsg, ""); Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign);
+    Set(varApp, Blank()); Set(varLookupMsg, "");
+    If({a_in} <> Coalesce(varCloneChange.appId, ""), Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colAssign));
     IfError(
         Set(varLookupRec, Patch(EntraRequests, Defaults(EntraRequests), {{
             Title: varReqId,
@@ -698,7 +699,7 @@ With({{r: LookUp(EntraRequests, ID = varLookupRec.ID)}},
         rect(f"recApps_{s}", 24, 146, 320, "Parent.Height - 146 - 80"),
         label(f"lblAppsHead_{s}", q("Find the app registration"), 40, 156, 288, 26, size=12, bold=True),
         field_label(f"lblAppId_{s}", "Application (client) ID or Object ID", 40, 190, 288, required=True),
-        text_input(f"txtAppId_{s}", '""', q("00000000-0000-0000-0000-000000000000"), 40, 212, 288, 34,
+        text_input(f"txtAppId_{s}", 'Coalesce(varCloneChange.appId, "")', q("00000000-0000-0000-0000-000000000000"), 40, 212, 288, 34,
                    DisplayMode="If(varLookupBusy, DisplayMode.Disabled, DisplayMode.Edit)"),
         button(f"btnFind_{s}", q("Search"), find, 40, 256, 120, 34, DisplayMode="If(varLookupBusy, DisplayMode.Disabled, DisplayMode.Edit)"),
         label(f"lblLookupBusy_{s}", q("Searching Entra…"), 170, 256, 158, 34, size=10, bold=True, color="gTheme.Primary", Visible="varLookupBusy"),
@@ -858,6 +859,37 @@ If(!IsBlank({sel}.ErrorMessage), "<p style='margin-top:10px; padding:8px 12px; b
 If(!IsBlank({sel}.RequestSummary), "<p style='margin-top:10px; color:#605e5c'><b>Summary sent to approvers</b><br>" & Substitute({sel}.RequestSummary, Char(10), "<br>") & "</p>", "") &
 "</div>"
 )"""
+    # Clone: copies a request into the matching screen so it can be edited and submitted as a new request.
+    # New app requests fill the wizard (varClone); change requests fill the change screen (varCloneChange), where
+    # Search must be clicked again so ownership is checked now, not when the original was raised.
+    change_types = '["exposeApi", "addAppRoles", "assignGroupsToAppRoles", "createServicePrincipal"]'
+    clone = f"""With({{r: {sel}, j: ParseJSON(Coalesce({sel}.PayloadJson, "{{}}"))}},
+    If(r.RequestType.Value = "createAppRegistration",
+        Set(varClone, {{
+            source: r.Title, payload: r.PayloadJson, appCatId: r.AppCatId, justification: r.Justification, ticket: r.TicketReference,
+            env: Text(j.appEnv), bor: Text(j.borShortName), name: Text(j.nameText), description: Text(j.description),
+            teamId: Text(j.owningGroup.id),
+            platform: If(!IsBlank(Text(j.redirectUrisWeb)), "Web", !IsBlank(Text(j.redirectUrisSpa)), "Single-page app", "None"),
+            redirect: Coalesce(Text(j.redirectUrisWeb), Text(j.redirectUrisSpa)),
+            expose: Boolean(j.exposeApi.enabled), uriTemplate: Text(j.exposeApi.identifierUriTemplate),
+            idClaims: Text(j.optionalClaimsIdToken), atClaims: Text(j.optionalClaimsAccessToken), groupsClaim: Text(j.groupMembershipClaims),
+            createSp: Boolean(j.createServicePrincipal), assignReq: Boolean(j.appRoleAssignmentRequired),
+            audience: If(Text(j.signInAudience) = "AzureADMultipleOrgs", "Multitenant", "Single tenant"), tags: Text(j.tags)
+        }});
+        Set(varResetNewApp, true);
+        Notify("Copied from " & r.Title & ". Review every section, change the display name, then Submit.", NotificationType.Information);
+        Navigate(scrNewApp, ScreenTransition.Fade),
+        Set(varCloneChange, {{
+            source: r.Title, payload: r.PayloadJson, appId: Lower(Coalesce(Text(j.applicationObjectId), r.TargetObjectId)),
+            justification: r.Justification, ticket: r.TicketReference,
+            uriTemplate: Text(j.identifierUriTemplate), assignReq: Boolean(j.appRoleAssignmentRequired)
+        }});
+        Set(varOp, Switch(r.RequestType.Value, "exposeApi", "exposeApi", "addAppRoles", "addAppRoles", "assignGroupsToAppRoles", "assignGroups", "createSP"));
+        Set(varResetChange, true);
+        Notify("Copied from " & r.Title & ". Click Search to confirm you still own the app, review, then Submit.", NotificationType.Information);
+        Navigate(scrAppChange, ScreenTransition.Fade)
+    )
+)"""
     detail = container(f"cntDetail_{s}", 476, 202, "Parent.Width - 516", "Parent.Height - 226", [
         label(f"lblDName_{s}", f"{sel}.TargetDisplayName", 0, 0, "Parent.Width - 170", 30, size=15, bold=True),
         status_badge(f"lblDStatus_{s}", f"{sel}.Status.Value", "Parent.Width - 160", 4, 160, 26),
@@ -876,6 +908,9 @@ If(!IsBlank({sel}.RequestSummary), "<p style='margin-top:10px; color:#605e5c'><b
                f'Launch("https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/appId/" & Text(ParseJSON(Coalesce({sel}.ResultJson, "{{}}")).appId))',
                0, "Parent.Height - 40", 230, 36, kind="secondary",
                Visible=f'!IsBlank(Text(ParseJSON(Coalesce({sel}.ResultJson, "{{}}")).appId))'),
+        button(f"btnClone_{s}", q("Clone as new request"), clone, 240, "Parent.Height - 40", 200, 36, kind="secondary",
+               Visible=f'{sel}.RequestType.Value = "createAppRegistration" || {sel}.RequestType.Value in {change_types}',
+               Tooltip=q("Open a new request with all the details of this one filled in")),
     ], Visible=f"!IsBlank({sel}.ID)")
 
     children = frame(s, q("My requests"), q("Approvals happen in Outlook and Teams; this page shows where each request is and what was created."),

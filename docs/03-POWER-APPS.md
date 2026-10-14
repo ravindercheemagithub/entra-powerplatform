@@ -126,6 +126,10 @@ So a group that already exists in Entra appears only after it has been onboarded
 ### scrMyRequests
 - Filter (All / Open / Completed / Rejected-failed), Refresh, list.
 - Detail: status badge, 4 stage tiles (Submitted → Manager → Entra team → Applied), justification, comments, created IDs (from `ResultJson`), error, the summary sent to approvers, and **Open in Entra admin center**.
+- **Clone as new request** (app registration and change requests): copies the request into a new one, with everything filled in, to edit and submit. It needs no flow and no Premium licence: the app reads the request's `PayloadJson` from SharePoint and fills the screen.
+  - *App registration*: opens the wizard with every section filled in (fields, scopes, roles and their groups); all steps can be opened straight away. Change the free-text part of the display name before submitting.
+  - *Expose an API / App roles / Role assignments / Enterprise application*: opens the change screen with the app ID, scopes, roles or assignments, justification and ticket filled in. Click **Search** first: ownership is checked again, now, not when the original was raised.
+  - Starting a request from a Home card clears any copied values (`varClone`, `varCloneChange`).
 
 ## 3.5 Payloads the app writes (`PayloadJson`)
 
