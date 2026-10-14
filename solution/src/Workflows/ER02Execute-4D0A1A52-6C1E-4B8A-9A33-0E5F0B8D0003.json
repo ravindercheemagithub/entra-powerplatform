@@ -447,6 +447,23 @@
             ]
           }
         },
+        "Init_varDefaultOk": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varDefaultOk",
+                "type": "string",
+                "value": "no"
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varFailMessage": [
+              "Succeeded"
+            ]
+          }
+        },
         "Try": {
           "type": "Scope",
           "actions": {
@@ -2459,41 +2476,172 @@
                 "and": [
                   {
                     "equals": [
-                      "@and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId'))))",
+                      "@and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId'))), empty(coalesce(outputs('Payload')?['appRoles'], json('[]'))))",
                       true
                     ]
                   }
                 ]
               },
               "actions": {
-                "HTTP_Assign_default_access": {
-                  "type": "OpenApiConnection",
+                "Reset_varDefaultOk": {
+                  "type": "SetVariable",
                   "inputs": {
-                    "host": {
-                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                      "connectionName": "shared_webcontents",
-                      "operationId": "InvokeHttp"
-                    },
-                    "parameters": {
-                      "request/method": "POST",
-                      "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}/appRoleAssignedTo",
-                      "request/headers": {
-                        "Content-Type": "application/json"
-                      },
-                      "request/body": "{\n  \"principalId\": \"@{if(empty(variables('varTeamGroupId')), body('HTTP_Get_requester')?['id'], variables('varTeamGroupId'))}\",\n  \"resourceId\": \"@{variables('varSpId')}\",\n  \"appRoleId\": \"00000000-0000-0000-0000-000000000000\"\n}"
-                    },
-                    "authentication": "@parameters('$authentication')"
+                    "name": "varDefaultOk",
+                    "value": "no"
                   },
                   "runAfter": {}
                 },
-                "Log_default_access": {
-                  "type": "AppendToArrayVariable",
-                  "inputs": {
-                    "name": "varLog",
-                    "value": "@concat('Done: default access to the enterprise application for ', variables('varTeamGroupName'))"
+                "Until_HTTP_Assign_default_access": {
+                  "type": "Until",
+                  "expression": "@equals(variables('varDefaultOk'), 'yes')",
+                  "limit": {
+                    "count": 6,
+                    "timeout": "PT10M"
+                  },
+                  "actions": {
+                    "HTTP_Assign_default_access": {
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                          "connectionName": "shared_webcontents",
+                          "operationId": "InvokeHttp"
+                        },
+                        "parameters": {
+                          "request/method": "POST",
+                          "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}/appRoleAssignedTo",
+                          "request/headers": {
+                            "Content-Type": "application/json"
+                          },
+                          "request/body": "{\n  \"principalId\": \"@{if(empty(variables('varTeamGroupId')), body('HTTP_Get_requester')?['id'], variables('varTeamGroupId'))}\",\n  \"resourceId\": \"@{variables('varSpId')}\",\n  \"appRoleId\": \"00000000-0000-0000-0000-000000000000\"\n}"
+                        },
+                        "authentication": "@parameters('$authentication')",
+                        "retryPolicy": {
+                          "type": "none"
+                        }
+                      },
+                      "runAfter": {}
+                    },
+                    "HTTP_Assign_default_access_ok": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@or(equals(outputs('HTTP_Assign_default_access')?['statusCode'], 201), contains(string(outputs('HTTP_Assign_default_access')?['body']), 'already exist'))",
+                              true
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "Set_varDefaultOk": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "varDefaultOk",
+                            "value": "yes"
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "else": {
+                        "actions": {
+                          "HTTP_Assign_default_access_retry_delay": {
+                            "type": "Wait",
+                            "inputs": {
+                              "interval": {
+                                "count": 10,
+                                "unit": "Second"
+                              }
+                            },
+                            "runAfter": {}
+                          }
+                        }
+                      },
+                      "runAfter": {
+                        "HTTP_Assign_default_access": [
+                          "Succeeded",
+                          "Failed"
+                        ]
+                      }
+                    }
                   },
                   "runAfter": {
-                    "HTTP_Assign_default_access": [
+                    "Reset_varDefaultOk": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "HTTP_Assign_default_access_gave_up": {
+                  "type": "If",
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@variables('varDefaultOk')",
+                          "no"
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Log_default_access_failed": {
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varLog",
+                        "value": "@concat('Failed: default access for ', variables('varTeamGroupName'), ' (', coalesce(body('HTTP_Assign_default_access')?['error']?['message'], 'no answer after 6 attempts'), '). Use Role assignments, or assign it in Entra (Enterprise applications > the app > Users and groups).')"
+                      },
+                      "runAfter": {}
+                    },
+                    "Log_default_access_failed_flag": {
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "varHadErrors",
+                        "value": "yes"
+                      },
+                      "runAfter": {
+                        "Log_default_access_failed": [
+                          "Succeeded"
+                        ]
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {}
+                  },
+                  "runAfter": {
+                    "Until_HTTP_Assign_default_access": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Default_access_done": {
+                  "type": "If",
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@variables('varDefaultOk')",
+                          "yes"
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Log_default_access": {
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varLog",
+                        "value": "@concat('Done: default access to the enterprise application for ', variables('varTeamGroupName'))"
+                      },
+                      "runAfter": {}
+                    }
+                  },
+                  "else": {
+                    "actions": {}
+                  },
+                  "runAfter": {
+                    "HTTP_Assign_default_access_gave_up": [
                       "Succeeded"
                     ]
                   }
@@ -2508,11 +2656,42 @@
                 ]
               }
             },
+            "Roles_without_holders": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId'))), not(empty(coalesce(outputs('Payload')?['appRoles'], json('[]')))))",
+                      true
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "Log_nobody_can_sign_in": {
+                  "type": "AppendToArrayVariable",
+                  "inputs": {
+                    "name": "varLog",
+                    "value": "@'Note: assignment is required and no group holds any of the app roles yet, so nobody can sign in. Give a group a role with Role assignments.'"
+                  },
+                  "runAfter": {}
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "runAfter": {
+                "Default_access": [
+                  "Succeeded"
+                ]
+              }
+            },
             "Completion_notes": {
               "type": "Compose",
               "inputs": "@join(variables('varLog'), decodeUriComponent('%0A'))",
               "runAfter": {
-                "Default_access": [
+                "Roles_without_holders": [
                   "Succeeded"
                 ]
               }
@@ -2641,7 +2820,7 @@
             }
           },
           "runAfter": {
-            "Init_varFailMessage": [
+            "Init_varDefaultOk": [
               "Succeeded"
             ]
           }

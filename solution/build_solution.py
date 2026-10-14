@@ -34,7 +34,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.4.0.0"
+VERSION = "1.4.1.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -528,7 +528,8 @@ def er02() -> dict:
                           ("varAssignments", "array", []), ("varResult", "object", {}),
                           ("varExposeOk", "string", "no"), ("varAssignOk", "string", "no"),
                           ("varTeamTag", "string", ""), ("varGroupOwner", "string", "no"),
-                          ("varLog", "array", []), ("varHadErrors", "string", "no"), ("varFailMessage", "string", "")]:
+                          ("varLog", "array", []), ("varHadErrors", "string", "no"), ("varFailMessage", "string", ""),
+                          ("varDefaultOk", "string", "no")]:
         s.init_var(f"Init {var}", var, typ, val)
 
     t = Seq()  # Try
@@ -701,9 +702,22 @@ def er02() -> dict:
     t.cond("Assignments skipped", is_true("@and(greater(length(variables('varAssignTodo')), 0), empty(variables('varSpId')))"),
            yes=log_failed(Seq(), "Log assignments skipped", "concat('Skipped: ', string(length(variables('varAssignTodo'))), ' role assignment(s), because there is no enterprise application to assign them on')"),
            no=loop)
-    default = Seq().graph("HTTP Assign default access", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo", body_file("HTTP_Assign_default_access"))
-    log(default, "Log default access", "concat('Done: default access to the enterprise application for ', variables('varTeamGroupName'))")
-    t.cond("Default access", is_true("@and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId'))))"), yes=default)
+    # Default access (appRoleId 0000…) lets the owner sign in when assignment is required and nobody holds a role.
+    # Graph accepts it only for an app WITHOUT app roles, and the new enterprise app may not have replicated yet
+    # (404 Request_ResourceNotFound), so it uses the retry pattern and a failure is logged, not fatal.
+    default = Seq()
+    graph_until_ok(default, "HTTP Assign default access", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo",
+                   body_file("HTTP_Assign_default_access"), 201, "varDefaultOk", "", "", "",
+                   on_give_up=log_failed(Seq(), "Log default access failed",
+                                         "concat('Failed: default access for ', variables('varTeamGroupName'), ' (', coalesce(body('HTTP_Assign_default_access')?['error']?['message'], 'no answer after 6 attempts'), '). Use Role assignments, or assign it in Entra (Enterprise applications > the app > Users and groups).')"))
+    default.cond("Default access done", eq("@variables('varDefaultOk')", "yes"),
+                 yes=log(Seq(), "Log default access", "concat('Done: default access to the enterprise application for ', variables('varTeamGroupName'))"))
+    needs_access = ("equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), "
+                    "not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId')))")
+    t.cond("Default access", is_true(f"@and({needs_access}, empty(coalesce(outputs('Payload')?['appRoles'], json('[]'))))"), yes=default)
+    t.cond("Roles without holders", is_true(f"@and({needs_access}, not(empty(coalesce(outputs('Payload')?['appRoles'], json('[]')))))"),
+           yes=log(Seq(), "Log nobody can sign in",
+                   "'Note: assignment is required and no group holds any of the app roles yet, so nobody can sign in. Give a group a role with Role assignments.'"))
 
     t.compose("Completion notes", f"@join(variables('varLog'), {NL})")
     t.compose("Result json", "@string(setProperty(variables('varResult'), 'assignmentsText', join(variables('varAssignments'), '; ')))")

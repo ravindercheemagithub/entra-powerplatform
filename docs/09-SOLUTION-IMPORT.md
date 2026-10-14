@@ -1,6 +1,6 @@
 # 9. Import the flows as a solution
 
-Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_4_0_0.zip`](../solution/dist/EntraSelfService_1_4_0_0.zip) (version 1.4) is an **unmanaged** solution containing:
+Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_4_1_0.zip`](../solution/dist/EntraSelfService_1_4_1_0.zip) (version 1.4.1) is an **unmanaged** solution containing:
 
 | Component | What it is |
 |---|---|
@@ -38,7 +38,7 @@ Import **as the account that should own the flows** (your account while testing,
 
 ## 9.2 Download the zip
 
-On GitHub open [`solution/dist/EntraSelfService_1_4_0_0.zip`](../solution/dist/EntraSelfService_1_4_0_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
+On GitHub open [`solution/dist/EntraSelfService_1_4_1_0.zip`](../solution/dist/EntraSelfService_1_4_1_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
 
 ## 9.3 Import
 
@@ -90,6 +90,8 @@ Open each flow once in the designer and check it has no errors before turning it
 | SharePoint actions fail with *List not found* | The site URL variable is wrong, or SP-00 hasn't created the lists yet |
 
 ## 9.6 Updating
+
+**1.4.1:** fixes *HTTP Assign default access 404 Request_ResourceNotFound*. The new enterprise app hadn't replicated yet and this step had no retry. It now retries like the role assignments, a failure is logged in the completion notes instead of failing the request, and default access is only attempted for apps **without** app roles (Graph rejects it otherwise; such apps get a note to assign a group to a role). Import over 1.4.
 
 **1.4:** new instant flow **ER-07 Requeue approved**. Use it when requests sit on *Approved* without ER-02 running them (for example ER-02 was off when they were approved, or it was re-imported). See [9.7](#97-requeue-approved-requests-er-07). Import over 1.3.3; no SharePoint or app change.
 
