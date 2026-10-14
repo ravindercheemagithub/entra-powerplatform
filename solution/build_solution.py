@@ -9,6 +9,7 @@ Builds an importable, UNMANAGED Power Platform solution with these cloud flows:
     ER-04 Onboard group    (automated) adds an existing group to the catalog for its members/owners
     ER-05 Find app         (automated) Search on the change screen: returns an app only to its authorized owner
     ER-06 Tag owning group (automated) replaces an app's team:user\\<id> tag with team:group\\<id>
+    ER-07 Requeue approved (instant)   Entra ID team only: re-saves Approved requests so ER-02 runs them
 
 plus five connection references and one environment variable (the SharePoint site URL).
 
@@ -33,7 +34,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.3.3.0"
+VERSION = "1.4.0.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -58,6 +59,7 @@ FLOW_IDS = {
     "ER-04 Onboard group": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0005",
     "ER-05 Find app": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0006",
     "ER-06 Tag owning group": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0007",
+    "ER-07 Requeue approved": "4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0008",
 }
 
 ID = "@int(triggerOutputs()?['body/ID'])"
@@ -1036,6 +1038,53 @@ def er06() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# ER-07 Requeue approved: re-saves Approved requests as the flow account so ER-02 picks them up
+# (e.g. requests approved while ER-02 was off). Only members of EntraApproverEmails may run it.
+# ---------------------------------------------------------------------------
+def er07() -> dict:
+    s = Seq()
+    s.sp_get_item("Get settings", "EntraSettings", 1)
+    # Set by Power Automate for the signed-in user who pressed Run; not something the user can type.
+    s.compose("Runner", "@toLower(trim(coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], '')))")
+    s.compose("Entra team", f"@concat(';', toLower(replace(replace({APPROVER_LIST}, ',', ';'), ' ', '')), ';')")
+    s.cond("Runner is in the Entra ID team", is_true("@and(not(empty(outputs('Runner'))), contains(outputs('Entra_team'), concat(';', outputs('Runner'), ';')))"),
+           no=Seq().terminate("Stop not authorized", "Failed", "NotAuthorized",
+                              "Not authorized: only the people listed in EntraSettings.EntraApproverEmails can requeue requests."))
+    s.compose("Request id", "@trim(coalesce(triggerBody()?['text'], ''))")
+    one_q, two_q = "'" * 4, "'" * 6          # expression literals for ' and ''
+    s.compose("Filter query",
+              "@concat('Status eq ''Approved'' and ManagerDecision eq ''Approved'' and EntraDecision eq ''Approved''', "
+              "if(empty(outputs('Request_id')), '', concat(' and Title eq ''', replace(outputs('Request_id'), "
+              + one_q + ", " + two_q + "), " + one_q + ")))")
+    s.sp_get_items("Get approved requests", "EntraRequests", "@outputs('Filter_query')", 500)
+    s.init_var("Init varRequeued", "varRequeued", "array", [])
+    s.init_var("Init varWrongEditor", "varWrongEditor", "string", "")
+    R = "items('Requeue_each_request')"
+    each = Seq()
+    # Status stays Approved. CompletionNotes changes so SharePoint records an edit by the flow account, which is
+    # exactly what ER-02's trigger and guard look for; ER-02 overwrites the notes when it finishes.
+    each.sp_patch("Requeue item", "EntraRequests", f"@{R}?['ID']", {
+        "Title": f"@{R}?['Title']", "Status/Value": "Approved",
+        "CompletionNotes": "@concat('Requeued by ', outputs('Runner'), ' at ', utcNow(), ' (ER-07). Waiting for ER-02.')"})
+    each.append_var("Record requeued", "varRequeued", f"@{R}?['Title']")
+    each.cond("Edited as the flow account",
+              is_true("@equals(toLower(last(split(coalesce(body('Requeue_item')?['Editor']?['Claims'], ''), '|'))), toLower(body('Get_settings')?['ServiceAccountUpn']))"),
+              no=Seq().set_var("Set wrong editor", "varWrongEditor", "@last(split(coalesce(body('Requeue_item')?['Editor']?['Claims'], ''), '|'))"))
+    s.foreach("Requeue each request", "@body('Get_approved_requests')?['value']", each)
+    s.mail("Mail summary", "@outputs('Runner')",
+           "@concat('Entra Self-Service: ', string(length(variables('varRequeued'))), ' request(s) requeued')",
+           "@concat(if(empty(variables('varRequeued')), 'No approved requests were waiting', concat(string(length(variables('varRequeued'))), ' request(s) requeued for ER-02: ', join(variables('varRequeued'), ', '))), "
+           "if(empty(outputs('Request_id')), '', concat(' (filter: ', outputs('Request_id'), ')')), '.<br><br>', "
+           "if(empty(variables('varWrongEditor')), 'ER-02 processes them one at a time; watch Status change to InProgress, then Completed or Failed, in My requests.', "
+           "concat('<b>Warning:</b> the items were saved as ', variables('varWrongEditor'), ', not as the flow account (', body('Get_settings')?['ServiceAccountUpn'], '), so ER-02 will ignore them. In ER-07 > Run only users, set the SharePoint connection to the flow account''s connection (not Provided by run-only user), then run ER-07 again.')))")
+    trig = {"manual": {"type": "Request", "kind": "Button",
+                       "inputs": {"schema": {"type": "object", "properties": {
+                           "text": {"title": "Request ID (optional)", "type": "string", "x-ms-dynamically-added": True,
+                                    "description": "e.g. REQ-2610-AB12CD. Leave empty to requeue every approved request that is waiting.",
+                                    "x-ms-content-hint": "TEXT"}}, "required": []}}}}
+    return flow(trig, s, ["shared_sharepointonline", "shared_office365"])
+
+# ---------------------------------------------------------------------------
 # Solution files
 # ---------------------------------------------------------------------------
 def xml_escape(s: str) -> str:
@@ -1049,6 +1098,7 @@ DESCRIPTIONS = {
     "ER-03 Catalog sync": "Hourly: refreshes EntraCatalogApps and EntraCatalogGroups from Entra ID. Read-only in Entra.",
     "ER-04 Onboard group": "Finds an existing group by name or Object ID and adds it to EntraCatalogGroups when the requester is a member or owner. Read-only in Entra; no approval.",
     "ER-05 Find app": "Search on the change screen: finds an app registration by Application (client) ID or Object ID and returns it only to an authorized owner (team:user\\<id> or team:group\\<id> tag). Read-only in Entra; no approval.",
+    "ER-07 Requeue approved": "Instant, Entra ID team only (EntraApproverEmails): re-saves Approved requests as the flow account so ER-02 runs them, e.g. after ER-02 was turned off.",
     "ER-06 Tag owning group": "Replaces an app registration's team tag with team:group\\<id> when the requester is its authorized owner and a member of that group. No approval.",
 }
 
@@ -1180,7 +1230,8 @@ def build():
     env_dir.mkdir(parents=True)
 
     flows = {"SP-00 Create lists": sp00(), "ER-01 Approvals": er01(), "ER-02 Execute": er02(), "ER-03 Catalog sync": er03(),
-             "ER-04 Onboard group": er04(), "ER-05 Find app": er05(), "ER-06 Tag owning group": er06()}
+             "ER-04 Onboard group": er04(), "ER-05 Find app": er05(), "ER-06 Tag owning group": er06(),
+             "ER-07 Requeue approved": er07()}
     for name, definition in flows.items():
         wid = FLOW_IDS[name]
         file = f"{name.replace(' ', '').replace('-', '')}-{wid.upper()}.json"

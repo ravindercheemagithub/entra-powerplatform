@@ -1,0 +1,315 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "esp_sharedsharepointonline_entra"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      },
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "esp_sharedoffice365_entra"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "SharePoint site URL (esp_SiteUrl)": {
+          "defaultValue": "",
+          "type": "String",
+          "metadata": {
+            "schemaName": "esp_SiteUrl",
+            "description": "SharePoint site that holds the Entra self-service lists"
+          }
+        }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "title": "Request ID (optional)",
+                  "type": "string",
+                  "x-ms-dynamically-added": true,
+                  "description": "e.g. REQ-2610-AB12CD. Leave empty to requeue every approved request that is waiting.",
+                  "x-ms-content-hint": "TEXT"
+                }
+              },
+              "required": []
+            }
+          }
+        }
+      },
+      "actions": {
+        "Get_settings": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItem"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "table": "EntraSettings",
+              "id": 1
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {}
+        },
+        "Runner": {
+          "type": "Compose",
+          "inputs": "@toLower(trim(coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], '')))",
+          "runAfter": {
+            "Get_settings": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Entra_team": {
+          "type": "Compose",
+          "inputs": "@concat(';', toLower(replace(replace(replace(replace(body('Get_settings')?['EntraApproverEmails'], decodeUriComponent('%0D'), ''), decodeUriComponent('%0A'), ';'), ',', ';'), ' ', '')), ';')",
+          "runAfter": {
+            "Runner": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Runner_is_in_the_Entra_ID_team": {
+          "type": "If",
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@and(not(empty(outputs('Runner'))), contains(outputs('Entra_team'), concat(';', outputs('Runner'), ';')))",
+                  true
+                ]
+              }
+            ]
+          },
+          "actions": {},
+          "else": {
+            "actions": {
+              "Stop_not_authorized": {
+                "type": "Terminate",
+                "inputs": {
+                  "runStatus": "Failed",
+                  "runError": {
+                    "code": "NotAuthorized",
+                    "message": "Not authorized: only the people listed in EntraSettings.EntraApproverEmails can requeue requests."
+                  }
+                },
+                "runAfter": {}
+              }
+            }
+          },
+          "runAfter": {
+            "Entra_team": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Request_id": {
+          "type": "Compose",
+          "inputs": "@trim(coalesce(triggerBody()?['text'], ''))",
+          "runAfter": {
+            "Runner_is_in_the_Entra_ID_team": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Filter_query": {
+          "type": "Compose",
+          "inputs": "@concat('Status eq ''Approved'' and ManagerDecision eq ''Approved'' and EntraDecision eq ''Approved''', if(empty(outputs('Request_id')), '', concat(' and Title eq ''', replace(outputs('Request_id'), '''', ''''''), '''')))",
+          "runAfter": {
+            "Request_id": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Get_approved_requests": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItems"
+            },
+            "parameters": {
+              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+              "table": "EntraRequests",
+              "$filter": "@outputs('Filter_query')",
+              "$top": 500
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Filter_query": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Init_varRequeued": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varRequeued",
+                "type": "array",
+                "value": []
+              }
+            ]
+          },
+          "runAfter": {
+            "Get_approved_requests": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Init_varWrongEditor": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varWrongEditor",
+                "type": "string",
+                "value": ""
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varRequeued": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Requeue_each_request": {
+          "type": "Foreach",
+          "foreach": "@body('Get_approved_requests')?['value']",
+          "actions": {
+            "Requeue_item": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                  "connectionName": "shared_sharepointonline",
+                  "operationId": "PatchItem"
+                },
+                "parameters": {
+                  "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                  "table": "EntraRequests",
+                  "id": "@items('Requeue_each_request')?['ID']",
+                  "item/Title": "@items('Requeue_each_request')?['Title']",
+                  "item/Status/Value": "Approved",
+                  "item/CompletionNotes": "@concat('Requeued by ', outputs('Runner'), ' at ', utcNow(), ' (ER-07). Waiting for ER-02.')"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {}
+            },
+            "Record_requeued": {
+              "type": "AppendToArrayVariable",
+              "inputs": {
+                "name": "varRequeued",
+                "value": "@items('Requeue_each_request')?['Title']"
+              },
+              "runAfter": {
+                "Requeue_item": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Edited_as_the_flow_account": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@equals(toLower(last(split(coalesce(body('Requeue_item')?['Editor']?['Claims'], ''), '|'))), toLower(body('Get_settings')?['ServiceAccountUpn']))",
+                      true
+                    ]
+                  }
+                ]
+              },
+              "actions": {},
+              "else": {
+                "actions": {
+                  "Set_wrong_editor": {
+                    "type": "SetVariable",
+                    "inputs": {
+                      "name": "varWrongEditor",
+                      "value": "@last(split(coalesce(body('Requeue_item')?['Editor']?['Claims'], ''), '|'))"
+                    },
+                    "runAfter": {}
+                  }
+                }
+              },
+              "runAfter": {
+                "Record_requeued": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "runtimeConfiguration": {
+            "concurrency": {
+              "repetitions": 1
+            }
+          },
+          "runAfter": {
+            "Init_varWrongEditor": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Mail_summary": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "SendEmailV2"
+            },
+            "parameters": {
+              "emailMessage/To": "@outputs('Runner')",
+              "emailMessage/Subject": "@concat('Entra Self-Service: ', string(length(variables('varRequeued'))), ' request(s) requeued')",
+              "emailMessage/Body": "@concat(if(empty(variables('varRequeued')), 'No approved requests were waiting', concat(string(length(variables('varRequeued'))), ' request(s) requeued for ER-02: ', join(variables('varRequeued'), ', '))), if(empty(outputs('Request_id')), '', concat(' (filter: ', outputs('Request_id'), ')')), '.<br><br>', if(empty(variables('varWrongEditor')), 'ER-02 processes them one at a time; watch Status change to InProgress, then Completed or Failed, in My requests.', concat('<b>Warning:</b> the items were saved as ', variables('varWrongEditor'), ', not as the flow account (', body('Get_settings')?['ServiceAccountUpn'], '), so ER-02 will ignore them. In ER-07 > Run only users, set the SharePoint connection to the flow account''s connection (not Provided by run-only user), then run ER-07 again.')))",
+              "emailMessage/Importance": "Normal"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Requeue_each_request": [
+              "Succeeded"
+            ]
+          }
+        }
+      }
+    },
+    "templateName": ""
+  },
+  "schemaVersion": "1.0.0.0"
+}

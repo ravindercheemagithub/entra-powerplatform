@@ -8,6 +8,7 @@
 | **ER-04 Onboard group** | SharePoint: item created, `RequestType = onboardGroup` (group looked up by name or Object ID) | SharePoint, plus the same Graph connection | Premium (owner's licence) |
 | **ER-05 Find app** | SharePoint: item created, `RequestType = lookupApp` (the **Search** button on the change screen) | SharePoint, plus the same Graph connection | Premium (owner's licence) |
 | **ER-06 Tag owning group** | SharePoint: item created, `RequestType = tagOwnerGroup` | SharePoint, plus the same Graph connection | Premium (owner's licence) |
+| **ER-07 Requeue approved** | Manual (instant), Entra ID team only | SharePoint, Office 365 Outlook | Standard |
 
 **Shortcut:** instead of building the flows by hand, import them as a solution: [doc 09](09-SOLUTION-IMPORT.md). This page remains the reference for what each action does.
 
@@ -360,6 +361,8 @@ Right after an app, enterprise app or group is created, Graph can answer **404**
 | `Mark failed` | SharePoint – Update item | List `EntraRequests`; Id `int(triggerOutputs()?['body/ID'])`; Title `triggerOutputs()?['body/Title']`; **Status Value**: pick `Failed`; ErrorMessage `outputs('Error_text')`; **CompletionNotes** `outputs('Failure_notes')`; ResultJson `string(variables('varResult'))` (what was created before the failure, for a manual fix) |
 | `Mail failed` | Send an email (V2) | To `concat(triggerOutputs()?['body/Author/Email'], ';', replace(replace(body('Get_settings')?['EntraApproverEmails'], decodeUriComponent('%0D'), ''), decodeUriComponent('%0A'), ';'))`; Subject `concat('Entra request ', triggerOutputs()?['body/Title'], ' failed')`; Body: [failed email body](#er-02-failed-email-body) |
 
+**Requests that never ran** (Approved while ER-02 was off): run **ER-07 Requeue approved** (below).
+
 **Retry a failed request:** fix the cause. Then either re-run ER-02 from its run history with **Resubmit**, or, as the flow account, set Status = `Approved` on the item (ManagerDecision and EntraDecision must still be `Approved`). createAppRegistration is not idempotent: a retry creates a second app unless you delete the first. ResultJson lists what the failed run created.
 
 ### ER-02 completed email body
@@ -581,6 +584,29 @@ The app writes `PayloadJson` = `{"app": "<app id>", "group": "<group object id>"
 | 4.12 | `HTTP Find SP`, `Has SP` | Graph, Condition | `GET …/servicePrincipals?$filter=appId eq '…'&$select=id,tags`; if one exists: `Kept SP tags` (its tags not starting with `team:` / `teamName:`) → `HTTP Patch SP tags` (`PATCH …/servicePrincipals/{id}`, Body `{"tags": @{union(body('Kept_SP_tags'), outputs('Team_tags'))}}`) |
 | 4.13 | `Mark completed` | Update item | Status `Completed`; TargetDisplayName / TargetObjectId = the app; ResultJson with `applicationObjectId`, `appId`, `previousTeam`, `groupId`, `groupDisplayName` |
 | 5 | `Catch` | Scope | As in ER-04 |
+
+---
+
+## ER-07 Requeue approved (Standard)
+
+Re-saves requests that are **Approved** but were never executed, as the flow account, so ER-02 picks them up. Only people listed in `EntraApproverEmails` may run it. Setup and use: [doc 09 §9.7](09-SOLUTION-IMPORT.md#97-requeue-approved-requests-er-07).
+
+**+ Create → Instant cloud flow** → `ER-07 Requeue approved` → **Manually trigger a flow** → **+ Add an input → Text**: *Request ID (optional)*.
+
+| # | Action (name) | Type | Configuration |
+|---|---|---|---|
+| 1 | `Get settings` | SharePoint – Get item | List `EntraSettings`; Id `1` |
+| 2 | `Runner` | Compose | `toLower(trim(coalesce(triggerOutputs()?['headers']?['x-ms-user-email'], '')))` (the signed-in user who pressed Run) |
+| 3 | `Entra team` | Compose | `concat(';', toLower(replace(replace(replace(replace(body('Get_settings')?['EntraApproverEmails'], decodeUriComponent('%0D'), ''), decodeUriComponent('%0A'), ';'), ',', ';'), ' ', '')), ';')` |
+| 4 | `Runner is in the Entra ID team` | Condition | `and(not(empty(outputs('Runner'))), contains(outputs('Entra_team'), concat(';', outputs('Runner'), ';')))` is equal to `true`. **If no:** `Stop not authorized` (Terminate: **Failed**, Code `NotAuthorized`, Message `Not authorized: only the people listed in EntraSettings.EntraApproverEmails can requeue requests.`) |
+| 5 | `Request id` | Compose | `trim(coalesce(triggerBody()?['text'], ''))` |
+| 6 | `Filter query` | Compose | `concat('Status eq ''Approved'' and ManagerDecision eq ''Approved'' and EntraDecision eq ''Approved''', if(empty(outputs('Request_id')), '', concat(' and Title eq ''', replace(outputs('Request_id'), '''', ''''''), '''')))` |
+| 7 | `Get approved requests` | SharePoint – Get items | List `EntraRequests`; Filter Query `outputs('Filter_query')`; Top Count `500` |
+| 8 | `Init varRequeued` / `Init varWrongEditor` | Initialize variable ×2 | Array `[]`; String empty |
+| 9 | `Requeue each request` | Apply to each (concurrency 1) | From `body('Get_approved_requests')?['value']`: `Requeue item` (Update item: Id `items('Requeue_each_request')?['ID']`; Title `items('Requeue_each_request')?['Title']`; **Status Value** `Approved`; CompletionNotes `concat('Requeued by ', outputs('Runner'), ' at ', utcNow(), ' (ER-07). Waiting for ER-02.')`) → `Record requeued` (append the Title to `varRequeued`) → `Edited as the flow account` (Condition: `toLower(last(split(coalesce(body('Requeue_item')?['Editor']?['Claims'], ''), '\|')))` is equal to `toLower(body('Get_settings')?['ServiceAccountUpn'])`; **If no:** `Set wrong editor`) |
+| 10 | `Mail summary` | Send an email (V2) | To `outputs('Runner')`: the requeued Request IDs, or a warning when the items were saved by someone other than the flow account (run-only connection set to *Provided by run-only user*) |
+
+The re-save is what ER-02 needs: its trigger sees a modified item with Status = Approved, and its guard sees the flow account as the last editor.
 
 ---
 

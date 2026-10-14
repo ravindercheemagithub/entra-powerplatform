@@ -1,6 +1,6 @@
 # 9. Import the flows as a solution
 
-Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_3_3_0.zip`](../solution/dist/EntraSelfService_1_3_3_0.zip) (version 1.3.3) is an **unmanaged** solution containing:
+Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_4_0_0.zip`](../solution/dist/EntraSelfService_1_4_0_0.zip) (version 1.4) is an **unmanaged** solution containing:
 
 | Component | What it is |
 |---|---|
@@ -10,6 +10,7 @@ Instead of building the flows by hand from doc 04, import them. [`solution/dist/
 | **ER-03 Catalog sync** | hourly refresh of the catalog lists |
 | **ER-04 Onboard group** | finds an existing group by name or Object ID and adds it to the catalog when the requester is a member or owner (no approval) |
 | **ER-05 Find app** | the change screen's **Search**: finds an app registration by Application (client) ID or Object ID and returns it only to its authorized owner (no approval, read-only) |
+| **ER-07 Requeue approved** | instant, **Entra ID team only**: re-saves requests that are Approved but were never executed (e.g. approved while ER-02 was off), so ER-02 runs them |
 | **ER-06 Tag owning group** | hands an app registration to a group: replaces its team tag with `team:group\<id>` (no approval) |
 | 5 connection references | SharePoint, Office 365 Users, Approvals, Office 365 Outlook, HTTP with Microsoft Entra ID |
 | Environment variable **SharePoint site URL** (`esp_SiteUrl`) | the site that holds the lists |
@@ -37,7 +38,7 @@ Import **as the account that should own the flows** (your account while testing,
 
 ## 9.2 Download the zip
 
-On GitHub open [`solution/dist/EntraSelfService_1_3_3_0.zip`](../solution/dist/EntraSelfService_1_3_3_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
+On GitHub open [`solution/dist/EntraSelfService_1_4_0_0.zip`](../solution/dist/EntraSelfService_1_4_0_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
 
 ## 9.3 Import
 
@@ -90,6 +91,8 @@ Open each flow once in the designer and check it has no errors before turning it
 
 ## 9.6 Updating
 
+**1.4:** new instant flow **ER-07 Requeue approved**. Use it when requests sit on *Approved* without ER-02 running them (for example ER-02 was off when they were approved, or it was re-imported). See [9.7](#97-requeue-approved-requests-er-07). Import over 1.3.3; no SharePoint or app change.
+
 **1.3.3:** ER-02 reports what it did. Every step is written to a new **CompletionNotes** column as `Done: …`, `Failed: …` or `Skipped: …`, shown under *My requests* and in the emails. A failed step no longer stops the steps that don't depend on it, so the request ends **Completed**, or **Failed** with notes when some steps failed (the email names the card to use for the rest). Stops that must end the request (not the owner, not in the owning group) now let **Catch** run, so the requester always gets the error email; before, Catch was skipped.
 
 To upgrade:
@@ -140,3 +143,21 @@ cd solution
 python3 build_solution.py   # needs the Power Platform CLI: set PAC=/path/to/pac
 python3 validate.py         # static checks: action references, variables, loops, brackets
 ```
+
+## 9.7 Requeue approved requests (ER-07)
+
+ER-02 starts when an EntraRequests item is **Approved and last edited by the flow account**. If ER-02 was off when ER-01 approved a request, it usually catches up when turned back on, but not always (for example after a re-import, which resets its trigger). Those requests stay on **Status = Approved**: filter EntraRequests on that to find them.
+
+**ER-07 Requeue approved** re-saves them as the flow account, so ER-02 runs them one at a time:
+- **Who can run it:** only people whose sign-in email is in `EntraSettings.EntraApproverEmails`. Anyone else's run stops with *Not authorized*. The email comes from Power Automate (the signed-in user), not from anything the user types.
+- **What it does:** finds every item with Status, ManagerDecision and EntraDecision all *Approved* (or only the one whose **Request ID** you enter), re-saves it with Status still *Approved* and a note in CompletionNotes (*Requeued by … Waiting for ER-02*), then mails you the list.
+- **Nothing else changes:** it never sets a request to Approved that wasn't, and ER-02 still checks both decisions.
+
+### Set it up once
+1. **Solutions → Entra Self-Service → Cloud flows → ER-07 Requeue approved → Turn on.**
+2. Give the Entra ID team access as **run-only users**: open the flow → **Run only users → Edit** → add the people (or a group) from EntraApproverEmails.
+3. In the same panel, under **Connections used**, set **SharePoint** and **Office 365 Outlook** to **the flow account's connection** (*Use this connection*), **not** *Provided by run-only user*. The re-save must be made by the flow account; otherwise ER-02 ignores it. ER-07 checks this and its summary email warns if the save was made by someone else.
+
+### Run it
+**My flows → Shared with me** (or the flow's page) → **ER-07 Requeue approved → Run** → optionally type a Request ID (e.g. `REQ-2610-AB12CD`) → **Run flow**. Leave it empty to requeue every waiting request. Then watch the requests go *InProgress* → *Completed* / *Failed* in *My requests*.
+

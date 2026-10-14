@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Workflow WorkflowId="{4d0a1a52-6c1e-4b8a-9a33-0e5f0b8d0008}" Name="ER-07 Requeue approved" Description="Instant, Entra ID team only (EntraApproverEmails): re-saves Approved requests as the flow account so ER-02 runs them, e.g. after ER-02 was turned off." xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <JsonFileName>/Workflows/ER07Requeueapproved-4D0A1A52-6C1E-4B8A-9A33-0E5F0B8D0008.json</JsonFileName>
+  <Type>1</Type>
+  <Subprocess>0</Subprocess>
+  <Category>5</Category>
+  <Mode>0</Mode>
+  <Scope>4</Scope>
+  <OnDemand>0</OnDemand>
+  <TriggerOnCreate>0</TriggerOnCreate>
+  <TriggerOnDelete>0</TriggerOnDelete>
+  <AsyncAutodelete>0</AsyncAutodelete>
+  <SyncWorkflowLogOnFailure>0</SyncWorkflowLogOnFailure>
+  <StateCode>0</StateCode>
+  <StatusCode>1</StatusCode>
+  <RunAs>1</RunAs>
+  <IsTransacted>1</IsTransacted>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <BusinessProcessType>0</BusinessProcessType>
+  <IsCustomProcessingStepAllowedForOtherPublishers>1</IsCustomProcessingStepAllowedForOtherPublishers>
+  <ModernFlowType>0</ModernFlowType>
+  <PrimaryEntity>none</PrimaryEntity>
+  <LocalizedNames>
+    <LocalizedName languagecode="1033" description="ER-07 Requeue approved" />
+  </LocalizedNames>
+  <Descriptions>
+    <Description languagecode="1033" description="Instant, Entra ID team only (EntraApproverEmails): re-saves Approved requests as the flow account so ER-02 runs them, e.g. after ER-02 was turned off." />
+  </Descriptions>
+</Workflow>

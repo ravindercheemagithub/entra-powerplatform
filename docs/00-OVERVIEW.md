@@ -92,6 +92,7 @@ Only the flow account moves a request past *Submitted*. ER-02 runs only when the
 | **ER-03 Catalog sync** | Every hour | Reads managed apps and onboarded groups from Entra, and refreshes their members and owners in the catalog lists the app uses. Read-only in Entra. | SharePoint, HTTP with Entra ID | Premium |
 | **ER-04 Onboard group** | A request item of type *onboardGroup* is created | Finds the group by name or Object ID and checks the requester is a member or owner and that it is a security group. Then adds it to the catalog. No approval; read-only in Entra. | SharePoint, HTTP with Entra ID | Premium |
 | **ER-05 Find app** | The **Search** button on the change screen (a *lookupApp* item) | Finds the app registration by Application (client) ID or Object ID and returns its details only if its team tag names the requester or a group they're in; otherwise *Not authorized owner*. No approval; read-only. | SharePoint, HTTP with Entra ID | Premium |
+| **ER-07 Requeue approved** | Run manually, **Entra ID team only** (sign-in email in EntraApproverEmails) | Re-saves requests that are Approved but were never executed (e.g. approved while ER-02 was off) as the flow account, so ER-02 runs them. | SharePoint, Outlook | Standard |
 | **ER-06 Tag owning group** | The **Owning group** card (a *tagOwnerGroup* item) | Lets the app's owner hand it to a security group they belong to: replaces the team tag with `team:group\<id>` on the app and its enterprise app. No approval. | SharePoint, HTTP with Entra ID | Premium |
 
 ### 4.1 Submit and approve (ER-01)

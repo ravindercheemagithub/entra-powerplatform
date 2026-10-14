@@ -22,6 +22,7 @@ Sibling of `../entra-portal-next` (Next.js) and `../entra-portal-lite` (Function
  ER-03 Catalog sync (hourly) ─ HTTP (premium) ─▶ EntraCatalogApps / EntraCatalogGroups ┘
  ER-05 Find app ─ the change screen's Search: returns an app only to its owner (team tag)
  ER-06 Tag owning group ─ team:user\<id> → team:group\<id> (owner only, no approval)
+ ER-07 Requeue approved ─ Entra ID team only: re-runs Approved requests ER-02 missed (e.g. it was off)
    (what each user's groups own → the app's pickers, without premium in the app)
 ```
 
