@@ -95,6 +95,8 @@ for f in sorted(glob.glob('src/Workflows/*.json')):
     for k, (a, parents) in list(all_actions.items()) + [(t, (defn['triggers'][t], [])) for t in triggers]:
         own = {x: y for x, y in a.items() if x not in ('actions', 'else', 'cases', 'default')} if isinstance(a, dict) else a
         for e in expressions(own):
+            if re.search(r"^if\(.*,\s*(true|false)\s*,\s*(true|false)\s*\)$", e) and isinstance(own, dict) and 'request/body' in str(own):
+                errors.append(f"{flow}: {k}: '@{{{e[:60]}...}}' inserts a boolean into text: it renders as True/False, which is not JSON; use 'true' / 'false' strings")
             if re.search(r"createArray\(\s*\)", e):
                 errors.append(f"{flow}: {k}: createArray() needs at least one argument; use json('[]') for an empty array")
             b = balance(e)

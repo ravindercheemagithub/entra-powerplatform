@@ -1286,7 +1286,7 @@
                                       "request/headers": {
                                         "Content-Type": "application/json"
                                       },
-                                      "request/body": "{\n  \"accountEnabled\": true,\n  \"appId\": \"@{body('HTTP_Create_application')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},\n  \"notes\": \"@{concat('appCatID=', triggerOutputs()?['body/AppCatId'], '; requestId=', triggerOutputs()?['body/Title'], '; createdBy=', outputs('Requester'), '; managedBy=', body('Get_settings')?['ManagedByTag'])}\",\n  \"tags\": @{union(outputs('App_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
+                                      "request/body": "{\n  \"accountEnabled\": true,\n  \"appId\": \"@{body('HTTP_Create_application')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), 'false', 'true')},\n  \"notes\": \"@{concat('appCatID=', triggerOutputs()?['body/AppCatId'], '; requestId=', triggerOutputs()?['body/Title'], '; createdBy=', outputs('Requester'), '; managedBy=', body('Get_settings')?['ManagedByTag'])}\",\n  \"tags\": @{union(outputs('App_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
                                     },
                                     "authentication": "@parameters('$authentication')",
                                     "retryPolicy": {
@@ -1663,7 +1663,7 @@
                                   "request/headers": {
                                     "Content-Type": "application/json"
                                   },
-                                  "request/body": "{\n  \"accountEnabled\": true,\n  \"appId\": \"@{body('HTTP_Get_target_app')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},\n  \"tags\": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
+                                  "request/body": "{\n  \"accountEnabled\": true,\n  \"appId\": \"@{body('HTTP_Get_target_app')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), 'false', 'true')},\n  \"tags\": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
                                 },
                                 "authentication": "@parameters('$authentication')"
                               },
@@ -1773,7 +1773,7 @@
                                   "request/headers": {
                                     "Content-Type": "application/json"
                                   },
-                                  "request/body": "{\n  \"accountEnabled\": true,\n  \"appId\": \"@{body('HTTP_Get_target_app')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},\n  \"tags\": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
+                                  "request/body": "{\n  \"accountEnabled\": true,\n  \"appId\": \"@{body('HTTP_Get_target_app')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), 'false', 'true')},\n  \"tags\": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
                                 },
                                 "authentication": "@parameters('$authentication')"
                               },
@@ -1919,7 +1919,7 @@
                               "request/headers": {
                                 "Content-Type": "application/json"
                               },
-                              "request/body": "{\n  \"accountEnabled\": true,\n  \"appId\": \"@{body('HTTP_Get_target_app')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), false, true)},\n  \"tags\": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
+                              "request/body": "{\n  \"accountEnabled\": true,\n  \"appId\": \"@{body('HTTP_Get_target_app')?['appId']}\",\n  \"appRoleAssignmentRequired\": @{if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), 'false', 'true')},\n  \"tags\": @{union(outputs('Updated_tags'), createArray('WindowsAzureActiveDirectoryIntegratedApp'))}\n}"
                             },
                             "authentication": "@parameters('$authentication')"
                           },

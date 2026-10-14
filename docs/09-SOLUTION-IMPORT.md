@@ -1,6 +1,6 @@
 # 9. Import the flows as a solution
 
-Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_3_1_0.zip`](../solution/dist/EntraSelfService_1_3_1_0.zip) (version 1.3.1) is an **unmanaged** solution containing:
+Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_3_2_0.zip`](../solution/dist/EntraSelfService_1_3_2_0.zip) (version 1.3.2) is an **unmanaged** solution containing:
 
 | Component | What it is |
 |---|---|
@@ -37,7 +37,7 @@ Import **as the account that should own the flows** (your account while testing,
 
 ## 9.2 Download the zip
 
-On GitHub open [`solution/dist/EntraSelfService_1_3_1_0.zip`](../solution/dist/EntraSelfService_1_3_1_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
+On GitHub open [`solution/dist/EntraSelfService_1_3_2_0.zip`](../solution/dist/EntraSelfService_1_3_2_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
 
 ## 9.3 Import
 
@@ -89,6 +89,8 @@ Open each flow once in the designer and check it has no errors before turning it
 | SharePoint actions fail with *List not found* | The site URL variable is wrong, or SP-00 hasn't created the lists yet |
 
 ## 9.6 Updating
+
+**1.3.2:** fixes *HTTP Create SP 400: Unable to read JSON request payload*. The enterprise-app body inserted `appRoleAssignmentRequired` as a boolean, which Power Automate writes as `True` / `False` (not valid JSON); it is now written as `true` / `false`. Same fix for the enterprise app created for existing apps. Import over 1.3.1. If a request failed this way, its app registration was created without an enterprise app: delete that app registration (its ID is in the request's ResultJson / the failure email) before retrying, or use *Enterprise application* on it.
 
 **1.3.1:** fixes *HTTP Create application 400: The description should be between 1 and 1024 characters* when the wizard's Description is left empty. An empty description is now left out (Entra stores none), and a long one is cut to 1024 characters; the wizard also refuses more than 1024. Import over 1.3; re-import the app for the wizard check.
 
