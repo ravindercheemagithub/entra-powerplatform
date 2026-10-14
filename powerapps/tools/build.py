@@ -857,7 +857,11 @@ If(!IsBlank(Text(r.assignmentsText)), "<tr><td style='color:#605e5c; padding:3px
 "</table>" &
 If(!IsBlank({sel}.ErrorMessage), "<p style='margin-top:10px; padding:8px 12px; background:#fde7e9; border-left:3px solid #d13438'><b>Error</b><br>" & {sel}.ErrorMessage & "</p>", "") &
 If(!IsBlank({sel}.CompletionNotes), "<p style='margin-top:10px; padding:8px 12px; background:#f3f2f1; border-left:3px solid #605e5c'><b>What was done</b><br>" &
-    Substitute(Substitute(Substitute({sel}.CompletionNotes, Char(10), "<br>"), "Done:", "<span style='color:#107c10'><b>Done:</b></span>"), "Failed:", "<span style='color:#a4262c'><b>Failed:</b></span>") & "</p>", "") &
+    Concat(ForAll(Split({sel}.CompletionNotes, Char(10)) As ln, {{h:
+        If(StartsWith(ln.Value, "Done:"), "<span style='color:#107c10'>" & ln.Value & "</span>",
+           StartsWith(ln.Value, "Failed:") || StartsWith(ln.Value, "Not run:") || StartsWith(ln.Value, "Skipped:"), "<span style='color:#a4262c'>" & ln.Value & "</span>",
+           StartsWith(ln.Value, "Note:"), "<span style='color:#605e5c'>" & ln.Value & "</span>",
+           "<b>" & ln.Value & "</b>")}}), h, "<br>") & "</p>", "") &
 If(!IsBlank({sel}.RequestSummary), "<p style='margin-top:10px; color:#605e5c'><b>Summary sent to approvers</b><br>" & Substitute({sel}.RequestSummary, Char(10), "<br>") & "</p>", "") &
 "</div>"
 )"""

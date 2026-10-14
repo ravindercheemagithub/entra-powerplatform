@@ -464,9 +464,322 @@
             ]
           }
         },
+        "Init_varPlan": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varPlan",
+                "type": "array",
+                "value": []
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varDefaultOk": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Init_varDone": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varDone",
+                "type": "array",
+                "value": []
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varPlan": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Init_varFailed": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varFailed",
+                "type": "array",
+                "value": []
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varDone": [
+              "Succeeded"
+            ]
+          }
+        },
         "Try": {
           "type": "Scope",
           "actions": {
+            "Plan_by_request_type": {
+              "type": "Switch",
+              "expression": "@triggerOutputs()?['body/RequestType/Value']",
+              "cases": {
+                "Case_createAppRegistration": {
+                  "case": "createAppRegistration",
+                  "actions": {
+                    "Plan_app": {
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varPlan",
+                        "value": {
+                          "key": "app",
+                          "label": "Create the app registration @{outputs('Payload')?['displayName']}"
+                        }
+                      },
+                      "runAfter": {}
+                    },
+                    "Plan_expose_wanted": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@equals(outputs('Payload')?['exposeApi']?['enabled'], true)",
+                              true
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "Plan_expose": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varPlan",
+                            "value": {
+                              "key": "expose",
+                              "label": "Set the Application ID URI and @{length(coalesce(outputs('Payload')?['exposeApi']?['scopes'], json('[]')))} scope(s)"
+                            }
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "else": {
+                        "actions": {}
+                      },
+                      "runAfter": {
+                        "Plan_app": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "Plan_SP_wanted": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@equals(outputs('Payload')?['createServicePrincipal'], true)",
+                              true
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "Plan_SP": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varPlan",
+                            "value": {
+                              "key": "sp",
+                              "label": "Create the enterprise application"
+                            }
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "else": {
+                        "actions": {}
+                      },
+                      "runAfter": {
+                        "Plan_expose_wanted": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "Plan_default_access_wanted": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@and(equals(outputs('Payload')?['createServicePrincipal'], true), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), empty(coalesce(outputs('Payload')?['appRoles'], json('[]'))))",
+                              true
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "Plan_default_access": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varPlan",
+                            "value": {
+                              "key": "default",
+                              "label": "Give the owner default access to the enterprise application"
+                            }
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "else": {
+                        "actions": {}
+                      },
+                      "runAfter": {
+                        "Plan_SP_wanted": [
+                          "Succeeded"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "Case_exposeApi": {
+                  "case": "exposeApi",
+                  "actions": {
+                    "Plan_expose_add": {
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varPlan",
+                        "value": {
+                          "key": "expose",
+                          "label": "Add the Application ID URI and @{length(coalesce(outputs('Payload')?['scopes'], json('[]')))} scope(s)"
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  }
+                },
+                "Case_addAppRoles": {
+                  "case": "addAppRoles",
+                  "actions": {
+                    "Plan_roles": {
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varPlan",
+                        "value": {
+                          "key": "roles",
+                          "label": "Add @{length(coalesce(outputs('Payload')?['appRoles'], json('[]')))} app role(s)"
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  }
+                },
+                "Case_assignGroupsToAppRoles": {
+                  "case": "assignGroupsToAppRoles",
+                  "actions": {
+                    "Plan_each_assignment": {
+                      "type": "Foreach",
+                      "foreach": "@coalesce(outputs('Payload')?['assignments'], json('[]'))",
+                      "actions": {
+                        "Plan_assignment": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varPlan",
+                            "value": {
+                              "key": "assign|@{items('Plan_each_assignment')?['id']}|@{items('Plan_each_assignment')?['appRoleValue']}",
+                              "label": "Assign @{items('Plan_each_assignment')?['displayName']} to role @{items('Plan_each_assignment')?['appRoleValue']}"
+                            }
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "runtimeConfiguration": {
+                        "concurrency": {
+                          "repetitions": 1
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  }
+                },
+                "Case_createServicePrincipal": {
+                  "case": "createServicePrincipal",
+                  "actions": {
+                    "Plan_SP_only": {
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varPlan",
+                        "value": {
+                          "key": "sp",
+                          "label": "Create the enterprise application"
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  }
+                }
+              },
+              "default": {
+                "actions": {}
+              },
+              "runAfter": {}
+            },
+            "Plan_role_groups_wanted": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@or(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), equals(triggerOutputs()?['body/RequestType/Value'], 'addAppRoles'))",
+                      true
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "Plan_each_role": {
+                  "type": "Foreach",
+                  "foreach": "@coalesce(outputs('Payload')?['appRoles'], json('[]'))",
+                  "actions": {
+                    "Plan_each_role_group": {
+                      "type": "Foreach",
+                      "foreach": "@coalesce(items('Plan_each_role')?['assignGroups'], json('[]'))",
+                      "actions": {
+                        "Plan_role_group": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varPlan",
+                            "value": {
+                              "key": "assign|@{items('Plan_each_role_group')?['id']}|@{items('Plan_each_role')?['value']}",
+                              "label": "Assign @{items('Plan_each_role_group')?['displayName']} to role @{items('Plan_each_role')?['value']}"
+                            }
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "runtimeConfiguration": {
+                        "concurrency": {
+                          "repetitions": 1
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  },
+                  "runtimeConfiguration": {
+                    "concurrency": {
+                      "repetitions": 1
+                    }
+                  },
+                  "runAfter": {}
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "runAfter": {
+                "Plan_by_request_type": [
+                  "Succeeded"
+                ]
+              }
+            },
             "HTTP_Get_requester": {
               "type": "OpenApiConnection",
               "inputs": {
@@ -481,7 +794,11 @@
                 },
                 "authentication": "@parameters('$authentication')"
               },
-              "runAfter": {}
+              "runAfter": {
+                "Plan_role_groups_wanted": [
+                  "Succeeded"
+                ]
+              }
             },
             "Base_tags": {
               "type": "Compose",
@@ -1127,6 +1444,18 @@
                             ]
                           }
                         },
+                        "Log_app_created_done": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varDone",
+                            "value": "app"
+                          },
+                          "runAfter": {
+                            "Log_app_created": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
                         "Wait_for_app_replication": {
                           "type": "Wait",
                           "inputs": {
@@ -1136,7 +1465,7 @@
                             }
                           },
                           "runAfter": {
-                            "Log_app_created": [
+                            "Log_app_created_done": [
                               "Succeeded"
                             ]
                           }
@@ -1264,6 +1593,18 @@
                                   },
                                   "runAfter": {}
                                 },
+                                "Log_expose_failed_failed": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varFailed",
+                                    "value": "expose"
+                                  },
+                                  "runAfter": {
+                                    "Log_expose_failed": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                },
                                 "Log_expose_failed_flag": {
                                   "type": "SetVariable",
                                   "inputs": {
@@ -1271,7 +1612,7 @@
                                     "value": "yes"
                                   },
                                   "runAfter": {
-                                    "Log_expose_failed": [
+                                    "Log_expose_failed_failed": [
                                       "Succeeded"
                                     ]
                                   }
@@ -1306,6 +1647,18 @@
                                     "value": "@concat('Done: Application ID URI ', replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId']), ' and ', string(length(body('Select_scopes'))), ' scope(s) set')"
                                   },
                                   "runAfter": {}
+                                },
+                                "Log_expose_done_done": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varDone",
+                                    "value": "expose"
+                                  },
+                                  "runAfter": {
+                                    "Log_expose_done": [
+                                      "Succeeded"
+                                    ]
+                                  }
                                 }
                               },
                               "else": {
@@ -1451,6 +1804,18 @@
                                     "value": "@concat('Done: enterprise application created (object ID ', variables('varSpId'), '), assignment required: ', if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), 'no', 'yes'))"
                                   },
                                   "runAfter": {}
+                                },
+                                "Log_SP_done_done": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varDone",
+                                    "value": "sp"
+                                  },
+                                  "runAfter": {
+                                    "Log_SP_done": [
+                                      "Succeeded"
+                                    ]
+                                  }
                                 }
                               },
                               "else": {
@@ -1463,6 +1828,18 @@
                                     },
                                     "runAfter": {}
                                   },
+                                  "Log_SP_failed_failed": {
+                                    "type": "AppendToArrayVariable",
+                                    "inputs": {
+                                      "name": "varFailed",
+                                      "value": "sp"
+                                    },
+                                    "runAfter": {
+                                      "Log_SP_failed": [
+                                        "Succeeded"
+                                      ]
+                                    }
+                                  },
                                   "Log_SP_failed_flag": {
                                     "type": "SetVariable",
                                     "inputs": {
@@ -1470,7 +1847,7 @@
                                       "value": "yes"
                                     },
                                     "runAfter": {
-                                      "Log_SP_failed": [
+                                      "Log_SP_failed_failed": [
                                         "Succeeded"
                                       ]
                                     }
@@ -1679,6 +2056,18 @@
                               "Succeeded"
                             ]
                           }
+                        },
+                        "Log_expose_added_done": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varDone",
+                            "value": "expose"
+                          },
+                          "runAfter": {
+                            "Log_expose_added": [
+                              "Succeeded"
+                            ]
+                          }
                         }
                       },
                       "runAfter": {}
@@ -1742,6 +2131,18 @@
                             ]
                           }
                         },
+                        "Log_roles_added_done": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varDone",
+                            "value": "roles"
+                          },
+                          "runAfter": {
+                            "Log_roles_added": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
                         "For_each_added_role": {
                           "type": "Foreach",
                           "foreach": "@coalesce(outputs('Payload')?['appRoles'], json('[]'))",
@@ -1793,7 +2194,7 @@
                             }
                           },
                           "runAfter": {
-                            "Log_roles_added": [
+                            "Log_roles_added_done": [
                               "Succeeded"
                             ]
                           }
@@ -2133,6 +2534,18 @@
                             ]
                           }
                         },
+                        "Log_SP_created_done": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varDone",
+                            "value": "sp"
+                          },
+                          "runAfter": {
+                            "Log_SP_created": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
                         "HTTP_Patch_tags_sp": {
                           "type": "OpenApiConnection",
                           "inputs": {
@@ -2152,7 +2565,7 @@
                             "authentication": "@parameters('$authentication')"
                           },
                           "runAfter": {
-                            "Log_SP_created": [
+                            "Log_SP_created_done": [
                               "Succeeded"
                             ]
                           }
@@ -2248,6 +2661,18 @@
                             },
                             "runAfter": {}
                           },
+                          "Log_no_group_id_failed": {
+                            "type": "AppendToArrayVariable",
+                            "inputs": {
+                              "name": "varFailed",
+                              "value": "@concat('assign|', items('Apply_to_each_assignment')?['id'], '|', items('Apply_to_each_assignment')?['roleValue'])"
+                            },
+                            "runAfter": {
+                              "Log_no_group_id": [
+                                "Succeeded"
+                              ]
+                            }
+                          },
                           "Log_no_group_id_flag": {
                             "type": "SetVariable",
                             "inputs": {
@@ -2255,7 +2680,7 @@
                               "value": "yes"
                             },
                             "runAfter": {
-                              "Log_no_group_id": [
+                              "Log_no_group_id_failed": [
                                 "Succeeded"
                               ]
                             }
@@ -2385,6 +2810,18 @@
                                   },
                                   "runAfter": {}
                                 },
+                                "Log_assign_failed_failed": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varFailed",
+                                    "value": "@concat('assign|', items('Apply_to_each_assignment')?['id'], '|', items('Apply_to_each_assignment')?['roleValue'])"
+                                  },
+                                  "runAfter": {
+                                    "Log_assign_failed": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                },
                                 "Log_assign_failed_flag": {
                                   "type": "SetVariable",
                                   "inputs": {
@@ -2392,7 +2829,7 @@
                                     "value": "yes"
                                   },
                                   "runAfter": {
-                                    "Log_assign_failed": [
+                                    "Log_assign_failed_failed": [
                                       "Succeeded"
                                     ]
                                   }
@@ -2436,6 +2873,18 @@
                                   },
                                   "runAfter": {
                                     "Record_assignment": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                },
+                                "Log_assign_done_done": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varDone",
+                                    "value": "@concat('assign|', items('Apply_to_each_assignment')?['id'], '|', items('Apply_to_each_assignment')?['roleValue'])"
+                                  },
+                                  "runAfter": {
+                                    "Log_assign_done": [
                                       "Succeeded"
                                     ]
                                   }
@@ -2593,6 +3042,18 @@
                       },
                       "runAfter": {}
                     },
+                    "Log_default_access_failed_failed": {
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varFailed",
+                        "value": "default"
+                      },
+                      "runAfter": {
+                        "Log_default_access_failed": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
                     "Log_default_access_failed_flag": {
                       "type": "SetVariable",
                       "inputs": {
@@ -2600,7 +3061,7 @@
                         "value": "yes"
                       },
                       "runAfter": {
-                        "Log_default_access_failed": [
+                        "Log_default_access_failed_failed": [
                           "Succeeded"
                         ]
                       }
@@ -2635,6 +3096,18 @@
                         "value": "@concat('Done: default access to the enterprise application for ', variables('varTeamGroupName'))"
                       },
                       "runAfter": {}
+                    },
+                    "Log_default_access_done": {
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varDone",
+                        "value": "default"
+                      },
+                      "runAfter": {
+                        "Log_default_access": [
+                          "Succeeded"
+                        ]
+                      }
                     }
                   },
                   "else": {
@@ -2687,11 +3160,68 @@
                 ]
               }
             },
-            "Completion_notes": {
-              "type": "Compose",
-              "inputs": "@join(variables('varLog'), decodeUriComponent('%0A'))",
+            "Try_not_run": {
+              "type": "Query",
+              "inputs": {
+                "from": "@variables('varPlan')",
+                "where": "@and(not(contains(variables('varDone'), item()?['key'])), not(contains(variables('varFailed'), item()?['key'])))"
+              },
               "runAfter": {
                 "Roles_without_holders": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Try_planned_done": {
+              "type": "Query",
+              "inputs": {
+                "from": "@variables('varPlan')",
+                "where": "@contains(variables('varDone'), item()?['key'])"
+              },
+              "runAfter": {
+                "Try_not_run": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Try_not_run_lines": {
+              "type": "Select",
+              "inputs": {
+                "from": "@body('Try_not_run')",
+                "select": "@concat('Not run: ', item()?['label'])"
+              },
+              "runAfter": {
+                "Try_planned_done": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Try_lines": {
+              "type": "Compose",
+              "inputs": "@union(createArray(concat(string(length(body('Try_planned_done'))), ' of ', string(length(variables('varPlan'))), ' requested steps done')), variables('varLog'), body('Try_not_run_lines'))",
+              "runAfter": {
+                "Try_not_run_lines": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Try_notes": {
+              "type": "Compose",
+              "inputs": "@join(outputs('Try_lines'), decodeUriComponent('%0A'))",
+              "runAfter": {
+                "Try_lines": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Try_html": {
+              "type": "Select",
+              "inputs": {
+                "from": "@outputs('Try_lines')",
+                "select": "@if(startsWith(item(), 'Done:'), concat('<span style=\"color:#107c10\">', item(), '</span>'), if(startsWith(item(), 'Note:'), concat('<span style=\"color:#605e5c\">', item(), '</span>'), if(or(startsWith(item(), 'Failed:'), startsWith(item(), 'Not run:'), startsWith(item(), 'Skipped:')), concat('<span style=\"color:#a4262c\">', item(), '</span>'), concat('<b>', item(), '</b>'))))"
+              },
+              "runAfter": {
+                "Try_notes": [
                   "Succeeded"
                 ]
               }
@@ -2700,7 +3230,7 @@
               "type": "Compose",
               "inputs": "@string(setProperty(variables('varResult'), 'assignmentsText', join(variables('varAssignments'), '; ')))",
               "runAfter": {
-                "Completion_notes": [
+                "Try_html": [
                   "Succeeded"
                 ]
               }
@@ -2711,8 +3241,8 @@
                 "and": [
                   {
                     "equals": [
-                      "@variables('varHadErrors')",
-                      "yes"
+                      "@or(equals(variables('varHadErrors'), 'yes'), greater(length(body('Try_not_run')), 0))",
+                      true
                     ]
                   }
                 ]
@@ -2733,8 +3263,8 @@
                       "item/Title": "@triggerOutputs()?['body/Title']",
                       "item/Status/Value": "Failed",
                       "item/CompletedAt": "@utcNow()",
-                      "item/ErrorMessage": "Some steps failed. The steps marked Done are in place; see the completion notes for what still needs doing.",
-                      "item/CompletionNotes": "@outputs('Completion_notes')",
+                      "item/ErrorMessage": "Some requested steps failed or did not run. The steps marked Done are in place; see the completion notes for the rest.",
+                      "item/CompletionNotes": "@outputs('Try_notes')",
                       "item/ResultJson": "@outputs('Result_json')"
                     },
                     "authentication": "@parameters('$authentication')"
@@ -2752,7 +3282,7 @@
                     "parameters": {
                       "emailMessage/To": "@concat(triggerOutputs()?['body/Author/Email'], ';', replace(replace(body('Get_settings')?['EntraApproverEmails'], decodeUriComponent('%0D'), ''), decodeUriComponent('%0A'), ';'))",
                       "emailMessage/Subject": "@concat('Entra request ', triggerOutputs()?['body/Title'], ' partly failed')",
-                      "emailMessage/Body": "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') was only partly applied.<br><br><b>Steps</b><br>', join(variables('varLog'), '<br>'), '<br><br>The steps marked Done are in place. Do not resubmit the whole request: use the matching card (Expose an API, Enterprise application, Role assignments) for the failed steps.', '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')",
+                      "emailMessage/Body": "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') was only partly applied.<br><br>', join(body('Try_html'), '<br>'), '<br><br>The steps marked Done are in place. Do not resubmit the whole request: use the matching card (Expose an API, Enterprise application, Role assignments) for the rest.', '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')",
                       "emailMessage/Importance": "Normal"
                     },
                     "authentication": "@parameters('$authentication')"
@@ -2781,7 +3311,7 @@
                         "item/Title": "@triggerOutputs()?['body/Title']",
                         "item/Status/Value": "Completed",
                         "item/CompletedAt": "@utcNow()",
-                        "item/CompletionNotes": "@outputs('Completion_notes')",
+                        "item/CompletionNotes": "@outputs('Try_notes')",
                         "item/ResultJson": "@outputs('Result_json')"
                       },
                       "authentication": "@parameters('$authentication')"
@@ -2799,7 +3329,7 @@
                       "parameters": {
                         "emailMessage/To": "@triggerOutputs()?['body/Author/Email']",
                         "emailMessage/Subject": "@concat('Your Entra request ', triggerOutputs()?['body/Title'], ' is complete')",
-                        "emailMessage/Body": "@concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') is complete.<br><br><b>What was done</b><br>', join(variables('varLog'), '<br>'), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')",
+                        "emailMessage/Body": "@concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') is complete.<br><br>', join(body('Try_html'), '<br>'), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')",
                         "emailMessage/Importance": "Normal"
                       },
                       "authentication": "@parameters('$authentication')"
@@ -2820,7 +3350,7 @@
             }
           },
           "runAfter": {
-            "Init_varDefaultOk": [
+            "Init_varFailed": [
               "Succeeded"
             ]
           }
@@ -2838,7 +3368,7 @@
             },
             "Error_text": {
               "type": "Compose",
-              "inputs": "@if(empty(variables('varFailMessage')), concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-02 run history')), variables('varFailMessage'))",
+              "inputs": "@if(empty(variables('varFailMessage')), concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], if(equals(first(body('Failed_actions'))?['error']?['code'], 'ActionFailed'), 'a step inside it failed; the ER-02 run history shows which one and why', first(body('Failed_actions'))?['error']?['message']), 'see the ER-02 run history')), variables('varFailMessage'))",
               "runAfter": {
                 "Failed_actions": [
                   "Succeeded"
@@ -2854,11 +3384,68 @@
                 ]
               }
             },
-            "Failure_notes": {
-              "type": "Compose",
-              "inputs": "@concat(join(outputs('Failure_log'), decodeUriComponent('%0A')), decodeUriComponent('%0A'), 'Not run: every step after the failed one.')",
+            "Catch_not_run": {
+              "type": "Query",
+              "inputs": {
+                "from": "@variables('varPlan')",
+                "where": "@and(not(contains(variables('varDone'), item()?['key'])), not(contains(variables('varFailed'), item()?['key'])))"
+              },
               "runAfter": {
                 "Failure_log": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Catch_planned_done": {
+              "type": "Query",
+              "inputs": {
+                "from": "@variables('varPlan')",
+                "where": "@contains(variables('varDone'), item()?['key'])"
+              },
+              "runAfter": {
+                "Catch_not_run": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Catch_not_run_lines": {
+              "type": "Select",
+              "inputs": {
+                "from": "@body('Catch_not_run')",
+                "select": "@concat('Not run: ', item()?['label'])"
+              },
+              "runAfter": {
+                "Catch_planned_done": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Catch_lines": {
+              "type": "Compose",
+              "inputs": "@union(createArray(concat(string(length(body('Catch_planned_done'))), ' of ', string(length(variables('varPlan'))), ' requested steps done')), outputs('Failure_log'), body('Catch_not_run_lines'))",
+              "runAfter": {
+                "Catch_not_run_lines": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Catch_notes": {
+              "type": "Compose",
+              "inputs": "@join(outputs('Catch_lines'), decodeUriComponent('%0A'))",
+              "runAfter": {
+                "Catch_lines": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Catch_html": {
+              "type": "Select",
+              "inputs": {
+                "from": "@outputs('Catch_lines')",
+                "select": "@if(startsWith(item(), 'Done:'), concat('<span style=\"color:#107c10\">', item(), '</span>'), if(startsWith(item(), 'Note:'), concat('<span style=\"color:#605e5c\">', item(), '</span>'), if(or(startsWith(item(), 'Failed:'), startsWith(item(), 'Not run:'), startsWith(item(), 'Skipped:')), concat('<span style=\"color:#a4262c\">', item(), '</span>'), concat('<b>', item(), '</b>'))))"
+              },
+              "runAfter": {
+                "Catch_notes": [
                   "Succeeded"
                 ]
               }
@@ -2878,13 +3465,13 @@
                   "item/Title": "@triggerOutputs()?['body/Title']",
                   "item/Status/Value": "Failed",
                   "item/ErrorMessage": "@outputs('Error_text')",
-                  "item/CompletionNotes": "@outputs('Failure_notes')",
+                  "item/CompletionNotes": "@outputs('Catch_notes')",
                   "item/ResultJson": "@string(variables('varResult'))"
                 },
                 "authentication": "@parameters('$authentication')"
               },
               "runAfter": {
-                "Failure_notes": [
+                "Catch_html": [
                   "Succeeded"
                 ]
               }
@@ -2900,7 +3487,7 @@
                 "parameters": {
                   "emailMessage/To": "@concat(triggerOutputs()?['body/Author/Email'], ';', replace(replace(body('Get_settings')?['EntraApproverEmails'], decodeUriComponent('%0D'), ''), decodeUriComponent('%0A'), ';'))",
                   "emailMessage/Subject": "@concat('Entra request ', triggerOutputs()?['body/Title'], ' failed')",
-                  "emailMessage/Body": "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') failed while being applied.<br><br>Error: ', outputs('Error_text'), '<br><br><b>Steps</b><br>', join(outputs('Failure_log'), '<br>'), '<br>Not run: every step after the failed one.<br><br>IDs of anything created: ', string(variables('varResult')), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')",
+                  "emailMessage/Body": "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') failed while being applied.<br><br>Error: ', outputs('Error_text'), '<br><br>', join(body('Catch_html'), '<br>'), '<br><br>IDs of anything created: ', string(variables('varResult')), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')",
                   "emailMessage/Importance": "Normal"
                 },
                 "authentication": "@parameters('$authentication')"

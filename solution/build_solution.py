@@ -34,7 +34,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.4.1.0"
+VERSION = "1.5.0.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -492,15 +492,86 @@ def queue(role_loop, group_loop, filt):
 NL = "decodeUriComponent('%0A')"
 
 
+ASSIGN_KEY = "@concat('assign|', items('Apply_to_each_assignment')?['id'], '|', items('Apply_to_each_assignment')?['roleValue'])"
+# Which planned step each log line completes (see the plan built at the start of Try). Lines not listed here
+# (stops, notes, enterprise apps created as a side effect) are logged without marking a planned step.
+STEP_KEYS = {
+    "Log app created": "app", "Log expose done": "expose", "Log expose failed": "expose", "Log expose added": "expose",
+    "Log SP done": "sp", "Log SP failed": "sp", "Log SP created": "sp", "Log roles added": "roles",
+    "Log assign done": ASSIGN_KEY, "Log assign failed": ASSIGN_KEY, "Log no group id": ASSIGN_KEY,
+    "Log default access": "default", "Log default access failed": "default",
+}
+
+
 def log(seq: "Seq", name: str, text: str) -> "Seq":
-    """Adds a line to the step log (varLog) that becomes the request's CompletionNotes. `text` is an expression."""
-    return seq.append_var(name, "varLog", f"@{text}")
+    """Adds a line to the step log (varLog) that becomes the request's CompletionNotes. `text` is an expression.
+    If the line completes a planned step, its key goes to varDone."""
+    seq.append_var(name, "varLog", f"@{text}")
+    if name in STEP_KEYS:
+        seq.append_var(f"{name} done", "varDone", STEP_KEYS[name])
+    return seq
 
 
 def log_failed(seq: "Seq", name: str, text: str) -> "Seq":
     """A step failed but the request carries on with the steps that don't depend on it."""
-    log(seq, name, text)
+    seq.append_var(name, "varLog", f"@{text}")
+    if name in STEP_KEYS:
+        seq.append_var(f"{name} failed", "varFailed", STEP_KEYS[name])
     return seq.set_var(f"{name} flag", "varHadErrors", "yes")
+
+
+def plan_step(seq: "Seq", name: str, key: str, label: str) -> "Seq":
+    return seq.append_var(name, "varPlan", {"key": key, "label": label})
+
+
+def build_plan(t: "Seq") -> None:
+    """Every step the request asks for, from its payload, before anything runs: varPlan = [{key, label}].
+    At the end, planned steps that are neither in varDone nor varFailed are reported as Not run."""
+    P = "outputs('Payload')"
+    c1 = Seq()
+    plan_step(c1, "Plan app", "app", f"Create the app registration @{{{P}?['displayName']}}")
+    c1.cond("Plan expose wanted", is_true(f"@equals({P}?['exposeApi']?['enabled'], true)"),
+            yes=plan_step(Seq(), "Plan expose", "expose",
+                          f"Set the Application ID URI and @{{length(coalesce({P}?['exposeApi']?['scopes'], json('[]')))}} scope(s)"))
+    c1.cond("Plan SP wanted", is_true(f"@equals({P}?['createServicePrincipal'], true)"),
+            yes=plan_step(Seq(), "Plan SP", "sp", "Create the enterprise application"))
+    c1.cond("Plan default access wanted", is_true(f"@and(equals({P}?['createServicePrincipal'], true), not(equals({P}?['appRoleAssignmentRequired'], false)), empty(coalesce({P}?['appRoles'], json('[]'))))"),
+            yes=plan_step(Seq(), "Plan default access", "default", "Give the owner default access to the enterprise application"))
+    c3 = plan_step(Seq(), "Plan expose add", "expose", f"Add the Application ID URI and @{{length(coalesce({P}?['scopes'], json('[]')))}} scope(s)")
+    c4 = plan_step(Seq(), "Plan roles", "roles", f"Add @{{length(coalesce({P}?['appRoles'], json('[]')))}} app role(s)")
+    A = "items('Plan_each_assignment')"
+    c5 = Seq().foreach("Plan each assignment", f"@coalesce({P}?['assignments'], json('[]'))",
+                       plan_step(Seq(), "Plan assignment", f"assign|@{{{A}?['id']}}|@{{{A}?['appRoleValue']}}",
+                                 f"Assign @{{{A}?['displayName']}} to role @{{{A}?['appRoleValue']}}"))
+    c6 = plan_step(Seq(), "Plan SP only", "sp", "Create the enterprise application")
+    t.switch("Plan by request type", "@triggerOutputs()?['body/RequestType/Value']",
+             {"createAppRegistration": c1, "exposeApi": c3, "addAppRoles": c4, "assignGroupsToAppRoles": c5, "createServicePrincipal": c6})
+    R, G = "items('Plan_each_role')", "items('Plan_each_role_group')"
+    groups = Seq().foreach("Plan each role group", f"@coalesce({R}?['assignGroups'], json('[]'))",
+                           plan_step(Seq(), "Plan role group", f"assign|@{{{G}?['id']}}|@{{{R}?['value']}}",
+                                     f"Assign @{{{G}?['displayName']}} to role @{{{R}?['value']}}"))
+    t.cond("Plan role groups wanted", is_true("@or(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), equals(triggerOutputs()?['body/RequestType/Value'], 'addAppRoles'))"),
+           yes=Seq().foreach("Plan each role", f"@coalesce({P}?['appRoles'], json('[]'))", groups))
+
+
+COLOUR = ("@if(startsWith(item(), 'Done:'), concat('<span style=\"color:#107c10\">', item(), '</span>'), "
+          "if(startsWith(item(), 'Note:'), concat('<span style=\"color:#605e5c\">', item(), '</span>'), "
+          "if(or(startsWith(item(), 'Failed:'), startsWith(item(), 'Not run:'), startsWith(item(), 'Skipped:')), "
+          "concat('<span style=\"color:#a4262c\">', item(), '</span>'), concat('<b>', item(), '</b>'))))")
+
+
+def summarize(seq: "Seq", p: str, log_lines: str) -> dict:
+    """'N of M requested steps done', the log lines, then 'Not run: <step>' for every planned step that neither
+    finished nor failed. Returns the action keys: notes (plain text) and html (array of coloured lines)."""
+    nr, pd, nl, ln = f"{p} not run", f"{p} planned done", f"{p} not run lines", f"{p} lines"
+    seq.filter(nr, "@variables('varPlan')",
+               "@and(not(contains(variables('varDone'), item()?['key'])), not(contains(variables('varFailed'), item()?['key'])))")
+    seq.filter(pd, "@variables('varPlan')", "@contains(variables('varDone'), item()?['key'])")
+    seq.select(nl, f"@body('{key(nr)}')", "@concat('Not run: ', item()?['label'])")
+    seq.compose(ln, f"@union(createArray(concat(string(length(body('{key(pd)}'))), ' of ', string(length(variables('varPlan'))), ' requested steps done')), {log_lines}, body('{key(nl)}'))")
+    seq.compose(f"{p} notes", f"@join(outputs('{key(ln)}'), decodeUriComponent('%0A'))")
+    seq.select(f"{p} html", f"@outputs('{key(ln)}')", COLOUR)
+    return {"not_run": key(nr), "notes": key(f"{p} notes"), "html": key(f"{p} html")}
 
 
 def stop_try(seq: "Seq", name: str, message: str) -> "Seq":
@@ -529,10 +600,12 @@ def er02() -> dict:
                           ("varExposeOk", "string", "no"), ("varAssignOk", "string", "no"),
                           ("varTeamTag", "string", ""), ("varGroupOwner", "string", "no"),
                           ("varLog", "array", []), ("varHadErrors", "string", "no"), ("varFailMessage", "string", ""),
-                          ("varDefaultOk", "string", "no")]:
+                          ("varDefaultOk", "string", "no"), ("varPlan", "array", []), ("varDone", "array", []),
+                          ("varFailed", "array", [])]:
         s.init_var(f"Init {var}", var, typ, val)
 
     t = Seq()  # Try
+    build_plan(t)
     t.graph("HTTP Get requester", "GET", f"{GRAPH}/users/@{{outputs('Requester')}}?$select=id,displayName,userPrincipalName")
     t.compose("Base tags", "@createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId']), concat('createdBy:', outputs('Requester')), concat('createdById:', body('HTTP_Get_requester')?['id']), concat('createdTimestamp:', outputs('Now')), concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('managedBy:', body('Get_settings')?['ManagedByTag']), concat('requestId:', triggerOutputs()?['body/Title']))")
     t.compose("Group meta", "@concat(' [appCatID=', triggerOutputs()?['body/AppCatId'], '; requestId=', triggerOutputs()?['body/Title'], '; createdBy=', outputs('Requester'), '; managedBy=', body('Get_settings')?['ManagedByTag'], ']')")
@@ -719,43 +792,45 @@ def er02() -> dict:
            yes=log(Seq(), "Log nobody can sign in",
                    "'Note: assignment is required and no group holds any of the app roles yet, so nobody can sign in. Give a group a role with Role assignments.'"))
 
-    t.compose("Completion notes", f"@join(variables('varLog'), {NL})")
+    done_sum = summarize(t, "Try", "variables('varLog')")
     t.compose("Result json", "@string(setProperty(variables('varResult'), 'assignmentsText', join(variables('varAssignments'), '; ')))")
     links = ("'<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>'")
     done = Seq()
     done.sp_patch("Mark completed", "EntraRequests", ID, {
         "Title": TITLE, "Status/Value": "Completed", "CompletedAt": "@utcNow()",
-        "CompletionNotes": "@outputs('Completion_notes')", "ResultJson": "@outputs('Result_json')"})
+        "CompletionNotes": f"@outputs('{done_sum['notes']}')", "ResultJson": "@outputs('Result_json')"})
     done.mail("Mail completed", "@triggerOutputs()?['body/Author/Email']",
               "@concat('Your Entra request ', triggerOutputs()?['body/Title'], ' is complete')",
-              "@concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') is complete.<br><br><b>What was done</b><br>', "
-              f"join(variables('varLog'), '<br>'), {links})")
+              "@concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') is complete.<br><br>', "
+              f"join(body('{done_sum['html']}'), '<br>'), {links})")
     partial = Seq()
     partial.sp_patch("Mark partly failed", "EntraRequests", ID, {
         "Title": TITLE, "Status/Value": "Failed", "CompletedAt": "@utcNow()",
-        "ErrorMessage": "Some steps failed. The steps marked Done are in place; see the completion notes for what still needs doing.",
-        "CompletionNotes": "@outputs('Completion_notes')", "ResultJson": "@outputs('Result_json')"})
+        "ErrorMessage": "Some requested steps failed or did not run. The steps marked Done are in place; see the completion notes for the rest.",
+        "CompletionNotes": f"@outputs('{done_sum['notes']}')", "ResultJson": "@outputs('Result_json')"})
     partial.mail("Mail partly failed", f"@concat(triggerOutputs()?['body/Author/Email'], ';', {APPROVER_LIST})",
                  "@concat('Entra request ', triggerOutputs()?['body/Title'], ' partly failed')",
-                 "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') was only partly applied.<br><br><b>Steps</b><br>', "
-                 f"join(variables('varLog'), '<br>'), '<br><br>The steps marked Done are in place. Do not resubmit the whole request: use the matching card (Expose an API, Enterprise application, Role assignments) for the failed steps.', {links})")
-    t.cond("Had errors", eq("@variables('varHadErrors')", "yes"), yes=partial, no=done)
+                 "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') was only partly applied.<br><br>', "
+                 f"join(body('{done_sum['html']}'), '<br>'), '<br><br>The steps marked Done are in place. Do not resubmit the whole request: use the matching card (Expose an API, Enterprise application, Role assignments) for the rest.', {links})")
+    t.cond("Had errors", is_true(f"@or(equals(variables('varHadErrors'), 'yes'), greater(length(body('{done_sum['not_run']}')), 0))"), yes=partial, no=done)
     s.scope("Try", t)
 
     c = Seq()
     c.filter("Failed actions", "@union(result('Do_createAppRegistration'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Try'))",
              "@equals(item()?['status'], 'Failed')")
-    c.compose("Error text", "@if(empty(variables('varFailMessage')), concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-02 run history')), variables('varFailMessage'))")
-    # A stop_try failure is already in the log; any other failure is added here. Steps after it did not run.
+    # 'ActionFailed' is Power Automate's generic text for a container whose inner step failed: say so plainly.
+    c.compose("Error text", "@if(empty(variables('varFailMessage')), concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], if(equals(first(body('Failed_actions'))?['error']?['code'], 'ActionFailed'), 'a step inside it failed; the ER-02 run history shows which one and why', first(body('Failed_actions'))?['error']?['message']), 'see the ER-02 run history')), variables('varFailMessage'))")
+    # A stop_try failure is already in the log; any other failure is added here.
     c.compose("Failure log", "@if(empty(variables('varFailMessage')), union(variables('varLog'), createArray(concat('Failed: ', outputs('Error_text')))), variables('varLog'))")
-    c.compose("Failure notes", f"@concat(join(outputs('Failure_log'), {NL}), {NL}, 'Not run: every step after the failed one.')")
+    fail_sum = summarize(c, "Catch", "outputs('Failure_log')")
     c.sp_patch("Mark failed", "EntraRequests", ID, {"Title": TITLE, "Status/Value": "Failed",
                                                      "ErrorMessage": "@outputs('Error_text')",
-                                                     "CompletionNotes": "@outputs('Failure_notes')",
+                                                     "CompletionNotes": f"@outputs('{fail_sum['notes']}')",
                                                      "ResultJson": "@string(variables('varResult'))"})
     c.mail("Mail failed", f"@concat(triggerOutputs()?['body/Author/Email'], ';', {APPROVER_LIST})",
            "@concat('Entra request ', triggerOutputs()?['body/Title'], ' failed')",
-           "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') failed while being applied.<br><br>Error: ', outputs('Error_text'), '<br><br><b>Steps</b><br>', join(outputs('Failure_log'), '<br>'), '<br>Not run: every step after the failed one.<br><br>IDs of anything created: ', string(variables('varResult')), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')")
+           "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') failed while being applied.<br><br>Error: ', outputs('Error_text'), '<br><br>', "
+           f"join(body('{fail_sum['html']}'), '<br>'), '<br><br>IDs of anything created: ', string(variables('varResult')), {links})")
     s.scope("Catch", c, run_after={"Try": ["Failed", "TimedOut"]})
 
     trig = {"When_an_item_is_created_or_modified": sp_trigger(

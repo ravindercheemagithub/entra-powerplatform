@@ -195,16 +195,31 @@ Trigger **Settings**:
 | 10 | `Try` | Control – Scope | Everything in the next sections goes **inside** this scope |
 | 11 | `Catch` | Control – Scope | After `Try` (not inside it). See [Catch](#catch-scope). |
 
-### Step log and failures (1.3.3)
+### Step log and failures (1.3.3, plan since 1.5)
 
-ER-02 writes one line per step to the array variable `varLog`; at the end it becomes the request's **CompletionNotes** and goes into the email, so the requester sees what was done and what wasn't:
+**The plan.** First thing in Try, `Plan by request type` (a Switch) and `Plan role groups wanted` list every step the request asks for, from its payload, in the array `varPlan` (`{key, label}`):
+
+| Request type | Planned steps (key) |
+|---|---|
+| createAppRegistration | create the app (`app`); Application ID URI and scopes, if asked (`expose`); enterprise app, if asked (`sp`); one per role × group (`assign|<group id>|<role value>`); default access when assignment is required and there are no roles (`default`) |
+| exposeApi | `expose` |
+| addAppRoles | `roles`, plus one per role × group |
+| assignGroupsToAppRoles | one per assignment |
+| createServicePrincipal | `sp` |
+
+Each **Log** of a planned step also appends its key to `varDone`; each **Log failed** to `varFailed`. At the end (and in Catch), planned steps in neither list are reported as **Not run: <label>**, under a summary line:
 
 ```
+3 of 5 requested steps done
 Done: app registration APP-1234-D-ORDERS-api created (client ID …, object ID …), owner tag team:group\…, 2 app role(s)
 Done: Application ID URI api://… and 1 scope(s) set
 Failed: enterprise application not created (…). Use Enterprise application on this app to create it.
 Skipped: 2 role assignment(s), because there is no enterprise application to assign them on
+Not run: Assign grp-orders-users to role Orders.User
+Not run: Assign grp-orders-admins to role Orders.Admin
 ```
+
+The summary actions (`Try not run`, `Try planned done`, `Try not run lines`, `Try lines`, `Try notes`, `Try html`; the same with `Catch …` in Catch) build the plain-text CompletionNotes and, for the emails, the same lines coloured: **Done** green, **Failed / Not run / Skipped** red, **Note** grey, the summary bold. A request is **Completed** only when every planned step is Done; otherwise it ends **Failed** with these notes.
 
 Three kinds of action do this:
 
