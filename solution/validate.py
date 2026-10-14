@@ -110,6 +110,8 @@ for f in sorted(glob.glob('src/Workflows/*.json')):
                 if v not in init_vars: errors.append(f"{flow}: {k}: variable {v} not initialized")
             for p in re.findall(r"parameters\('([^']+)'\)", e):
                 if p not in defn['parameters']: errors.append(f"{flow}: {k}: parameter {p} unknown")
+        if a.get('type') == 'SetVariable' and f"variables('{a['inputs']['name']}')" in json.dumps(a['inputs'].get('value')):
+            errors.append(f"{flow}: {k}: Set variable {a['inputs']['name']} reads its own value (Power Automate rejects self-reference)")
         if a.get('type') in ('SetVariable', 'AppendToArrayVariable') and a['inputs']['name'] not in init_vars:
             errors.append(f"{flow}: {k}: sets unknown variable {a['inputs']['name']}")
         host = a.get('inputs', {}).get('host') if isinstance(a.get('inputs'), dict) else None

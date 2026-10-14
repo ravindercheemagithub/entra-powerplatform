@@ -104,6 +104,7 @@ $Lists = [ordered]@{
       (F "EntraComment" "Note"),
       (F "ResultJson" "Note"),
       (F "ErrorMessage" "Note"),
+      (F "CompletionNotes" "Note"),
       (F "CompletedAt" "DateTime")
     )
   }

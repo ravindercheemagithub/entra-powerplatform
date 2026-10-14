@@ -162,6 +162,7 @@ The flow doesn't change permissions. Set them in each list's **Settings → List
 | EntraComment | Multiple lines (plain) | |
 | ResultJson | Multiple lines (plain) | IDs of everything created |
 | ErrorMessage | Multiple lines (plain) | |
+| CompletionNotes | Multiple lines (plain) | written by ER-02: one line per step, `Done: …`, `Failed: …` or `Skipped: …`, so the requester sees what was created and what wasn't (added in 1.3.3) |
 | CompletedAt | Date and Time | |
 
 The requester is the built-in **Created By**. Users can't fake it, which is why nothing in the payload identifies the requester.

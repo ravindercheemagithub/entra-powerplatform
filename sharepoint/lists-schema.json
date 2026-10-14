@@ -29,6 +29,7 @@
         "<Field Type='Note' Name='EntraComment' StaticName='EntraComment' DisplayName='EntraComment' NumLines='6' RichText='FALSE' RichTextMode='Compatible' AppendOnly='FALSE' />",
         "<Field Type='Note' Name='ResultJson' StaticName='ResultJson' DisplayName='ResultJson' NumLines='6' RichText='FALSE' RichTextMode='Compatible' AppendOnly='FALSE' />",
         "<Field Type='Note' Name='ErrorMessage' StaticName='ErrorMessage' DisplayName='ErrorMessage' NumLines='6' RichText='FALSE' RichTextMode='Compatible' AppendOnly='FALSE' />",
+        "<Field Type='Note' Name='CompletionNotes' StaticName='CompletionNotes' DisplayName='CompletionNotes' NumLines='8' RichText='FALSE' RichTextMode='Compatible' AppendOnly='FALSE' />",
         "<Field Type='DateTime' Name='CompletedAt' StaticName='CompletedAt' DisplayName='CompletedAt' Format='DateTime' />"
       ]
     },

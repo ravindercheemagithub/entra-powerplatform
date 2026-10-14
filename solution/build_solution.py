@@ -33,7 +33,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.3.2.0"
+VERSION = "1.3.3.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -487,6 +487,28 @@ def queue(role_loop, group_loop, filt):
             "ownerIds": f"@{{items('{group_loop}')?['ownerIds']}}"}
 
 
+NL = "decodeUriComponent('%0A')"
+
+
+def log(seq: "Seq", name: str, text: str) -> "Seq":
+    """Adds a line to the step log (varLog) that becomes the request's CompletionNotes. `text` is an expression."""
+    return seq.append_var(name, "varLog", f"@{text}")
+
+
+def log_failed(seq: "Seq", name: str, text: str) -> "Seq":
+    """A step failed but the request carries on with the steps that don't depend on it."""
+    log(seq, name, text)
+    return seq.set_var(f"{name} flag", "varHadErrors", "yes")
+
+
+def stop_try(seq: "Seq", name: str, message: str) -> "Seq":
+    """Stops the request inside Try so that Catch runs (Terminate would skip Catch: no notes, no email).
+    The message goes to the step log and to ErrorMessage; the Compose fails on purpose (json() of plain text)."""
+    seq.set_var(f"Set {name} message", "varFailMessage", message)
+    log(seq, f"Log {name}", "concat('Failed: ', variables('varFailMessage'))")
+    return seq.compose(f"Throw {name}", "@json(concat('Stopped: ', variables('varFailMessage')))")
+
+
 def er02() -> dict:
     s = Seq()
     s.sp_get_item("Get settings", "EntraSettings", 1)
@@ -503,7 +525,8 @@ def er02() -> dict:
                           ("varGroupId", "string", ""), ("varRoleId", "string", ""), ("varAssignTodo", "array", []),
                           ("varAssignments", "array", []), ("varResult", "object", {}),
                           ("varExposeOk", "string", "no"), ("varAssignOk", "string", "no"),
-                          ("varAssignError", "string", ""), ("varTeamTag", "string", ""), ("varGroupOwner", "string", "no")]:
+                          ("varTeamTag", "string", ""), ("varGroupOwner", "string", "no"),
+                          ("varLog", "array", []), ("varHadErrors", "string", "no"), ("varFailMessage", "string", "")]:
         s.init_var(f"Init {var}", var, typ, val)
 
     t = Seq()  # Try
@@ -517,8 +540,8 @@ def er02() -> dict:
     ta.filter("Filter appcat tag", "@body('HTTP_Get_target_app')?['tags']", "@startsWith(item(), 'appCatID:')")
     ta.filter("Filter kept tags", "@body('HTTP_Get_target_app')?['tags']", "@not(or(startsWith(item(), 'lastUpdatedBy:'), startsWith(item(), 'lastUpdatedTimestamp:'), startsWith(item(), 'requestId:')))")
     is_owner = owner_check(ta, "Target", "body('HTTP_Get_target_app')?['tags']", "body('HTTP_Get_requester')?['id']", "varGroupOwner")
-    not_owner = fail_item(Seq(), "Fail not owner", "Stop not owner",
-                          "Not an authorized owner: the app's team tag names neither you (team:user\\<your id>) nor a group you are a member of (team:group\\<group id>), or its appCatID differs.", "NotOwner")
+    not_owner = stop_try(Seq(), "not owner",
+                         "Not an authorized owner: the app's team tag names neither you (team:user\\<your id>) nor a group you are a member of (team:group\\<group id>), or its appCatID differs. Nothing was changed.")
     ta.cond("Requester may change", is_true(f"@and({is_owner[1:]}, or(empty(body('Filter_appcat_tag')), empty(triggerOutputs()?['body/AppCatId']), equals(first(body('Filter_appcat_tag')), concat('appCatID:', triggerOutputs()?['body/AppCatId']))))"), no=not_owner)
     ta.compose("Updated tags", "@union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('managedBy:', body('Get_settings')?['ManagedByTag'])), json('[]')), if(and(empty(body('Filter_appcat_tag')), not(empty(triggerOutputs()?['body/AppCatId']))), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId'])), json('[]')))")
     ta.graph("HTTP Find target SP", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{body('HTTP_Get_target_app')?['appId']}}'&$select=id")
@@ -533,7 +556,7 @@ def er02() -> dict:
     grp.graph("HTTP Check team membership", "POST", f"{GRAPH}/users/@{{body('HTTP_Get_requester')?['id']}}/checkMemberGroups",
               "{\"groupIds\": [\"@{outputs('Payload')?['owningGroup']?['id']}\"]}")
     grp.cond("Is team member", {"and": [{"greater": ["@length(body('HTTP_Check_team_membership')?['value'])", 0]}]},
-             no=fail_item(Seq(), "Fail not team member", "Stop not team member", "You are not a member of the owning group.", "NotTeamMember"))
+             no=stop_try(Seq(), "not team member", "You are not a member of the owning group. Nothing was created."))
     grp.graph("HTTP Get team group", "GET", f"{GRAPH}/groups/@{{outputs('Payload')?['owningGroup']?['id']}}?$select=id,displayName")
     grp.set_var("Set team id", "varTeamGroupId", "@body('HTTP_Get_team_group')?['id']")
     grp.set_var("Set team name", "varTeamGroupName", "@body('HTTP_Get_team_group')?['displayName']")
@@ -550,10 +573,19 @@ def er02() -> dict:
     c1.select("Select optional tags", "@body('Filter_optional_tags')", "@concat(trim(first(split(item(), '='))), ':', trim(last(split(item(), '='))))")
     c1.compose("App tags", "@union(outputs('Base_tags'), createArray(variables('varTeamTag'), concat('teamName:', variables('varTeamGroupName'))), if(empty(outputs('Payload')?['appEnv']), json('[]'), createArray(concat('appEnv:', outputs('Payload')?['appEnv']))), if(empty(outputs('Payload')?['borShortName']), json('[]'), createArray(concat('borShortName:', outputs('Payload')?['borShortName']))), body('Select_optional_tags'))")
     c1.graph("HTTP Create application", "POST", f"{GRAPH}/applications", body_file("HTTP_Create_application"))
+    c1.set_var("Result create app", "varResult", {
+        "applicationObjectId": "@{body('HTTP_Create_application')?['id']}",
+        "appId": "@{body('HTTP_Create_application')?['appId']}",
+        "identifierUri": "",
+        "servicePrincipalId": "", "teamGroupId": "@{variables('varTeamGroupId')}", "team": "@{variables('varTeamTag')}"})
+    log(c1, "Log app created", "concat('Done: app registration ', body('HTTP_Create_application')?['displayName'], ' created (client ID ', body('HTTP_Create_application')?['appId'], ', object ID ', body('HTTP_Create_application')?['id'], '), owner tag ', variables('varTeamTag'), if(greater(length(body('Select_app_roles')), 0), concat(', ', string(length(body('Select_app_roles'))), ' app role(s)'), ''))")
     c1.delay("Wait for app replication", 15)
     expose = graph_until_ok(Seq(), "HTTP Expose API", "PATCH", f"{GRAPH}/applications/@{{body('HTTP_Create_application')?['id']}}",
-                            body_file("HTTP_Expose_API"), 204, "varExposeOk", "Fail expose API", "Stop expose API",
-                            "@concat('Could not set the Application ID URI and scopes on the new app registration (object id ', body('HTTP_Create_application')?['id'], ') after 6 attempts. Delete that app in Entra before retrying.')")
+                            body_file("HTTP_Expose_API"), 204, "varExposeOk", "", "", "",
+                            on_give_up=log_failed(Seq(), "Log expose failed",
+                                                  "concat('Failed: Application ID URI and scopes were not set (', coalesce(body('HTTP_Expose_API')?['error']?['message'], 'no answer after 6 attempts'), '). Use Expose an API on this app to add them.')"))
+    expose.cond("Expose done", eq("@variables('varExposeOk')", "yes"),
+                yes=log(Seq(), "Log expose done", "concat('Done: Application ID URI ', replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId']), ' and ', string(length(body('Select_scopes'))), ' scope(s) set')"))
     c1.cond("Expose API", is_true("@equals(outputs('Payload')?['exposeApi']?['enabled'], true)"), yes=expose)
     sp_try = Seq()
     sp_try.graph("HTTP Create SP", "POST", f"{GRAPH}/servicePrincipals", body_file("HTTP_Create_SP"), retry={"type": "none"})
@@ -563,16 +595,19 @@ def er02() -> dict:
                 run_after={"HTTP_Create_SP": ["Succeeded", "Failed"]})
     make_sp = Seq().delay("Wait for replication", 10)
     make_sp.until("Do until SP", "@not(empty(variables('varSpId')))", sp_try, 6, "PT10M")
+    make_sp.cond("SP done", eq("@empty(variables('varSpId'))", False),
+                 yes=log(Seq(), "Log SP done", "concat('Done: enterprise application created (object ID ', variables('varSpId'), '), assignment required: ', if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), 'no', 'yes'))"),
+                 no=log_failed(Seq(), "Log SP failed", "concat('Failed: enterprise application not created (', coalesce(body('HTTP_Create_SP')?['error']?['message'], concat('HTTP ', string(outputs('HTTP_Create_SP')?['statusCode']))), '). Use Enterprise application on this app to create it.')"))
     c1.cond("Create SP", is_true("@equals(outputs('Payload')?['createServicePrincipal'], true)"), yes=make_sp)
     groups = Seq().append_var("Queue new role assignment", "varAssignTodo", queue("For_each_new_role", "For_each_new_role_group", "Filter_created_role"))
     roles = Seq()
     roles.filter("Filter created role", "@body('HTTP_Create_application')?['appRoles']", "@equals(item()?['value'], items('For_each_new_role')?['value'])")
     roles.foreach("For each new role group", "@coalesce(items('For_each_new_role')?['assignGroups'], json('[]'))", groups)
     c1.foreach("For each new role", "@coalesce(outputs('Payload')?['appRoles'], json('[]'))", roles)
-    c1.set_var("Result create app", "varResult", {
+    c1.set_var("Result create app final", "varResult", {
         "applicationObjectId": "@{body('HTTP_Create_application')?['id']}",
         "appId": "@{body('HTTP_Create_application')?['appId']}",
-        "identifierUri": "@{if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId']), '')}",
+        "identifierUri": "@{if(equals(variables('varExposeOk'), 'yes'), replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId']), '')}",
         "servicePrincipalId": "@{variables('varSpId')}", "teamGroupId": "@{variables('varTeamGroupId')}", "team": "@{variables('varTeamTag')}"})
     c1.sp_post("Catalog new app", "EntraCatalogApps", {
         "Title": "@outputs('Payload')?['displayName']", "ObjectId": "@body('HTTP_Create_application')?['id']",
@@ -591,11 +626,13 @@ def er02() -> dict:
     c3.set_var("Result expose", "varResult", {
         "applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}", "appId": "@{body('HTTP_Get_target_app')?['appId']}",
         "identifierUri": "@{replace(outputs('Payload')?['identifierUriTemplate'], '{appId}', body('HTTP_Get_target_app')?['appId'])}"})
+    log(c3, "Log expose added", "concat('Done: Application ID URI ', variables('varResult')?['identifierUri'], ' and ', string(length(body('Select_new_scopes'))), ' new scope(s) added')")
 
     # -- addAppRoles
     c4 = Seq()
     c4.select("Select new roles", "@coalesce(outputs('Payload')?['appRoles'], json('[]'))", ROLE_MAP)
     c4.graph("HTTP Patch roles", "PATCH", target, body_file("HTTP_Patch_roles"))
+    log(c4, "Log roles added", "concat('Done: ', string(length(body('Select_new_roles'))), ' app role(s) added')")
     g4 = Seq().append_var("Queue added role assignment", "varAssignTodo", queue("For_each_added_role", "For_each_added_role_group", "Filter_added_role"))
     r4 = Seq()
     r4.filter("Filter added role", "@body('Select_new_roles')", "@equals(item()?['value'], items('For_each_added_role')?['value'])")
@@ -603,6 +640,7 @@ def er02() -> dict:
     c4.foreach("For each added role", "@coalesce(outputs('Payload')?['appRoles'], json('[]'))", r4)
     sp4 = Seq().graph("HTTP Create SP for roles", "POST", f"{GRAPH}/servicePrincipals", body_file("HTTP_Create_SP_existing"))
     sp4.set_var("Set SP id roles", "varSpId", "@body('HTTP_Create_SP_for_roles')?['id']")
+    log(sp4, "Log SP for roles", "concat('Done: enterprise application created (object ID ', variables('varSpId'), ')')")
     c4.cond("Needs SP for roles", is_true("@and(greater(length(variables('varAssignTodo')), 0), empty(variables('varSpId')))"), yes=sp4)
     c4.set_var("Result roles", "varResult", {"applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}",
                                              "appId": "@{body('HTTP_Get_target_app')?['appId']}",
@@ -617,6 +655,7 @@ def er02() -> dict:
     c5.set_var("Set assignment todo", "varAssignTodo", "@body('Select_assignment_todo')")
     sp5 = Seq().graph("HTTP Create SP for assign", "POST", f"{GRAPH}/servicePrincipals", body_file("HTTP_Create_SP_existing"))
     sp5.set_var("Set SP id assign", "varSpId", "@body('HTTP_Create_SP_for_assign')?['id']")
+    log(sp5, "Log SP for assign", "concat('Done: enterprise application created (object ID ', variables('varSpId'), ')')")
     c5.cond("Needs SP for assign", is_true("@empty(variables('varSpId'))"), yes=sp5)
     c5.graph("HTTP Patch tags assign", "PATCH", target, body_file("HTTP_Patch_tags"))
     c5.set_var("Result assign", "varResult", {"applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}",
@@ -624,10 +663,11 @@ def er02() -> dict:
 
     # -- createServicePrincipal
     c6 = Seq()
-    sp_exists = fail_item(Seq(), "Fail SP exists", "Stop SP exists", "This app already has an enterprise application.", "SpExists")
-    c6.cond("SP already exists", eq("@empty(variables('varSpId'))", False), yes=sp_exists)
+    c6.cond("SP already exists", eq("@empty(variables('varSpId'))", False),
+            yes=stop_try(Seq(), "SP exists", "This app already has an enterprise application. Nothing was changed."))
     c6.graph("HTTP Create SP existing", "POST", f"{GRAPH}/servicePrincipals", body_file("HTTP_Create_SP_existing"))
     c6.set_var("Set SP id sp", "varSpId", "@body('HTTP_Create_SP_existing')?['id']")
+    log(c6, "Log SP created", "concat('Done: enterprise application created (object ID ', variables('varSpId'), '), assignment required: ', if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), 'no', 'yes'))")
     c6.graph("HTTP Patch tags sp", "PATCH", target, body_file("HTTP_Patch_tags"))
     c6.set_var("Result sp", "varResult", {"applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}",
                                           "servicePrincipalId": "@{body('HTTP_Create_SP_existing')?['id']}"})
@@ -638,55 +678,68 @@ def er02() -> dict:
         cases[name] = Seq().scope(f"Do {name}", seq)
     t.switch("Request type", "@triggerOutputs()?['body/RequestType/Value']", cases)
 
-    # -- role assignments, shared
-    # Terminate can't be nested in Apply to each, so a failure is recorded in varAssignError, the remaining
-    # items are skipped, and the request is failed once after the loop.
+    # -- role assignments, shared. Each assignment is tried on its own and logged as Done or Failed; one failure
+    # doesn't stop the others. Without an enterprise application they are all skipped (and logged).
     A = "items('Apply_to_each_assignment')"
+    pair = f"{A}?['displayName'], ' -> role ', {A}?['roleValue']"
     assign = Seq()
     assign.set_var("Set group id", "varGroupId", f"@{A}?['id']")
     graph_until_ok(assign, "HTTP Assign role", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo",
                    body_file("HTTP_Assign_role"), 201, "varAssignOk", "", "", "",
-                   on_give_up=Seq().set_var("Record assign error", "varAssignError",
-                                            f"@concat('Could not assign ', {A}?['displayName'], ' to role ', {A}?['roleValue'], ' after 6 attempts. ResultJson of this request lists what was created.')"))
+                   on_give_up=log_failed(Seq(), "Log assign failed",
+                                         f"concat('Failed: ', {pair}, ' (', coalesce(body('HTTP_Assign_role')?['error']?['message'], 'no answer after 6 attempts'), ')')"))
     assign.cond("Assignment ok", eq("@variables('varAssignOk')", "yes"),
-                yes=Seq().append_var("Record assignment", "varAssignments", f"@concat({A}?['displayName'], ' -> ', {A}?['roleValue'])"))
+                yes=log(Seq().append_var("Record assignment", "varAssignments", f"@concat({A}?['displayName'], ' -> ', {A}?['roleValue'])"),
+                        "Log assign done", f"concat('Done: ', {pair})"))
     each = Seq()
     each.cond("Group id missing", is_true(f"@empty({A}?['id'])"),
-              yes=Seq().set_var("Record no group id", "varAssignError",
-                                f"@concat('Group ', {A}?['displayName'], ' has no Object ID. Requests can only use existing groups: add it with Add existing group and pick it again.')"),
+              yes=log_failed(Seq(), "Log no group id", f"concat('Failed: ', {pair}, ' (the group has no Object ID: add it with Add existing group and pick it again)')"),
               no=assign)
-    skip = Seq().cond("No assignment error yet", is_true("@empty(variables('varAssignError'))"), yes=each)
-    t.foreach("Apply to each assignment", "@variables('varAssignTodo')", skip)
-    t.cond("Assignment failed", eq("@empty(variables('varAssignError'))", False),
-           yes=fail_item(Seq(), "Fail assignment", "Stop assignment", "@variables('varAssignError')", "RoleAssignmentFailed"))
+    loop = Seq().foreach("Apply to each assignment", "@variables('varAssignTodo')", each)
+    t.cond("Assignments skipped", is_true("@and(greater(length(variables('varAssignTodo')), 0), empty(variables('varSpId')))"),
+           yes=log_failed(Seq(), "Log assignments skipped", "concat('Skipped: ', string(length(variables('varAssignTodo'))), ' role assignment(s), because there is no enterprise application to assign them on')"),
+           no=loop)
     default = Seq().graph("HTTP Assign default access", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo", body_file("HTTP_Assign_default_access"))
+    log(default, "Log default access", "concat('Done: default access to the enterprise application for ', variables('varTeamGroupName'))")
     t.cond("Default access", is_true("@and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId'))))"), yes=default)
-    t.sp_patch("Mark completed", "EntraRequests", ID, {
+
+    t.compose("Completion notes", f"@join(variables('varLog'), {NL})")
+    t.compose("Result json", "@string(setProperty(variables('varResult'), 'assignmentsText', join(variables('varAssignments'), '; ')))")
+    links = ("'<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>'")
+    done = Seq()
+    done.sp_patch("Mark completed", "EntraRequests", ID, {
         "Title": TITLE, "Status/Value": "Completed", "CompletedAt": "@utcNow()",
-        "ResultJson": "@string(setProperty(variables('varResult'), 'assignmentsText', join(variables('varAssignments'), '; ')))"})
-    t.mail("Mail completed", "@triggerOutputs()?['body/Author/Email']",
-           "@concat('Your Entra request ', triggerOutputs()?['body/Title'], ' is complete')",
-           "@concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') is complete.<br><br>', "
-           "if(empty(variables('varResult')?['applicationObjectId']), '', concat('Application (object) ID: ', variables('varResult')?['applicationObjectId'], '<br>')), "
-           "if(empty(variables('varResult')?['appId']), '', concat('Application (client) ID: ', variables('varResult')?['appId'], '<br>')), "
-           "if(empty(variables('varResult')?['identifierUri']), '', concat('Application ID URI: ', variables('varResult')?['identifierUri'], '<br>')), "
-           "if(empty(variables('varResult')?['servicePrincipalId']), '', concat('Enterprise application (object) ID: ', variables('varResult')?['servicePrincipalId'], '<br>')), "
-           "if(empty(variables('varResult')?['teamGroupId']), '', concat('Owning team group ID: ', variables('varResult')?['teamGroupId'], '<br>')), "
-           "if(empty(variables('varResult')?['groupId']), '', concat('Group: ', variables('varResult')?['groupDisplayName'], ' (', variables('varResult')?['groupId'], ')<br>')), "
-           "if(empty(variables('varAssignments')), '', concat('Role assignments: ', join(variables('varAssignments'), '; '), '<br>')), "
-           "'<br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')")
+        "CompletionNotes": "@outputs('Completion_notes')", "ResultJson": "@outputs('Result_json')"})
+    done.mail("Mail completed", "@triggerOutputs()?['body/Author/Email']",
+              "@concat('Your Entra request ', triggerOutputs()?['body/Title'], ' is complete')",
+              "@concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') is complete.<br><br><b>What was done</b><br>', "
+              f"join(variables('varLog'), '<br>'), {links})")
+    partial = Seq()
+    partial.sp_patch("Mark partly failed", "EntraRequests", ID, {
+        "Title": TITLE, "Status/Value": "Failed", "CompletedAt": "@utcNow()",
+        "ErrorMessage": "Some steps failed. The steps marked Done are in place; see the completion notes for what still needs doing.",
+        "CompletionNotes": "@outputs('Completion_notes')", "ResultJson": "@outputs('Result_json')"})
+    partial.mail("Mail partly failed", f"@concat(triggerOutputs()?['body/Author/Email'], ';', {APPROVER_LIST})",
+                 "@concat('Entra request ', triggerOutputs()?['body/Title'], ' partly failed')",
+                 "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') was only partly applied.<br><br><b>Steps</b><br>', "
+                 f"join(variables('varLog'), '<br>'), '<br><br>The steps marked Done are in place. Do not resubmit the whole request: use the matching card (Expose an API, Enterprise application, Role assignments) for the failed steps.', {links})")
+    t.cond("Had errors", eq("@variables('varHadErrors')", "yes"), yes=partial, no=done)
     s.scope("Try", t)
 
     c = Seq()
     c.filter("Failed actions", "@union(result('Do_createAppRegistration'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Try'))",
              "@equals(item()?['status'], 'Failed')")
-    c.compose("Error text", "@concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-02 run history'))")
+    c.compose("Error text", "@if(empty(variables('varFailMessage')), concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-02 run history')), variables('varFailMessage'))")
+    # A stop_try failure is already in the log; any other failure is added here. Steps after it did not run.
+    c.compose("Failure log", "@if(empty(variables('varFailMessage')), union(variables('varLog'), createArray(concat('Failed: ', outputs('Error_text')))), variables('varLog'))")
+    c.compose("Failure notes", f"@concat(join(outputs('Failure_log'), {NL}), {NL}, 'Not run: every step after the failed one.')")
     c.sp_patch("Mark failed", "EntraRequests", ID, {"Title": TITLE, "Status/Value": "Failed",
                                                      "ErrorMessage": "@outputs('Error_text')",
+                                                     "CompletionNotes": "@outputs('Failure_notes')",
                                                      "ResultJson": "@string(variables('varResult'))"})
     c.mail("Mail failed", f"@concat(triggerOutputs()?['body/Author/Email'], ';', {APPROVER_LIST})",
            "@concat('Entra request ', triggerOutputs()?['body/Title'], ' failed')",
-           "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') failed while being applied.<br><br>Error: ', outputs('Error_text'), '<br><br>Already created (clean up before retrying): ', string(variables('varResult')), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')")
+           "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') failed while being applied.<br><br>Error: ', outputs('Error_text'), '<br><br><b>Steps</b><br>', join(outputs('Failure_log'), '<br>'), '<br>Not run: every step after the failed one.<br><br>IDs of anything created: ', string(variables('varResult')), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')")
     s.scope("Catch", c, run_after={"Try": ["Failed", "TimedOut"]})
 
     trig = {"When_an_item_is_created_or_modified": sp_trigger(

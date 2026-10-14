@@ -533,6 +533,8 @@
                     If(!IsBlank(Text(r.assignmentsText)), "<tr><td style='color:#605e5c; padding:3px 0'>Role assignments</td><td>" & Text(r.assignmentsText) & "</td></tr>", "") &
                     "</table>" &
                     If(!IsBlank(galReq_My.Selected.ErrorMessage), "<p style='margin-top:10px; padding:8px 12px; background:#fde7e9; border-left:3px solid #d13438'><b>Error</b><br>" & galReq_My.Selected.ErrorMessage & "</p>", "") &
+                    If(!IsBlank(galReq_My.Selected.CompletionNotes), "<p style='margin-top:10px; padding:8px 12px; background:#f3f2f1; border-left:3px solid #605e5c'><b>What was done</b><br>" &
+                        Substitute(Substitute(Substitute(galReq_My.Selected.CompletionNotes, Char(10), "<br>"), "Done:", "<span style='color:#107c10'><b>Done:</b></span>"), "Failed:", "<span style='color:#a4262c'><b>Failed:</b></span>") & "</p>", "") &
                     If(!IsBlank(galReq_My.Selected.RequestSummary), "<p style='margin-top:10px; color:#605e5c'><b>Summary sent to approvers</b><br>" & Substitute(galReq_My.Selected.RequestSummary, Char(10), "<br>") & "</p>", "") &
                     "</div>"
                     )

@@ -362,23 +362,6 @@
             ]
           }
         },
-        "Init_varAssignError": {
-          "type": "InitializeVariable",
-          "inputs": {
-            "variables": [
-              {
-                "name": "varAssignError",
-                "type": "string",
-                "value": ""
-              }
-            ]
-          },
-          "runAfter": {
-            "Init_varAssignOk": [
-              "Succeeded"
-            ]
-          }
-        },
         "Init_varTeamTag": {
           "type": "InitializeVariable",
           "inputs": {
@@ -391,7 +374,7 @@
             ]
           },
           "runAfter": {
-            "Init_varAssignError": [
+            "Init_varAssignOk": [
               "Succeeded"
             ]
           }
@@ -409,6 +392,57 @@
           },
           "runAfter": {
             "Init_varTeamTag": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Init_varLog": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varLog",
+                "type": "array",
+                "value": []
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varGroupOwner": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Init_varHadErrors": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varHadErrors",
+                "type": "string",
+                "value": "no"
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varLog": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Init_varFailMessage": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varFailMessage",
+                "type": "string",
+                "value": ""
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varHadErrors": [
               "Succeeded"
             ]
           }
@@ -652,37 +686,31 @@
                   "actions": {},
                   "else": {
                     "actions": {
-                      "Fail_not_owner": {
-                        "type": "OpenApiConnection",
+                      "Set_not_owner_message": {
+                        "type": "SetVariable",
                         "inputs": {
-                          "host": {
-                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
-                            "connectionName": "shared_sharepointonline",
-                            "operationId": "PatchItem"
-                          },
-                          "parameters": {
-                            "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                            "table": "EntraRequests",
-                            "id": "@int(triggerOutputs()?['body/ID'])",
-                            "item/Title": "@triggerOutputs()?['body/Title']",
-                            "item/Status/Value": "Failed",
-                            "item/ErrorMessage": "Not an authorized owner: the app's team tag names neither you (team:user\\<your id>) nor a group you are a member of (team:group\\<group id>), or its appCatID differs."
-                          },
-                          "authentication": "@parameters('$authentication')"
+                          "name": "varFailMessage",
+                          "value": "Not an authorized owner: the app's team tag names neither you (team:user\\<your id>) nor a group you are a member of (team:group\\<group id>), or its appCatID differs. Nothing was changed."
                         },
                         "runAfter": {}
                       },
-                      "Stop_not_owner": {
-                        "type": "Terminate",
+                      "Log_not_owner": {
+                        "type": "AppendToArrayVariable",
                         "inputs": {
-                          "runStatus": "Failed",
-                          "runError": {
-                            "code": "NotOwner",
-                            "message": "Not an authorized owner: the app's team tag names neither you (team:user\\<your id>) nor a group you are a member of (team:group\\<group id>), or its appCatID differs."
-                          }
+                          "name": "varLog",
+                          "value": "@concat('Failed: ', variables('varFailMessage'))"
                         },
                         "runAfter": {
-                          "Fail_not_owner": [
+                          "Set_not_owner_message": [
+                            "Succeeded"
+                          ]
+                        }
+                      },
+                      "Throw_not_owner": {
+                        "type": "Compose",
+                        "inputs": "@json(concat('Stopped: ', variables('varFailMessage')))",
+                        "runAfter": {
+                          "Log_not_owner": [
                             "Succeeded"
                           ]
                         }
@@ -804,37 +832,31 @@
                               "actions": {},
                               "else": {
                                 "actions": {
-                                  "Fail_not_team_member": {
-                                    "type": "OpenApiConnection",
+                                  "Set_not_team_member_message": {
+                                    "type": "SetVariable",
                                     "inputs": {
-                                      "host": {
-                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
-                                        "connectionName": "shared_sharepointonline",
-                                        "operationId": "PatchItem"
-                                      },
-                                      "parameters": {
-                                        "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                                        "table": "EntraRequests",
-                                        "id": "@int(triggerOutputs()?['body/ID'])",
-                                        "item/Title": "@triggerOutputs()?['body/Title']",
-                                        "item/Status/Value": "Failed",
-                                        "item/ErrorMessage": "You are not a member of the owning group."
-                                      },
-                                      "authentication": "@parameters('$authentication')"
+                                      "name": "varFailMessage",
+                                      "value": "You are not a member of the owning group. Nothing was created."
                                     },
                                     "runAfter": {}
                                   },
-                                  "Stop_not_team_member": {
-                                    "type": "Terminate",
+                                  "Log_not_team_member": {
+                                    "type": "AppendToArrayVariable",
                                     "inputs": {
-                                      "runStatus": "Failed",
-                                      "runError": {
-                                        "code": "NotTeamMember",
-                                        "message": "You are not a member of the owning group."
-                                      }
+                                      "name": "varLog",
+                                      "value": "@concat('Failed: ', variables('varFailMessage'))"
                                     },
                                     "runAfter": {
-                                      "Fail_not_team_member": [
+                                      "Set_not_team_member_message": [
+                                        "Succeeded"
+                                      ]
+                                    }
+                                  },
+                                  "Throw_not_team_member": {
+                                    "type": "Compose",
+                                    "inputs": "@json(concat('Stopped: ', variables('varFailMessage')))",
+                                    "runAfter": {
+                                      "Log_not_team_member": [
                                         "Succeeded"
                                       ]
                                     }
@@ -1057,6 +1079,37 @@
                             ]
                           }
                         },
+                        "Result_create_app": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "varResult",
+                            "value": {
+                              "applicationObjectId": "@{body('HTTP_Create_application')?['id']}",
+                              "appId": "@{body('HTTP_Create_application')?['appId']}",
+                              "identifierUri": "",
+                              "servicePrincipalId": "",
+                              "teamGroupId": "@{variables('varTeamGroupId')}",
+                              "team": "@{variables('varTeamTag')}"
+                            }
+                          },
+                          "runAfter": {
+                            "HTTP_Create_application": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Log_app_created": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varLog",
+                            "value": "@concat('Done: app registration ', body('HTTP_Create_application')?['displayName'], ' created (client ID ', body('HTTP_Create_application')?['appId'], ', object ID ', body('HTTP_Create_application')?['id'], '), owner tag ', variables('varTeamTag'), if(greater(length(body('Select_app_roles')), 0), concat(', ', string(length(body('Select_app_roles'))), ' app role(s)'), ''))"
+                          },
+                          "runAfter": {
+                            "Result_create_app": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
                         "Wait_for_app_replication": {
                           "type": "Wait",
                           "inputs": {
@@ -1066,7 +1119,7 @@
                             }
                           },
                           "runAfter": {
-                            "HTTP_Create_application": [
+                            "Log_app_created": [
                               "Succeeded"
                             ]
                           }
@@ -1186,37 +1239,22 @@
                                 ]
                               },
                               "actions": {
-                                "Fail_expose_API": {
-                                  "type": "OpenApiConnection",
+                                "Log_expose_failed": {
+                                  "type": "AppendToArrayVariable",
                                   "inputs": {
-                                    "host": {
-                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
-                                      "connectionName": "shared_sharepointonline",
-                                      "operationId": "PatchItem"
-                                    },
-                                    "parameters": {
-                                      "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                                      "table": "EntraRequests",
-                                      "id": "@int(triggerOutputs()?['body/ID'])",
-                                      "item/Title": "@triggerOutputs()?['body/Title']",
-                                      "item/Status/Value": "Failed",
-                                      "item/ErrorMessage": "@concat('Could not set the Application ID URI and scopes on the new app registration (object id ', body('HTTP_Create_application')?['id'], ') after 6 attempts. Delete that app in Entra before retrying.')"
-                                    },
-                                    "authentication": "@parameters('$authentication')"
+                                    "name": "varLog",
+                                    "value": "@concat('Failed: Application ID URI and scopes were not set (', coalesce(body('HTTP_Expose_API')?['error']?['message'], 'no answer after 6 attempts'), '). Use Expose an API on this app to add them.')"
                                   },
                                   "runAfter": {}
                                 },
-                                "Stop_expose_API": {
-                                  "type": "Terminate",
+                                "Log_expose_failed_flag": {
+                                  "type": "SetVariable",
                                   "inputs": {
-                                    "runStatus": "Failed",
-                                    "runError": {
-                                      "code": "GraphRetryExhausted",
-                                      "message": "@concat('Could not set the Application ID URI and scopes on the new app registration (object id ', body('HTTP_Create_application')?['id'], ') after 6 attempts. Delete that app in Entra before retrying.')"
-                                    }
+                                    "name": "varHadErrors",
+                                    "value": "yes"
                                   },
                                   "runAfter": {
-                                    "Fail_expose_API": [
+                                    "Log_expose_failed": [
                                       "Succeeded"
                                     ]
                                   }
@@ -1227,6 +1265,37 @@
                               },
                               "runAfter": {
                                 "Until_HTTP_Expose_API": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Expose_done": {
+                              "type": "If",
+                              "expression": {
+                                "and": [
+                                  {
+                                    "equals": [
+                                      "@variables('varExposeOk')",
+                                      "yes"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "actions": {
+                                "Log_expose_done": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varLog",
+                                    "value": "@concat('Done: Application ID URI ', replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId']), ' and ', string(length(body('Select_scopes'))), ' scope(s) set')"
+                                  },
+                                  "runAfter": {}
+                                }
+                              },
+                              "else": {
+                                "actions": {}
+                              },
+                              "runAfter": {
+                                "HTTP_Expose_API_gave_up": [
                                   "Succeeded"
                                 ]
                               }
@@ -1344,6 +1413,58 @@
                                   "Succeeded"
                                 ]
                               }
+                            },
+                            "SP_done": {
+                              "type": "If",
+                              "expression": {
+                                "and": [
+                                  {
+                                    "equals": [
+                                      "@empty(variables('varSpId'))",
+                                      false
+                                    ]
+                                  }
+                                ]
+                              },
+                              "actions": {
+                                "Log_SP_done": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varLog",
+                                    "value": "@concat('Done: enterprise application created (object ID ', variables('varSpId'), '), assignment required: ', if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), 'no', 'yes'))"
+                                  },
+                                  "runAfter": {}
+                                }
+                              },
+                              "else": {
+                                "actions": {
+                                  "Log_SP_failed": {
+                                    "type": "AppendToArrayVariable",
+                                    "inputs": {
+                                      "name": "varLog",
+                                      "value": "@concat('Failed: enterprise application not created (', coalesce(body('HTTP_Create_SP')?['error']?['message'], concat('HTTP ', string(outputs('HTTP_Create_SP')?['statusCode']))), '). Use Enterprise application on this app to create it.')"
+                                    },
+                                    "runAfter": {}
+                                  },
+                                  "Log_SP_failed_flag": {
+                                    "type": "SetVariable",
+                                    "inputs": {
+                                      "name": "varHadErrors",
+                                      "value": "yes"
+                                    },
+                                    "runAfter": {
+                                      "Log_SP_failed": [
+                                        "Succeeded"
+                                      ]
+                                    }
+                                  }
+                                }
+                              },
+                              "runAfter": {
+                                "Do_until_SP": [
+                                  "Succeeded"
+                                ]
+                              }
                             }
                           },
                           "else": {
@@ -1411,14 +1532,14 @@
                             ]
                           }
                         },
-                        "Result_create_app": {
+                        "Result_create_app_final": {
                           "type": "SetVariable",
                           "inputs": {
                             "name": "varResult",
                             "value": {
                               "applicationObjectId": "@{body('HTTP_Create_application')?['id']}",
                               "appId": "@{body('HTTP_Create_application')?['appId']}",
-                              "identifierUri": "@{if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId']), '')}",
+                              "identifierUri": "@{if(equals(variables('varExposeOk'), 'yes'), replace(outputs('Payload')?['exposeApi']?['identifierUriTemplate'], '{appId}', body('HTTP_Create_application')?['appId']), '')}",
                               "servicePrincipalId": "@{variables('varSpId')}",
                               "teamGroupId": "@{variables('varTeamGroupId')}",
                               "team": "@{variables('varTeamTag')}"
@@ -1457,7 +1578,7 @@
                             "authentication": "@parameters('$authentication')"
                           },
                           "runAfter": {
-                            "Result_create_app": [
+                            "Result_create_app_final": [
                               "Succeeded"
                             ]
                           }
@@ -1529,6 +1650,18 @@
                               "Succeeded"
                             ]
                           }
+                        },
+                        "Log_expose_added": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varLog",
+                            "value": "@concat('Done: Application ID URI ', variables('varResult')?['identifierUri'], ' and ', string(length(body('Select_new_scopes'))), ' new scope(s) added')"
+                          },
+                          "runAfter": {
+                            "Result_expose": [
+                              "Succeeded"
+                            ]
+                          }
                         }
                       },
                       "runAfter": {}
@@ -1576,6 +1709,18 @@
                           },
                           "runAfter": {
                             "Select_new_roles": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Log_roles_added": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varLog",
+                            "value": "@concat('Done: ', string(length(body('Select_new_roles'))), ' app role(s) added')"
+                          },
+                          "runAfter": {
+                            "HTTP_Patch_roles": [
                               "Succeeded"
                             ]
                           }
@@ -1631,7 +1776,7 @@
                             }
                           },
                           "runAfter": {
-                            "HTTP_Patch_roles": [
+                            "Log_roles_added": [
                               "Succeeded"
                             ]
                           }
@@ -1677,6 +1822,18 @@
                               },
                               "runAfter": {
                                 "HTTP_Create_SP_for_roles": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Log_SP_for_roles": {
+                              "type": "AppendToArrayVariable",
+                              "inputs": {
+                                "name": "varLog",
+                                "value": "@concat('Done: enterprise application created (object ID ', variables('varSpId'), ')')"
+                              },
+                              "runAfter": {
+                                "Set_SP_id_roles": [
                                   "Succeeded"
                                 ]
                               }
@@ -1790,6 +1947,18 @@
                                   "Succeeded"
                                 ]
                               }
+                            },
+                            "Log_SP_for_assign": {
+                              "type": "AppendToArrayVariable",
+                              "inputs": {
+                                "name": "varLog",
+                                "value": "@concat('Done: enterprise application created (object ID ', variables('varSpId'), ')')"
+                              },
+                              "runAfter": {
+                                "Set_SP_id_assign": [
+                                  "Succeeded"
+                                ]
+                              }
                             }
                           },
                           "else": {
@@ -1864,37 +2033,31 @@
                             ]
                           },
                           "actions": {
-                            "Fail_SP_exists": {
-                              "type": "OpenApiConnection",
+                            "Set_SP_exists_message": {
+                              "type": "SetVariable",
                               "inputs": {
-                                "host": {
-                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
-                                  "connectionName": "shared_sharepointonline",
-                                  "operationId": "PatchItem"
-                                },
-                                "parameters": {
-                                  "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                                  "table": "EntraRequests",
-                                  "id": "@int(triggerOutputs()?['body/ID'])",
-                                  "item/Title": "@triggerOutputs()?['body/Title']",
-                                  "item/Status/Value": "Failed",
-                                  "item/ErrorMessage": "This app already has an enterprise application."
-                                },
-                                "authentication": "@parameters('$authentication')"
+                                "name": "varFailMessage",
+                                "value": "This app already has an enterprise application. Nothing was changed."
                               },
                               "runAfter": {}
                             },
-                            "Stop_SP_exists": {
-                              "type": "Terminate",
+                            "Log_SP_exists": {
+                              "type": "AppendToArrayVariable",
                               "inputs": {
-                                "runStatus": "Failed",
-                                "runError": {
-                                  "code": "SpExists",
-                                  "message": "This app already has an enterprise application."
-                                }
+                                "name": "varLog",
+                                "value": "@concat('Failed: ', variables('varFailMessage'))"
                               },
                               "runAfter": {
-                                "Fail_SP_exists": [
+                                "Set_SP_exists_message": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Throw_SP_exists": {
+                              "type": "Compose",
+                              "inputs": "@json(concat('Stopped: ', variables('varFailMessage')))",
+                              "runAfter": {
+                                "Log_SP_exists": [
                                   "Succeeded"
                                 ]
                               }
@@ -1941,6 +2104,18 @@
                             ]
                           }
                         },
+                        "Log_SP_created": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varLog",
+                            "value": "@concat('Done: enterprise application created (object ID ', variables('varSpId'), '), assignment required: ', if(equals(outputs('Payload')?['appRoleAssignmentRequired'], false), 'no', 'yes'))"
+                          },
+                          "runAfter": {
+                            "Set_SP_id_sp": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
                         "HTTP_Patch_tags_sp": {
                           "type": "OpenApiConnection",
                           "inputs": {
@@ -1960,7 +2135,7 @@
                             "authentication": "@parameters('$authentication')"
                           },
                           "runAfter": {
-                            "Set_SP_id_sp": [
+                            "Log_SP_created": [
                               "Succeeded"
                             ]
                           }
@@ -1995,286 +2170,285 @@
                 ]
               }
             },
-            "Apply_to_each_assignment": {
-              "type": "Foreach",
-              "foreach": "@variables('varAssignTodo')",
-              "actions": {
-                "No_assignment_error_yet": {
-                  "type": "If",
-                  "expression": {
-                    "and": [
-                      {
-                        "equals": [
-                          "@empty(variables('varAssignError'))",
-                          true
-                        ]
-                      }
-                    ]
-                  },
-                  "actions": {
-                    "Group_id_missing": {
-                      "type": "If",
-                      "expression": {
-                        "and": [
-                          {
-                            "equals": [
-                              "@empty(items('Apply_to_each_assignment')?['id'])",
-                              true
-                            ]
-                          }
-                        ]
-                      },
-                      "actions": {
-                        "Record_no_group_id": {
-                          "type": "SetVariable",
-                          "inputs": {
-                            "name": "varAssignError",
-                            "value": "@concat('Group ', items('Apply_to_each_assignment')?['displayName'], ' has no Object ID. Requests can only use existing groups: add it with Add existing group and pick it again.')"
-                          },
-                          "runAfter": {}
-                        }
-                      },
-                      "else": {
-                        "actions": {
-                          "Set_group_id": {
-                            "type": "SetVariable",
-                            "inputs": {
-                              "name": "varGroupId",
-                              "value": "@items('Apply_to_each_assignment')?['id']"
-                            },
-                            "runAfter": {}
-                          },
-                          "Reset_varAssignOk": {
-                            "type": "SetVariable",
-                            "inputs": {
-                              "name": "varAssignOk",
-                              "value": "no"
-                            },
-                            "runAfter": {
-                              "Set_group_id": [
-                                "Succeeded"
-                              ]
-                            }
-                          },
-                          "Until_HTTP_Assign_role": {
-                            "type": "Until",
-                            "expression": "@equals(variables('varAssignOk'), 'yes')",
-                            "limit": {
-                              "count": 6,
-                              "timeout": "PT10M"
-                            },
-                            "actions": {
-                              "HTTP_Assign_role": {
-                                "type": "OpenApiConnection",
-                                "inputs": {
-                                  "host": {
-                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                                    "connectionName": "shared_webcontents",
-                                    "operationId": "InvokeHttp"
-                                  },
-                                  "parameters": {
-                                    "request/method": "POST",
-                                    "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}/appRoleAssignedTo",
-                                    "request/headers": {
-                                      "Content-Type": "application/json"
-                                    },
-                                    "request/body": "{\n  \"principalId\": \"@{variables('varGroupId')}\",\n  \"resourceId\": \"@{variables('varSpId')}\",\n  \"appRoleId\": \"@{items('Apply_to_each_assignment')?['roleId']}\"\n}"
-                                  },
-                                  "authentication": "@parameters('$authentication')",
-                                  "retryPolicy": {
-                                    "type": "none"
-                                  }
-                                },
-                                "runAfter": {}
-                              },
-                              "HTTP_Assign_role_ok": {
-                                "type": "If",
-                                "expression": {
-                                  "and": [
-                                    {
-                                      "equals": [
-                                        "@or(equals(outputs('HTTP_Assign_role')?['statusCode'], 201), contains(string(outputs('HTTP_Assign_role')?['body']), 'already exist'))",
-                                        true
-                                      ]
-                                    }
-                                  ]
-                                },
-                                "actions": {
-                                  "Set_varAssignOk": {
-                                    "type": "SetVariable",
-                                    "inputs": {
-                                      "name": "varAssignOk",
-                                      "value": "yes"
-                                    },
-                                    "runAfter": {}
-                                  }
-                                },
-                                "else": {
-                                  "actions": {
-                                    "HTTP_Assign_role_retry_delay": {
-                                      "type": "Wait",
-                                      "inputs": {
-                                        "interval": {
-                                          "count": 10,
-                                          "unit": "Second"
-                                        }
-                                      },
-                                      "runAfter": {}
-                                    }
-                                  }
-                                },
-                                "runAfter": {
-                                  "HTTP_Assign_role": [
-                                    "Succeeded",
-                                    "Failed"
-                                  ]
-                                }
-                              }
-                            },
-                            "runAfter": {
-                              "Reset_varAssignOk": [
-                                "Succeeded"
-                              ]
-                            }
-                          },
-                          "HTTP_Assign_role_gave_up": {
-                            "type": "If",
-                            "expression": {
-                              "and": [
-                                {
-                                  "equals": [
-                                    "@variables('varAssignOk')",
-                                    "no"
-                                  ]
-                                }
-                              ]
-                            },
-                            "actions": {
-                              "Record_assign_error": {
-                                "type": "SetVariable",
-                                "inputs": {
-                                  "name": "varAssignError",
-                                  "value": "@concat('Could not assign ', items('Apply_to_each_assignment')?['displayName'], ' to role ', items('Apply_to_each_assignment')?['roleValue'], ' after 6 attempts. ResultJson of this request lists what was created.')"
-                                },
-                                "runAfter": {}
-                              }
-                            },
-                            "else": {
-                              "actions": {}
-                            },
-                            "runAfter": {
-                              "Until_HTTP_Assign_role": [
-                                "Succeeded"
-                              ]
-                            }
-                          },
-                          "Assignment_ok": {
-                            "type": "If",
-                            "expression": {
-                              "and": [
-                                {
-                                  "equals": [
-                                    "@variables('varAssignOk')",
-                                    "yes"
-                                  ]
-                                }
-                              ]
-                            },
-                            "actions": {
-                              "Record_assignment": {
-                                "type": "AppendToArrayVariable",
-                                "inputs": {
-                                  "name": "varAssignments",
-                                  "value": "@concat(items('Apply_to_each_assignment')?['displayName'], ' -> ', items('Apply_to_each_assignment')?['roleValue'])"
-                                },
-                                "runAfter": {}
-                              }
-                            },
-                            "else": {
-                              "actions": {}
-                            },
-                            "runAfter": {
-                              "HTTP_Assign_role_gave_up": [
-                                "Succeeded"
-                              ]
-                            }
-                          }
-                        }
-                      },
-                      "runAfter": {}
-                    }
-                  },
-                  "else": {
-                    "actions": {}
-                  },
-                  "runAfter": {}
-                }
-              },
-              "runtimeConfiguration": {
-                "concurrency": {
-                  "repetitions": 1
-                }
-              },
-              "runAfter": {
-                "Request_type": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "Assignment_failed": {
+            "Assignments_skipped": {
               "type": "If",
               "expression": {
                 "and": [
                   {
                     "equals": [
-                      "@empty(variables('varAssignError'))",
-                      false
+                      "@and(greater(length(variables('varAssignTodo')), 0), empty(variables('varSpId')))",
+                      true
                     ]
                   }
                 ]
               },
               "actions": {
-                "Fail_assignment": {
-                  "type": "OpenApiConnection",
+                "Log_assignments_skipped": {
+                  "type": "AppendToArrayVariable",
                   "inputs": {
-                    "host": {
-                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
-                      "connectionName": "shared_sharepointonline",
-                      "operationId": "PatchItem"
-                    },
-                    "parameters": {
-                      "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                      "table": "EntraRequests",
-                      "id": "@int(triggerOutputs()?['body/ID'])",
-                      "item/Title": "@triggerOutputs()?['body/Title']",
-                      "item/Status/Value": "Failed",
-                      "item/ErrorMessage": "@variables('varAssignError')"
-                    },
-                    "authentication": "@parameters('$authentication')"
+                    "name": "varLog",
+                    "value": "@concat('Skipped: ', string(length(variables('varAssignTodo'))), ' role assignment(s), because there is no enterprise application to assign them on')"
                   },
                   "runAfter": {}
                 },
-                "Stop_assignment": {
-                  "type": "Terminate",
+                "Log_assignments_skipped_flag": {
+                  "type": "SetVariable",
                   "inputs": {
-                    "runStatus": "Failed",
-                    "runError": {
-                      "code": "RoleAssignmentFailed",
-                      "message": "@variables('varAssignError')"
-                    }
+                    "name": "varHadErrors",
+                    "value": "yes"
                   },
                   "runAfter": {
-                    "Fail_assignment": [
+                    "Log_assignments_skipped": [
                       "Succeeded"
                     ]
                   }
                 }
               },
               "else": {
-                "actions": {}
+                "actions": {
+                  "Apply_to_each_assignment": {
+                    "type": "Foreach",
+                    "foreach": "@variables('varAssignTodo')",
+                    "actions": {
+                      "Group_id_missing": {
+                        "type": "If",
+                        "expression": {
+                          "and": [
+                            {
+                              "equals": [
+                                "@empty(items('Apply_to_each_assignment')?['id'])",
+                                true
+                              ]
+                            }
+                          ]
+                        },
+                        "actions": {
+                          "Log_no_group_id": {
+                            "type": "AppendToArrayVariable",
+                            "inputs": {
+                              "name": "varLog",
+                              "value": "@concat('Failed: ', items('Apply_to_each_assignment')?['displayName'], ' -> role ', items('Apply_to_each_assignment')?['roleValue'], ' (the group has no Object ID: add it with Add existing group and pick it again)')"
+                            },
+                            "runAfter": {}
+                          },
+                          "Log_no_group_id_flag": {
+                            "type": "SetVariable",
+                            "inputs": {
+                              "name": "varHadErrors",
+                              "value": "yes"
+                            },
+                            "runAfter": {
+                              "Log_no_group_id": [
+                                "Succeeded"
+                              ]
+                            }
+                          }
+                        },
+                        "else": {
+                          "actions": {
+                            "Set_group_id": {
+                              "type": "SetVariable",
+                              "inputs": {
+                                "name": "varGroupId",
+                                "value": "@items('Apply_to_each_assignment')?['id']"
+                              },
+                              "runAfter": {}
+                            },
+                            "Reset_varAssignOk": {
+                              "type": "SetVariable",
+                              "inputs": {
+                                "name": "varAssignOk",
+                                "value": "no"
+                              },
+                              "runAfter": {
+                                "Set_group_id": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Until_HTTP_Assign_role": {
+                              "type": "Until",
+                              "expression": "@equals(variables('varAssignOk'), 'yes')",
+                              "limit": {
+                                "count": 6,
+                                "timeout": "PT10M"
+                              },
+                              "actions": {
+                                "HTTP_Assign_role": {
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                                      "connectionName": "shared_webcontents",
+                                      "operationId": "InvokeHttp"
+                                    },
+                                    "parameters": {
+                                      "request/method": "POST",
+                                      "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}/appRoleAssignedTo",
+                                      "request/headers": {
+                                        "Content-Type": "application/json"
+                                      },
+                                      "request/body": "{\n  \"principalId\": \"@{variables('varGroupId')}\",\n  \"resourceId\": \"@{variables('varSpId')}\",\n  \"appRoleId\": \"@{items('Apply_to_each_assignment')?['roleId']}\"\n}"
+                                    },
+                                    "authentication": "@parameters('$authentication')",
+                                    "retryPolicy": {
+                                      "type": "none"
+                                    }
+                                  },
+                                  "runAfter": {}
+                                },
+                                "HTTP_Assign_role_ok": {
+                                  "type": "If",
+                                  "expression": {
+                                    "and": [
+                                      {
+                                        "equals": [
+                                          "@or(equals(outputs('HTTP_Assign_role')?['statusCode'], 201), contains(string(outputs('HTTP_Assign_role')?['body']), 'already exist'))",
+                                          true
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "actions": {
+                                    "Set_varAssignOk": {
+                                      "type": "SetVariable",
+                                      "inputs": {
+                                        "name": "varAssignOk",
+                                        "value": "yes"
+                                      },
+                                      "runAfter": {}
+                                    }
+                                  },
+                                  "else": {
+                                    "actions": {
+                                      "HTTP_Assign_role_retry_delay": {
+                                        "type": "Wait",
+                                        "inputs": {
+                                          "interval": {
+                                            "count": 10,
+                                            "unit": "Second"
+                                          }
+                                        },
+                                        "runAfter": {}
+                                      }
+                                    }
+                                  },
+                                  "runAfter": {
+                                    "HTTP_Assign_role": [
+                                      "Succeeded",
+                                      "Failed"
+                                    ]
+                                  }
+                                }
+                              },
+                              "runAfter": {
+                                "Reset_varAssignOk": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "HTTP_Assign_role_gave_up": {
+                              "type": "If",
+                              "expression": {
+                                "and": [
+                                  {
+                                    "equals": [
+                                      "@variables('varAssignOk')",
+                                      "no"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "actions": {
+                                "Log_assign_failed": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varLog",
+                                    "value": "@concat('Failed: ', items('Apply_to_each_assignment')?['displayName'], ' -> role ', items('Apply_to_each_assignment')?['roleValue'], ' (', coalesce(body('HTTP_Assign_role')?['error']?['message'], 'no answer after 6 attempts'), ')')"
+                                  },
+                                  "runAfter": {}
+                                },
+                                "Log_assign_failed_flag": {
+                                  "type": "SetVariable",
+                                  "inputs": {
+                                    "name": "varHadErrors",
+                                    "value": "yes"
+                                  },
+                                  "runAfter": {
+                                    "Log_assign_failed": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                }
+                              },
+                              "else": {
+                                "actions": {}
+                              },
+                              "runAfter": {
+                                "Until_HTTP_Assign_role": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Assignment_ok": {
+                              "type": "If",
+                              "expression": {
+                                "and": [
+                                  {
+                                    "equals": [
+                                      "@variables('varAssignOk')",
+                                      "yes"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "actions": {
+                                "Record_assignment": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varAssignments",
+                                    "value": "@concat(items('Apply_to_each_assignment')?['displayName'], ' -> ', items('Apply_to_each_assignment')?['roleValue'])"
+                                  },
+                                  "runAfter": {}
+                                },
+                                "Log_assign_done": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varLog",
+                                    "value": "@concat('Done: ', items('Apply_to_each_assignment')?['displayName'], ' -> role ', items('Apply_to_each_assignment')?['roleValue'])"
+                                  },
+                                  "runAfter": {
+                                    "Record_assignment": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                }
+                              },
+                              "else": {
+                                "actions": {}
+                              },
+                              "runAfter": {
+                                "HTTP_Assign_role_gave_up": [
+                                  "Succeeded"
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        "runAfter": {}
+                      }
+                    },
+                    "runtimeConfiguration": {
+                      "concurrency": {
+                        "repetitions": 1
+                      }
+                    },
+                    "runAfter": {}
+                  }
+                }
               },
               "runAfter": {
-                "Apply_to_each_assignment": [
+                "Request_type": [
                   "Succeeded"
                 ]
               }
@@ -2311,67 +2485,163 @@
                     "authentication": "@parameters('$authentication')"
                   },
                   "runAfter": {}
+                },
+                "Log_default_access": {
+                  "type": "AppendToArrayVariable",
+                  "inputs": {
+                    "name": "varLog",
+                    "value": "@concat('Done: default access to the enterprise application for ', variables('varTeamGroupName'))"
+                  },
+                  "runAfter": {
+                    "HTTP_Assign_default_access": [
+                      "Succeeded"
+                    ]
+                  }
                 }
               },
               "else": {
                 "actions": {}
               },
               "runAfter": {
-                "Assignment_failed": [
+                "Assignments_skipped": [
                   "Succeeded"
                 ]
               }
             },
-            "Mark_completed": {
-              "type": "OpenApiConnection",
-              "inputs": {
-                "host": {
-                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
-                  "connectionName": "shared_sharepointonline",
-                  "operationId": "PatchItem"
-                },
-                "parameters": {
-                  "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                  "table": "EntraRequests",
-                  "id": "@int(triggerOutputs()?['body/ID'])",
-                  "item/Title": "@triggerOutputs()?['body/Title']",
-                  "item/Status/Value": "Completed",
-                  "item/CompletedAt": "@utcNow()",
-                  "item/ResultJson": "@string(setProperty(variables('varResult'), 'assignmentsText', join(variables('varAssignments'), '; ')))"
-                },
-                "authentication": "@parameters('$authentication')"
-              },
+            "Completion_notes": {
+              "type": "Compose",
+              "inputs": "@join(variables('varLog'), decodeUriComponent('%0A'))",
               "runAfter": {
                 "Default_access": [
                   "Succeeded"
                 ]
               }
             },
-            "Mail_completed": {
-              "type": "OpenApiConnection",
-              "inputs": {
-                "host": {
-                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
-                  "connectionName": "shared_office365",
-                  "operationId": "SendEmailV2"
+            "Result_json": {
+              "type": "Compose",
+              "inputs": "@string(setProperty(variables('varResult'), 'assignmentsText', join(variables('varAssignments'), '; ')))",
+              "runAfter": {
+                "Completion_notes": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Had_errors": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@variables('varHadErrors')",
+                      "yes"
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "Mark_partly_failed": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "connectionName": "shared_sharepointonline",
+                      "operationId": "PatchItem"
+                    },
+                    "parameters": {
+                      "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                      "table": "EntraRequests",
+                      "id": "@int(triggerOutputs()?['body/ID'])",
+                      "item/Title": "@triggerOutputs()?['body/Title']",
+                      "item/Status/Value": "Failed",
+                      "item/CompletedAt": "@utcNow()",
+                      "item/ErrorMessage": "Some steps failed. The steps marked Done are in place; see the completion notes for what still needs doing.",
+                      "item/CompletionNotes": "@outputs('Completion_notes')",
+                      "item/ResultJson": "@outputs('Result_json')"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "runAfter": {}
                 },
-                "parameters": {
-                  "emailMessage/To": "@triggerOutputs()?['body/Author/Email']",
-                  "emailMessage/Subject": "@concat('Your Entra request ', triggerOutputs()?['body/Title'], ' is complete')",
-                  "emailMessage/Body": "@concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') is complete.<br><br>', if(empty(variables('varResult')?['applicationObjectId']), '', concat('Application (object) ID: ', variables('varResult')?['applicationObjectId'], '<br>')), if(empty(variables('varResult')?['appId']), '', concat('Application (client) ID: ', variables('varResult')?['appId'], '<br>')), if(empty(variables('varResult')?['identifierUri']), '', concat('Application ID URI: ', variables('varResult')?['identifierUri'], '<br>')), if(empty(variables('varResult')?['servicePrincipalId']), '', concat('Enterprise application (object) ID: ', variables('varResult')?['servicePrincipalId'], '<br>')), if(empty(variables('varResult')?['teamGroupId']), '', concat('Owning team group ID: ', variables('varResult')?['teamGroupId'], '<br>')), if(empty(variables('varResult')?['groupId']), '', concat('Group: ', variables('varResult')?['groupDisplayName'], ' (', variables('varResult')?['groupId'], ')<br>')), if(empty(variables('varAssignments')), '', concat('Role assignments: ', join(variables('varAssignments'), '; '), '<br>')), '<br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')",
-                  "emailMessage/Importance": "Normal"
-                },
-                "authentication": "@parameters('$authentication')"
+                "Mail_partly_failed": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                      "connectionName": "shared_office365",
+                      "operationId": "SendEmailV2"
+                    },
+                    "parameters": {
+                      "emailMessage/To": "@concat(triggerOutputs()?['body/Author/Email'], ';', replace(replace(body('Get_settings')?['EntraApproverEmails'], decodeUriComponent('%0D'), ''), decodeUriComponent('%0A'), ';'))",
+                      "emailMessage/Subject": "@concat('Entra request ', triggerOutputs()?['body/Title'], ' partly failed')",
+                      "emailMessage/Body": "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') was only partly applied.<br><br><b>Steps</b><br>', join(variables('varLog'), '<br>'), '<br><br>The steps marked Done are in place. Do not resubmit the whole request: use the matching card (Expose an API, Enterprise application, Role assignments) for the failed steps.', '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')",
+                      "emailMessage/Importance": "Normal"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "runAfter": {
+                    "Mark_partly_failed": [
+                      "Succeeded"
+                    ]
+                  }
+                }
+              },
+              "else": {
+                "actions": {
+                  "Mark_completed": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                        "connectionName": "shared_sharepointonline",
+                        "operationId": "PatchItem"
+                      },
+                      "parameters": {
+                        "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                        "table": "EntraRequests",
+                        "id": "@int(triggerOutputs()?['body/ID'])",
+                        "item/Title": "@triggerOutputs()?['body/Title']",
+                        "item/Status/Value": "Completed",
+                        "item/CompletedAt": "@utcNow()",
+                        "item/CompletionNotes": "@outputs('Completion_notes')",
+                        "item/ResultJson": "@outputs('Result_json')"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    },
+                    "runAfter": {}
+                  },
+                  "Mail_completed": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                        "connectionName": "shared_office365",
+                        "operationId": "SendEmailV2"
+                      },
+                      "parameters": {
+                        "emailMessage/To": "@triggerOutputs()?['body/Author/Email']",
+                        "emailMessage/Subject": "@concat('Your Entra request ', triggerOutputs()?['body/Title'], ' is complete')",
+                        "emailMessage/Body": "@concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') is complete.<br><br><b>What was done</b><br>', join(variables('varLog'), '<br>'), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')",
+                        "emailMessage/Importance": "Normal"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    },
+                    "runAfter": {
+                      "Mark_completed": [
+                        "Succeeded"
+                      ]
+                    }
+                  }
+                }
               },
               "runAfter": {
-                "Mark_completed": [
+                "Result_json": [
                   "Succeeded"
                 ]
               }
             }
           },
           "runAfter": {
-            "Init_varGroupOwner": [
+            "Init_varFailMessage": [
               "Succeeded"
             ]
           }
@@ -2389,9 +2659,27 @@
             },
             "Error_text": {
               "type": "Compose",
-              "inputs": "@concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-02 run history'))",
+              "inputs": "@if(empty(variables('varFailMessage')), concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], first(body('Failed_actions'))?['error']?['message'], 'see the ER-02 run history')), variables('varFailMessage'))",
               "runAfter": {
                 "Failed_actions": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Failure_log": {
+              "type": "Compose",
+              "inputs": "@if(empty(variables('varFailMessage')), union(variables('varLog'), createArray(concat('Failed: ', outputs('Error_text')))), variables('varLog'))",
+              "runAfter": {
+                "Error_text": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Failure_notes": {
+              "type": "Compose",
+              "inputs": "@concat(join(outputs('Failure_log'), decodeUriComponent('%0A')), decodeUriComponent('%0A'), 'Not run: every step after the failed one.')",
+              "runAfter": {
+                "Failure_log": [
                   "Succeeded"
                 ]
               }
@@ -2411,12 +2699,13 @@
                   "item/Title": "@triggerOutputs()?['body/Title']",
                   "item/Status/Value": "Failed",
                   "item/ErrorMessage": "@outputs('Error_text')",
+                  "item/CompletionNotes": "@outputs('Failure_notes')",
                   "item/ResultJson": "@string(variables('varResult'))"
                 },
                 "authentication": "@parameters('$authentication')"
               },
               "runAfter": {
-                "Error_text": [
+                "Failure_notes": [
                   "Succeeded"
                 ]
               }
@@ -2432,7 +2721,7 @@
                 "parameters": {
                   "emailMessage/To": "@concat(triggerOutputs()?['body/Author/Email'], ';', replace(replace(body('Get_settings')?['EntraApproverEmails'], decodeUriComponent('%0D'), ''), decodeUriComponent('%0A'), ';'))",
                   "emailMessage/Subject": "@concat('Entra request ', triggerOutputs()?['body/Title'], ' failed')",
-                  "emailMessage/Body": "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') failed while being applied.<br><br>Error: ', outputs('Error_text'), '<br><br>Already created (clean up before retrying): ', string(variables('varResult')), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')",
+                  "emailMessage/Body": "@concat('Request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') failed while being applied.<br><br>Error: ', outputs('Error_text'), '<br><br><b>Steps</b><br>', join(outputs('Failure_log'), '<br>'), '<br>Not run: every step after the failed one.<br><br>IDs of anything created: ', string(variables('varResult')), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')",
                   "emailMessage/Importance": "Normal"
                 },
                 "authentication": "@parameters('$authentication')"
