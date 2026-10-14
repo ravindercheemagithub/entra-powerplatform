@@ -33,7 +33,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.3.0.0"
+VERSION = "1.3.1.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 

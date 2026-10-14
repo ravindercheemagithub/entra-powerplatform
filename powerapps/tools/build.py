@@ -341,6 +341,7 @@ def new_app() -> None:
     If(!IsMatch(Trim(txtAppName_{s}.Text), "^[A-Za-z0-9][A-Za-z0-9 ._-]{{1,79}}$"), "Display name: enter the free-text part after the prefix (2–80 letters, digits, spaces, . _ -)."),
     If(Len({full}) > 120, "The full display name is longer than 120 characters; shorten the free-text part."),
     If(Len(Trim(txtJustification_{s}.Text)) < 10, "Business justification is required (10+ characters)."),
+    If(Len(Trim(txtDescription_{s}.Text)) > 1024, "Description: at most 1024 characters (Entra's limit)."),
     If(ddPlatform_{s}.Selected.Value <> "None" && !IsMatch(Trim(txtRedirect_{s}.Text), "^\\S+$"), "Redirect URIs: no spaces; separate several with ;")
 )"""
     err2 = f"""Coalesce(

@@ -1,6 +1,6 @@
 {
   "displayName": "@{outputs('Payload')?['displayName']}",
-  "description": "@{outputs('Payload')?['description']}",
+  "description": @{if(empty(trim(coalesce(outputs('Payload')?['description'], ''))), 'null', concat('"', take(trim(outputs('Payload')?['description']), 1024), '"'))},
   "signInAudience": "@{outputs('Payload')?['signInAudience']}",
   "notes": "@{concat('appCatID=', triggerOutputs()?['body/AppCatId'], '; requestId=', triggerOutputs()?['body/Title'], '; createdBy=', outputs('Requester'), '; managedBy=', body('Get_settings')?['ManagedByTag'])}",
   "tags": @{outputs('App_tags')},
