@@ -248,6 +248,7 @@ A common mix is to gate production (`appEnv` P) and record everything else.
 
 | Need | Where |
 |---|---|
+| Presentation (slides and speaker notes) | [`presentation/EntraSelfService-overview.pptx`](presentation/EntraSelfService-overview.pptx) · [speaker notes](presentation/SPEAKER-NOTES.md) |
 | All diagrams (editable, 14 pages) | [`diagrams/entra-powerplatform.drawio`](../diagrams/entra-powerplatform.drawio) · [PDF](../diagrams/entra-powerplatform.pdf) |
 | Future extension diagrams | [`diagrams/entra-powerplatform-future.drawio`](../diagrams/entra-powerplatform-future.drawio) · [PDF](../diagrams/entra-powerplatform-future.pdf) |
 | Entra setup (app registration, permissions, certificate) | [01-ENTRA.md](01-ENTRA.md) |
