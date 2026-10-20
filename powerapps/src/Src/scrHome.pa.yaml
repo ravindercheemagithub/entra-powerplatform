@@ -122,6 +122,7 @@ Screens:
                     "newApp", Set(varClone, Blank()); Set(varResetNewApp, true); Navigate(scrNewApp, ScreenTransition.Fade),
                     "onboardGroup", Navigate(scrAddGroup, ScreenTransition.Fade),
                     "tagOwnerGroup", Navigate(scrTagGroup, ScreenTransition.Fade),
+                    "deleteApp", Set(varDelApp, Blank()); Navigate(scrDeleteApp, ScreenTransition.Fade),
                     "myRequests", Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade),
                     Set(varCloneChange, Blank()); Set(varOp, ThisItem.Key); Set(varResetChange, true); Navigate(scrAppChange, ScreenTransition.Fade)
                 )
@@ -151,7 +152,7 @@ Screens:
             - icoCard_Home:
                 Control: Classic/Icon@2.5.0
                 Properties:
-                  Icon: =Switch(ThisItem.Key, "newApp", Icon.AddDocument, "exposeApi", Icon.Settings, "addAppRoles", Icon.Lock, "assignGroups", Icon.People, "createSP", Icon.Waffle, "onboardGroup", Icon.AddUser, "tagOwnerGroup", Icon.Edit, Icon.DetailList)
+                  Icon: =Switch(ThisItem.Key, "newApp", Icon.AddDocument, "exposeApi", Icon.Settings, "addAppRoles", Icon.Lock, "assignGroups", Icon.People, "createSP", Icon.Waffle, "onboardGroup", Icon.AddUser, "tagOwnerGroup", Icon.Edit, "deleteApp", Icon.Trash, Icon.DetailList)
                   X: =28
                   Y: =28
                   Width: =44

@@ -113,7 +113,7 @@
             X: =24
             Y: =156
             Width: =256
-            Height: =340
+            Height: =400
             TemplateSize: =64
             TemplatePadding: =0
             WrapCount: =1
@@ -184,7 +184,7 @@
           Properties:
             Text: ="Only Basics is required. Use Next for optional configuration, or Submit at any step."
             X: =40
-            Y: =512
+            Y: =566
             Width: =224
             Height: =64
             Size: =9
@@ -386,7 +386,7 @@
                 Control: Label
                 Properties:
                   Text: |-
-                    ="Short name of the application in the book of record: 2–20 letters or digits."
+                    ="Short name of the application in the book of record: 2–20 letters, digits or hyphens."
                   X: =0
                   Y: =214
                   Width: =(Parent.Width - 24) / 2
@@ -1252,7 +1252,7 @@
             - lblS3_NewAppHead:
                 Control: Label
                 Properties:
-                  Text: ="App roles & groups"
+                  Text: ="API permissions"
                   X: =0
                   Y: =0
                   Width: =Parent.Width
@@ -1266,7 +1266,466 @@
             - lblS3_NewAppSub:
                 Control: Label
                 Properties:
-                  Text: ="Roles appear in the token's roles claim. Give each role an existing group — the group's owners then manage access without another request."
+                  Text: ="Microsoft Graph permissions the app asks for when a user signs in (delegated). Granted by user consent or by the Entra ID team."
+                  X: =0
+                  Y: =28
+                  Width: =Parent.Width
+                  Height: =22
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - lblPDefault_NewApp:
+                Control: Label
+                Properties:
+                  Text: ="Sign-in permissions"
+                  X: =0
+                  Y: =64
+                  Width: =400
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - chkPOpenid_NewApp:
+                Control: Classic/CheckBox
+                Properties:
+                  Text: ="openid"
+                  Default: =If(IsBlank(varClone), true, ",openid," in "," & Coalesce(varClone.graphScopes, "") & ",")
+                  X: =0
+                  Y: =92
+                  Width: =130
+                  Height: =32
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  CheckboxBorderColor: =gTheme.Muted
+                  CheckmarkFill: =RGBA(255, 255, 255, 1)
+                  CheckboxBackgroundFill: =If(Self.Value, gTheme.Primary, gTheme.Card)
+                  Visible: =!(lblClaimsOn_NewApp.Text = "yes")
+            - chkPLOpenid_NewApp:
+                Control: Classic/CheckBox
+                Properties:
+                  Text: ="openid"
+                  Default: =true
+                  X: =0
+                  Y: =92
+                  Width: =130
+                  Height: =32
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  CheckboxBorderColor: =gTheme.Muted
+                  CheckmarkFill: =RGBA(255, 255, 255, 1)
+                  CheckboxBackgroundFill: =If(Self.Value, gTheme.Primary, gTheme.Card)
+                  DisplayMode: =DisplayMode.Disabled
+                  Visible: =lblClaimsOn_NewApp.Text = "yes"
+            - chkPEmail_NewApp:
+                Control: Classic/CheckBox
+                Properties:
+                  Text: ="email"
+                  Default: =If(IsBlank(varClone), true, ",email," in "," & Coalesce(varClone.graphScopes, "") & ",")
+                  X: =140
+                  Y: =92
+                  Width: =130
+                  Height: =32
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  CheckboxBorderColor: =gTheme.Muted
+                  CheckmarkFill: =RGBA(255, 255, 255, 1)
+                  CheckboxBackgroundFill: =If(Self.Value, gTheme.Primary, gTheme.Card)
+                  Visible: =!(lblClaimsOn_NewApp.Text = "yes")
+            - chkPLEmail_NewApp:
+                Control: Classic/CheckBox
+                Properties:
+                  Text: ="email"
+                  Default: =true
+                  X: =140
+                  Y: =92
+                  Width: =130
+                  Height: =32
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  CheckboxBorderColor: =gTheme.Muted
+                  CheckmarkFill: =RGBA(255, 255, 255, 1)
+                  CheckboxBackgroundFill: =If(Self.Value, gTheme.Primary, gTheme.Card)
+                  DisplayMode: =DisplayMode.Disabled
+                  Visible: =lblClaimsOn_NewApp.Text = "yes"
+            - chkPProfile_NewApp:
+                Control: Classic/CheckBox
+                Properties:
+                  Text: ="profile"
+                  Default: =If(IsBlank(varClone), true, ",profile," in "," & Coalesce(varClone.graphScopes, "") & ",")
+                  X: =280
+                  Y: =92
+                  Width: =130
+                  Height: =32
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  CheckboxBorderColor: =gTheme.Muted
+                  CheckmarkFill: =RGBA(255, 255, 255, 1)
+                  CheckboxBackgroundFill: =If(Self.Value, gTheme.Primary, gTheme.Card)
+                  Visible: =!(lblClaimsOn_NewApp.Text = "yes")
+            - chkPLProfile_NewApp:
+                Control: Classic/CheckBox
+                Properties:
+                  Text: ="profile"
+                  Default: =true
+                  X: =280
+                  Y: =92
+                  Width: =130
+                  Height: =32
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  CheckboxBorderColor: =gTheme.Muted
+                  CheckmarkFill: =RGBA(255, 255, 255, 1)
+                  CheckboxBackgroundFill: =If(Self.Value, gTheme.Primary, gTheme.Card)
+                  DisplayMode: =DisplayMode.Disabled
+                  Visible: =lblClaimsOn_NewApp.Text = "yes"
+            - chkPUserRead_NewApp:
+                Control: Classic/CheckBox
+                Properties:
+                  Text: ="User.Read"
+                  Default: =If(IsBlank(varClone), true, ",User.Read," in "," & Coalesce(varClone.graphScopes, "") & ",")
+                  X: =420
+                  Y: =92
+                  Width: =130
+                  Height: =32
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  CheckboxBorderColor: =gTheme.Muted
+                  CheckmarkFill: =RGBA(255, 255, 255, 1)
+                  CheckboxBackgroundFill: =If(Self.Value, gTheme.Primary, gTheme.Card)
+                  Visible: =!(lblClaimsOn_NewApp.Text = "yes")
+            - chkPLUserRead_NewApp:
+                Control: Classic/CheckBox
+                Properties:
+                  Text: ="User.Read"
+                  Default: =true
+                  X: =420
+                  Y: =92
+                  Width: =130
+                  Height: =32
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  CheckboxBorderColor: =gTheme.Muted
+                  CheckmarkFill: =RGBA(255, 255, 255, 1)
+                  CheckboxBackgroundFill: =If(Self.Value, gTheme.Primary, gTheme.Card)
+                  DisplayMode: =DisplayMode.Disabled
+                  Visible: =lblClaimsOn_NewApp.Text = "yes"
+            - hntPDefault_NewApp:
+                Control: Label
+                Properties:
+                  Text: |-
+                    =If(lblClaimsOn_NewApp.Text = "yes", "Always added: the token claims you chose on the previous step need them.", "Selected by default. They are locked once you choose token claims on the previous step.")
+                  X: =0
+                  Y: =128
+                  Width: =Parent.Width
+                  Height: =20
+                  Size: =9
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - lblPMore_NewApp:
+                Control: Label
+                Properties:
+                  Text: ="Other Microsoft Graph permissions (delegated)"
+                  X: =0
+                  Y: =168
+                  Width: =500
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - txtPerm_NewApp:
+                Control: Classic/TextInput
+                Properties:
+                  Default: =""
+                  HintText: ="Permission name, e.g. Mail.Read"
+                  X: =0
+                  Y: =190
+                  Width: =300
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  HoverBorderColor: =gTheme.Primary
+                  FocusedBorderColor: =gTheme.Primary
+                  FocusedBorderThickness: =2
+                  PaddingLeft: =10
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+            - btnAddPerm_NewApp:
+                Control: Classic/Button
+                Properties:
+                  Text: ="Add"
+                  OnSelect: |-
+                    =With({v: Trim(txtPerm_NewApp.Text)},
+                        If(!IsMatch(v, "^[A-Za-z][A-Za-z0-9._-]{1,99}$"),
+                            Notify("Enter a Microsoft Graph delegated permission name, for example Mail.Read or Calendars.Read.", NotificationType.Warning),
+                            Lower(v) in ["openid", "email", "profile", "user.read"],
+                            Notify("openid, email, profile and User.Read are listed above.", NotificationType.Information),
+                            CountRows(Filter(colPerms, Lower(Value) = Lower(v))) > 0,
+                            Notify(v & " is already added.", NotificationType.Information),
+                            Collect(colPerms, {Value: v}); Reset(txtPerm_NewApp)
+                        )
+                    )
+                  X: =310
+                  Y: =190
+                  Width: =90
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  FontWeight: =FontWeight.Semibold
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+                  Fill: =gTheme.Primary
+                  Color: =RGBA(255, 255, 255, 1)
+                  HoverFill: =gTheme.PrimaryHover
+                  PressedFill: =gTheme.PrimaryHover
+                  BorderThickness: =0
+                  HoverColor: =RGBA(255, 255, 255, 1)
+            - lblPCommon_NewApp:
+                Control: Label
+                Properties:
+                  Text: ="Common:"
+                  X: =420
+                  Y: =196
+                  Width: =70
+                  Height: =24
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - lnkPOffline_NewApp:
+                Control: Label
+                Properties:
+                  Text: ="offline_access"
+                  X: =490
+                  Y: =196
+                  Width: =110
+                  Height: =24
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Primary
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  OnSelect: |-
+                    =If(CountRows(Filter(colPerms, Value = "offline_access")) = 0, Collect(colPerms, {Value: "offline_access"}))
+            - lnkPMail_NewApp:
+                Control: Label
+                Properties:
+                  Text: ="Mail.Read"
+                  X: =605
+                  Y: =196
+                  Width: =90
+                  Height: =24
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Primary
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  OnSelect: |-
+                    =If(CountRows(Filter(colPerms, Value = "Mail.Read")) = 0, Collect(colPerms, {Value: "Mail.Read"}))
+            - lnkPCal_NewApp:
+                Control: Label
+                Properties:
+                  Text: ="Calendars.Read"
+                  X: =700
+                  Y: =196
+                  Width: =120
+                  Height: =24
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Primary
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  OnSelect: |-
+                    =If(CountRows(Filter(colPerms, Value = "Calendars.Read")) = 0, Collect(colPerms, {Value: "Calendars.Read"}))
+            - lnkPFiles_NewApp:
+                Control: Label
+                Properties:
+                  Text: ="Files.Read"
+                  X: =825
+                  Y: =196
+                  Width: =90
+                  Height: =24
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Primary
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  OnSelect: |-
+                    =If(CountRows(Filter(colPerms, Value = "Files.Read")) = 0, Collect(colPerms, {Value: "Files.Read"}))
+            - galPerms_NewApp:
+                Control: Gallery
+                Variant: Vertical
+                Properties:
+                  Items: =colPerms
+                  X: =0
+                  Y: =236
+                  Width: =520
+                  Height: =Parent.Height - 300
+                  TemplateSize: =40
+                  TemplatePadding: =0
+                  WrapCount: =1
+                  ShowScrollbar: =true
+                  BorderThickness: =0
+                Children:
+                  - lblPermRow_NewApp:
+                      Control: Label
+                      Properties:
+                        Text: =ThisItem.Value
+                        X: =8
+                        Y: =4
+                        Width: =Parent.TemplateWidth - 56
+                        Height: =32
+                        Size: =11
+                        Font: =Font.'Segoe UI'
+                        Color: =gTheme.Text
+                        FontWeight: =FontWeight.Normal
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                  - icoPermRemove_NewApp:
+                      Control: Classic/Icon
+                      Properties:
+                        Icon: =Icon.Trash
+                        X: =Parent.TemplateWidth - 36
+                        Y: =8
+                        Width: =24
+                        Height: =24
+                        Color: =gTheme.Danger
+                        PaddingTop: =2
+                        PaddingBottom: =2
+                        PaddingLeft: =2
+                        PaddingRight: =2
+                        OnSelect: =Remove(colPerms, ThisItem)
+                  - recPermSep_NewApp:
+                      Control: Rectangle
+                      Properties:
+                        X: =8
+                        Y: =39
+                        Width: =Parent.TemplateWidth - 16
+                        Height: =1
+                        Fill: =gTheme.Border
+                        BorderColor: =gTheme.Border
+                        BorderThickness: =0
+            - lblNoPerms_NewApp:
+                Control: Label
+                Properties:
+                  Text: ="None added. Most apps need only the sign-in permissions above."
+                  X: =0
+                  Y: =244
+                  Width: =520
+                  Height: =20
+                  Size: =9
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  Visible: =CountRows(colPerms) = 0
+            - recPInfo_NewApp:
+                Control: Rectangle
+                Properties:
+                  X: =560
+                  Y: =236
+                  Width: =Parent.Width - 560
+                  Height: =150
+                  Fill: =gTheme.PrimaryLight
+                  BorderColor: =gTheme.PrimaryLight
+                  BorderThickness: =1
+            - lblPInfo_NewApp:
+                Control: Label
+                Properties:
+                  Text: |-
+                    ="Names are checked against Microsoft Graph when the request runs; unknown names are reported and not added. The platform doesn't grant consent: users consent the first time they sign in, or the Entra ID team grants admin consent. Permissions that need admin consent (e.g. Directory.Read.All) are reviewed in the Entra ID team's approval."
+                  X: =574
+                  Y: =244
+                  Width: =Parent.Width - 588
+                  Height: =136
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  Wrap: =true
+                  VerticalAlign: =VerticalAlign.Top
+            - lblClaimsOn_NewApp:
+                Control: Label
+                Properties:
+                  Text: =If(chkIdEmail_NewApp.Value || chkIdUpn_NewApp.Value || chkIdGiven_NewApp.Value || chkIdFamily_NewApp.Value || chkAtEmail_NewApp.Value || chkAtUpn_NewApp.Value || chkAtIdtyp_NewApp.Value, "yes", "")
+                  X: =0
+                  Y: =0
+                  Width: =10
+                  Height: =10
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  Visible: =false
+      - cntStep4_NewApp:
+          Control: GroupContainer
+          Variant: ManualLayout
+          Properties:
+            X: =320
+            Y: =162
+            Width: =Parent.Width - 360
+            Height: =Parent.Height - 162 - 92
+            Fill: =RGBA(0, 0, 0, 0)
+            BorderThickness: =0
+            DropShadow: =DropShadow.None
+            Visible: =Coalesce(varStep, 1) = 4
+          Children:
+            - lblS4r_NewAppHead:
+                Control: Label
+                Properties:
+                  Text: ="App roles & access"
+                  X: =0
+                  Y: =0
+                  Width: =Parent.Width
+                  Height: =28
+                  Size: =14
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - lblS4r_NewAppSub:
+                Control: Label
+                Properties:
+                  Text: ="Roles appear in the token's roles claim. Give each role existing groups or users. The owner is always assigned so someone can sign in."
                   X: =0
                   Y: =28
                   Width: =Parent.Width
@@ -1336,6 +1795,57 @@
                   BorderThickness: =1
                   HoverColor: =gTheme.Text
                   HoverBorderColor: =gTheme.Muted
+            - lblOwnerRole_NewApp:
+                Control: Label
+                Properties:
+                  Text: ="Owner's role:"
+                  X: =420
+                  Y: =60
+                  Width: =110
+                  Height: =34
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  Visible: =CountRows(colRoles) > 0
+            - ddOwnerRole_NewApp:
+                Control: Classic/DropDown
+                Properties:
+                  Items: =Filter(colRoles, !IsBlank(Value) && Members <> "Applications")
+                  Default: =Coalesce(varClone.ownerRole, LookUp(colRoles, EndsWith(Value, ".Admin")).Value, First(colRoles).Value)
+                  X: =530
+                  Y: =60
+                  Width: =260
+                  Height: =34
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  ChevronBackground: =gTheme.Card
+                  ChevronFill: =gTheme.Muted
+                  HoverFill: =gTheme.PrimaryLight
+                  SelectionFill: =gTheme.Primary
+                  PaddingLeft: =10
+                  Visible: =CountRows(colRoles) > 0
+            - hntOwnerRole_NewApp:
+                Control: Label
+                Properties:
+                  Text: ="The owner (owning group, or you) gets this role."
+                  X: =800
+                  Y: =66
+                  Width: =Parent.Width - 800
+                  Height: =20
+                  Size: =9
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  Visible: =CountRows(colRoles) > 0
             - lblRoleColValue_NewApp:
                 Control: Label
                 Properties:
@@ -1387,7 +1897,7 @@
                   Y: =130
                   Width: =Parent.Width
                   Height: =Parent.Height - 130
-                  TemplateSize: =136
+                  TemplateSize: =172
                   TemplatePadding: =0
                   WrapCount: =1
                   ShowScrollbar: =true
@@ -1399,7 +1909,7 @@
                         X: =0
                         Y: =4
                         Width: =Parent.TemplateWidth
-                        Height: =126
+                        Height: =162
                         Fill: =RGBA(250, 249, 248, 1)
                         BorderColor: =gTheme.Border
                         BorderThickness: =1
@@ -1517,7 +2027,7 @@
                   - lblRoleGroupsCap_NewApp:
                       Control: Label
                       Properties:
-                        Text: ="Groups:"
+                        Text: ="Held by:"
                         X: =12
                         Y: =98
                         Width: =60
@@ -1542,6 +2052,7 @@
                         FontWeight: =FontWeight.Normal
                         PaddingLeft: =0
                         PaddingRight: =0
+                        Wrap: =true
                   - cmbRoleGroup_NewApp:
                       Control: Classic/DropDown
                       Properties:
@@ -1596,24 +2107,269 @@
                         PaddingRight: =2
                         OnSelect: =RemoveIf(colRoleGroups, RoleKey = ThisItem.Key)
                         Visible: =CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key)) > 0
-                        Tooltip: ="Remove all groups from this role"
+                        Tooltip: ="Remove everyone from this role"
+                  - lblRoleUserCap_NewApp:
+                      Control: Label
+                      Properties:
+                        Text: ="Add a user:"
+                        X: =12
+                        Y: =134
+                        Width: =80
+                        Height: =28
+                        Size: =10
+                        Font: =Font.'Segoe UI'
+                        Color: =gTheme.Text
+                        FontWeight: =FontWeight.Semibold
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        Visible: =ThisItem.Members <> "Applications"
+                  - txtRoleUser_NewApp:
+                      Control: Classic/TextInput
+                      Properties:
+                        Default: =""
+                        HintText: ="user@contoso.com"
+                        X: =96
+                        Y: =130
+                        Width: =260
+                        Height: =32
+                        Size: =11
+                        Font: =Font.'Segoe UI'
+                        Color: =gTheme.Text
+                        Fill: =gTheme.Card
+                        BorderColor: =gTheme.Border
+                        BorderThickness: =1
+                        HoverBorderColor: =gTheme.Primary
+                        FocusedBorderColor: =gTheme.Primary
+                        FocusedBorderThickness: =2
+                        PaddingLeft: =10
+                        RadiusTopLeft: =4
+                        RadiusTopRight: =4
+                        RadiusBottomLeft: =4
+                        RadiusBottomRight: =4
+                        Visible: =ThisItem.Members <> "Applications"
+                  - btnRoleUser_NewApp:
+                      Control: Classic/Button
+                      Properties:
+                        Text: ="Add user"
+                        OnSelect: |-
+                          =With({e: Trim(txtRoleUser_NewApp.Text)},
+                              If(!IsMatch(e, Match.Email),
+                                  Notify("Enter the user's email address or UPN.", NotificationType.Warning),
+                                  IfError(
+                                      With({u: Office365Users.UserProfileV2(e)},
+                                          If(CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key && GroupId = u.id)) > 0,
+                                              Notify(u.displayName & " is already added.", NotificationType.Information),
+                                              Collect(colRoleGroups, {RoleKey: ThisItem.Key, Mode: "user", GroupId: u.id, DisplayName: u.displayName & " (user)", Description: "", OwnerIds: ""});
+                                              Reset(txtRoleUser_NewApp)
+                                          )
+                                      ),
+                                      Notify("No user found for " & e & ".", NotificationType.Error)
+                                  )
+                              )
+                          )
+                        X: =364
+                        Y: =130
+                        Width: =100
+                        Height: =32
+                        Size: =11
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        RadiusTopLeft: =4
+                        RadiusTopRight: =4
+                        RadiusBottomLeft: =4
+                        RadiusBottomRight: =4
+                        Fill: =RGBA(0, 0, 0, 0)
+                        Color: =gTheme.Text
+                        HoverFill: =gTheme.Bg
+                        PressedFill: =gTheme.Bg
+                        BorderColor: =gTheme.Border
+                        BorderThickness: =1
+                        HoverColor: =gTheme.Text
+                        HoverBorderColor: =gTheme.Muted
+                        Visible: =ThisItem.Members <> "Applications"
+                  - hntRoleApps_NewApp:
+                      Control: Label
+                      Properties:
+                        Text: ="Only applications can hold this role (Allowed members = Applications)."
+                        X: =12
+                        Y: =136
+                        Width: =500
+                        Height: =20
+                        Size: =9
+                        Font: =Font.'Segoe UI'
+                        Color: =gTheme.Muted
+                        FontWeight: =FontWeight.Normal
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        Visible: =ThisItem.Members = "Applications"
             - lblNoRoles_NewApp:
                 Control: Label
                 Properties:
-                  Text: ="No app roles yet. Most applications want a User and an Admin role — add both in one click, then pick the existing group that should hold each role."
-                  X: =12
-                  Y: =140
-                  Width: =Parent.Width - 24
-                  Height: =48
-                  Size: =10
+                  Text: |-
+                    ="No app roles: the owner (owning group, or you) gets Default Access so they can sign in. Add anyone else who should be able to sign in, or add roles above."
+                  X: =0
+                  Y: =108
+                  Width: =Parent.Width
+                  Height: =44
+                  Size: =11
                   Font: =Font.'Segoe UI'
-                  Color: =gTheme.Muted
+                  Color: =gTheme.Text
                   FontWeight: =FontWeight.Normal
                   PaddingLeft: =0
                   PaddingRight: =0
                   Wrap: =true
                   Visible: =CountRows(colRoles) = 0
-      - cntStep4_NewApp:
+            - cmbDefGroup_NewApp:
+                Control: Classic/DropDown
+                Properties:
+                  Items: =AddColumns(gMyGroups, Value, Title)
+                  Default: =""
+                  X: =0
+                  Y: =160
+                  Width: =280
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  ChevronBackground: =gTheme.Card
+                  ChevronFill: =gTheme.Muted
+                  HoverFill: =gTheme.PrimaryLight
+                  SelectionFill: =gTheme.Primary
+                  PaddingLeft: =10
+                  Tooltip: ="Give one of your groups Default Access"
+                  AllowEmptySelection: =true
+                  Visible: =CountRows(colRoles) = 0
+                  OnChange: |-
+                    =If(!IsBlank(Self.Selected.GroupId) && CountRows(Filter(colRoleGroups, RoleKey = "default" && GroupId = Self.Selected.GroupId)) = 0, Collect(colRoleGroups, {RoleKey: "default", Mode: "existing", GroupId: Self.Selected.GroupId, DisplayName: Self.Selected.Title, Description: "", OwnerIds: ""})); Reset(Self)
+            - txtDefUser_NewApp:
+                Control: Classic/TextInput
+                Properties:
+                  Default: =""
+                  HintText: |-
+                    ="or a user: user@contoso.com"
+                  X: =300
+                  Y: =160
+                  Width: =260
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  HoverBorderColor: =gTheme.Primary
+                  FocusedBorderColor: =gTheme.Primary
+                  FocusedBorderThickness: =2
+                  PaddingLeft: =10
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+                  Visible: =CountRows(colRoles) = 0
+            - btnDefUser_NewApp:
+                Control: Classic/Button
+                Properties:
+                  Text: ="Add user"
+                  OnSelect: |-
+                    =With({e: Trim(txtDefUser_NewApp.Text)},
+                        If(!IsMatch(e, Match.Email),
+                            Notify("Enter the user's email address or UPN.", NotificationType.Warning),
+                            IfError(
+                                With({u: Office365Users.UserProfileV2(e)},
+                                    If(CountRows(Filter(colRoleGroups, RoleKey = "default" && GroupId = u.id)) > 0,
+                                        Notify(u.displayName & " is already added.", NotificationType.Information),
+                                        Collect(colRoleGroups, {RoleKey: "default", Mode: "user", GroupId: u.id, DisplayName: u.displayName & " (user)", Description: "", OwnerIds: ""});
+                                        Reset(txtDefUser_NewApp)
+                                    )
+                                ),
+                                Notify("No user found for " & e & ".", NotificationType.Error)
+                            )
+                        )
+                    )
+                  X: =570
+                  Y: =160
+                  Width: =110
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  FontWeight: =FontWeight.Semibold
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+                  Fill: =RGBA(0, 0, 0, 0)
+                  Color: =gTheme.Text
+                  HoverFill: =gTheme.Bg
+                  PressedFill: =gTheme.Bg
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  HoverColor: =gTheme.Text
+                  HoverBorderColor: =gTheme.Muted
+                  Visible: =CountRows(colRoles) = 0
+            - lnkDefGroup_NewApp:
+                Control: Label
+                Properties:
+                  Text: ="Group not listed?"
+                  X: =700
+                  Y: =166
+                  Width: =160
+                  Height: =24
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Primary
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  OnSelect: =Navigate(scrAddGroup, ScreenTransition.Fade)
+                  Visible: =CountRows(colRoles) = 0
+            - galDefault_NewApp:
+                Control: Gallery
+                Variant: Vertical
+                Properties:
+                  Items: =Filter(colRoleGroups, RoleKey = "default")
+                  X: =0
+                  Y: =206
+                  Width: =680
+                  Height: =Parent.Height - 210
+                  TemplateSize: =40
+                  TemplatePadding: =0
+                  WrapCount: =1
+                  ShowScrollbar: =true
+                  BorderThickness: =0
+                  Visible: =CountRows(colRoles) = 0
+                Children:
+                  - lblDefRow_NewApp:
+                      Control: Label
+                      Properties:
+                        Text: =ThisItem.DisplayName & "   →   Default Access"
+                        X: =8
+                        Y: =4
+                        Width: =Parent.TemplateWidth - 56
+                        Height: =32
+                        Size: =11
+                        Font: =Font.'Segoe UI'
+                        Color: =gTheme.Text
+                        FontWeight: =FontWeight.Normal
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                  - icoDefRemove_NewApp:
+                      Control: Classic/Icon
+                      Properties:
+                        Icon: =Icon.Trash
+                        X: =Parent.TemplateWidth - 36
+                        Y: =8
+                        Width: =24
+                        Height: =24
+                        Color: =gTheme.Danger
+                        PaddingTop: =2
+                        PaddingBottom: =2
+                        PaddingLeft: =2
+                        PaddingRight: =2
+                        OnSelect: =Remove(colRoleGroups, ThisItem)
+      - cntStep5_NewApp:
           Control: GroupContainer
           Variant: ManualLayout
           Properties:
@@ -1624,7 +2380,7 @@
             Fill: =RGBA(0, 0, 0, 0)
             BorderThickness: =0
             DropShadow: =DropShadow.None
-            Visible: =Coalesce(varStep, 1) = 4
+            Visible: =Coalesce(varStep, 1) = 5
           Children:
             - lblS4_NewAppHead:
                 Control: Label
@@ -1654,94 +2410,33 @@
                   FontWeight: =FontWeight.Normal
                   PaddingLeft: =0
                   PaddingRight: =0
-            - lblCreateSp_NewApp:
-                Control: Label
+            - recSpInfo_NewApp:
+                Control: Rectangle
                 Properties:
-                  Text: ="Create the enterprise application"
                   X: =0
                   Y: =64
-                  Width: =400
-                  Height: =20
-                  Size: =10
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Text
-                  FontWeight: =FontWeight.Semibold
-                  PaddingLeft: =0
-                  PaddingRight: =0
-            - tglCreateSp_NewApp:
-                Control: Classic/Toggle
-                Properties:
-                  Default: =Coalesce(varClone.createSp, true)
-                  X: =0
-                  Y: =86
-                  Width: =220
-                  Height: =32
-                  Size: =11
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Text
-                  TrueFill: =gTheme.Primary
-                  FalseFill: =gTheme.Border
-                  TrueText: ="Yes"
-                  FalseText: ="No"
-                  DisplayMode: =If(CountRows(colRoleGroups) > 0, DisplayMode.Disabled, DisplayMode.Edit)
-            - hntCreateSp_NewApp:
-                Control: Label
-                Properties:
-                  Text: ="Created for this app registration (same appId). Required for role assignments — always created when any role has groups."
-                  X: =0
-                  Y: =122
                   Width: =Parent.Width
-                  Height: =20
-                  Size: =9
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Muted
-                  FontWeight: =FontWeight.Normal
-                  PaddingLeft: =0
-                  PaddingRight: =0
-            - lblAssign_NewApp:
-                Control: Label
-                Properties:
-                  Text: ="Assignment required (appRoleAssignmentRequired)"
-                  X: =0
-                  Y: =156
-                  Width: =500
-                  Height: =20
-                  Size: =10
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Text
-                  FontWeight: =FontWeight.Semibold
-                  PaddingLeft: =0
-                  PaddingRight: =0
-            - tglAssign_NewApp:
-                Control: Classic/Toggle
-                Properties:
-                  Default: =Coalesce(varClone.assignReq, true)
-                  X: =0
-                  Y: =178
-                  Width: =220
-                  Height: =32
-                  Size: =11
-                  Font: =Font.'Segoe UI'
-                  Color: =gTheme.Text
-                  TrueFill: =gTheme.Primary
-                  FalseFill: =gTheme.Border
-                  TrueText: ="Yes"
-                  FalseText: ="No"
-            - hntAssign_NewApp:
+                  Height: =150
+                  Fill: =gTheme.PrimaryLight
+                  BorderColor: =gTheme.PrimaryLight
+                  BorderThickness: =1
+            - lblSpInfo_NewApp:
                 Control: Label
                 Properties:
                   Text: |-
-                    ="Yes: only users in an assigned group can sign in or get tokens (recommended). No: any user in the tenant can."
-                  X: =0
-                  Y: =214
-                  Width: =Parent.Width
-                  Height: =20
-                  Size: =9
+                    ="Always created for this app registration (same appId), with Assignment required = Yes: only assigned users and groups can sign in or get tokens. The owner (owning group, or you) is assigned automatically: Default Access when the app has no roles, otherwise the role chosen on the App roles step."
+                  X: =16
+                  Y: =74
+                  Width: =Parent.Width - 32
+                  Height: =130
+                  Size: =11
                   Font: =Font.'Segoe UI'
-                  Color: =gTheme.Muted
+                  Color: =gTheme.Text
                   FontWeight: =FontWeight.Normal
                   PaddingLeft: =0
                   PaddingRight: =0
+                  Wrap: =true
+                  VerticalAlign: =VerticalAlign.Top
             - lblAudience_NewApp:
                 Control: Label
                 Properties:
@@ -1875,7 +2570,7 @@
                   RadiusTopRight: =4
                   RadiusBottomLeft: =4
                   RadiusBottomRight: =4
-      - cntStep5_NewApp:
+      - cntStep6_NewApp:
           Control: GroupContainer
           Variant: ManualLayout
           Properties:
@@ -1886,7 +2581,7 @@
             Fill: =RGBA(0, 0, 0, 0)
             BorderThickness: =0
             DropShadow: =DropShadow.None
-            Visible: =Coalesce(varStep, 1) = 5
+            Visible: =Coalesce(varStep, 1) = 6
           Children:
             - lblS5_NewAppHead:
                 Control: Label
@@ -1930,10 +2625,13 @@
                     "<tr><td style='color:#605e5c; padding:4px 0'>Redirect URIs</td><td>" & If(ddPlatform_NewApp.Selected.Value = "None", "none", ddPlatform_NewApp.Selected.Value & ": " & txtRedirect_NewApp.Text) & "</td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0'>Expose an API</td><td>" & If(chkExpose_NewApp.Value, If(radUri_NewApp.Selected.Value = "Custom", txtCustomUri_NewApp.Text, "api://{appId}") & If(CountRows(colScopes) > 0, " — scopes: " & Concat(colScopes, Value, ", "), ""), "no") & "</td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0'>Groups claim</td><td>" & ddGroupsClaim_NewApp.Selected.Value & "</td></tr>" &
+                    "<tr><td style='color:#605e5c; padding:4px 0'>API permissions</td><td>" & Coalesce(Substitute(With({raw: Concat(Filter(Table({n: "openid", on: chkPOpenid_NewApp.Value || lblClaimsOn_NewApp.Text = "yes"}, {n: "email", on: chkPEmail_NewApp.Value || lblClaimsOn_NewApp.Text = "yes"}, {n: "profile", on: chkPProfile_NewApp.Value || lblClaimsOn_NewApp.Text = "yes"}, {n: "User.Read", on: chkPUserRead_NewApp.Value || lblClaimsOn_NewApp.Text = "yes"}), on), n & ",") & Concat(colPerms, Value & ",")}, If(Len(raw) > 0, Left(raw, Len(raw) - 1), "")), ",", ", "), "none") & " (Microsoft Graph, delegated)</td></tr>" &
                     "<tr><td style='color:#605e5c; padding:4px 0; vertical-align:top'>App roles</td><td>" &
                         If(CountRows(colRoles) = 0, "none", "<ul style='margin:0; padding-left:18px'>" &
-                            Concat(ForAll(colRoles As r, {t: "<li><b>" & r.Value & "</b> → " & Coalesce(Concat(Filter(colRoleGroups, RoleKey = r.Key), DisplayName, ", "), "<i>no groups</i>") & "</li>"}), t) & "</ul>") & "</td></tr>" &
-                    "<tr><td style='color:#605e5c; padding:4px 0'>Enterprise app</td><td>" & If(tglCreateSp_NewApp.Value || CountRows(colRoleGroups) > 0, "yes" & If(tglAssign_NewApp.Value, ", assignment required", ", assignment not required"), "no") & "</td></tr>" &
+                            Concat(ForAll(colRoles As r, {t: "<li><b>" & r.Value & "</b> → " & Coalesce(Concat(Filter(colRoleGroups, RoleKey = r.Key), DisplayName, ", "), "<i>nobody</i>") & "</li>"}), t) & "</ul>") & "</td></tr>" &
+                    "<tr><td style='color:#605e5c; padding:4px 0'>Enterprise app</td><td>always created, assignment required</td></tr>" &
+                    "<tr><td style='color:#605e5c; padding:4px 0'>Owner's access</td><td>" & If(IsBlank(team.GroupId), "you", team.DisplayName) & " → " & If(CountRows(colRoles) = 0, "Default Access", Coalesce(ddOwnerRole_NewApp.Selected.Value, "<i>choose a role</i>")) & "</td></tr>" &
+                    If(CountRows(colRoles) = 0 && CountRows(Filter(colRoleGroups, RoleKey = "default")) > 0, "<tr><td style='color:#605e5c; padding:4px 0'>Default Access also for</td><td>" & Concat(Filter(colRoleGroups, RoleKey = "default"), DisplayName, ", ") & "</td></tr>", "") &
                     "<tr><td style='color:#605e5c; padding:4px 0'>Owners</td><td>none (who may change it is set by the team tag; who may sign in by the role groups)</td></tr>" &
                     "</table>" &
                     "<p style='margin-top:14px; padding:10px 12px; background:#ebf3fc; border-left:3px solid #0f6cbd'><b>What happens next</b><br>" &
@@ -1995,13 +2693,16 @@
                                   optionalClaimsIdToken: Concat(Filter(Table({n: "email", on: chkIdEmail_NewApp.Value}, {n: "upn", on: chkIdUpn_NewApp.Value}, {n: "given_name", on: chkIdGiven_NewApp.Value}, {n: "family_name", on: chkIdFamily_NewApp.Value}), on), n, ","),
                                   optionalClaimsAccessToken: Concat(Filter(Table({n: "email", on: chkAtEmail_NewApp.Value}, {n: "upn", on: chkAtUpn_NewApp.Value}, {n: "idtyp", on: chkAtIdtyp_NewApp.Value}), on), n, ","),
                                   groupMembershipClaims: ddGroupsClaim_NewApp.Selected.Value,
+                                  graphDelegatedScopes: With({raw: Concat(Filter(Table({n: "openid", on: chkPOpenid_NewApp.Value || lblClaimsOn_NewApp.Text = "yes"}, {n: "email", on: chkPEmail_NewApp.Value || lblClaimsOn_NewApp.Text = "yes"}, {n: "profile", on: chkPProfile_NewApp.Value || lblClaimsOn_NewApp.Text = "yes"}, {n: "User.Read", on: chkPUserRead_NewApp.Value || lblClaimsOn_NewApp.Text = "yes"}), on), n & ",") & Concat(colPerms, Value & ",")}, If(Len(raw) > 0, Left(raw, Len(raw) - 1), "")),
+                                  ownerRole: If(CountRows(colRoles) > 0, ddOwnerRole_NewApp.Selected.Value, ""),
+                                  defaultAccess: ForAll(Filter(colRoleGroups, RoleKey = "default" && CountRows(colRoles) = 0) As g, {mode: g.Mode, id: g.GroupId, displayName: g.DisplayName}),
                                   appRoles: ForAll(colRoles As r, {
                                       value: r.Value, displayName: r.DisplayName, description: r.Description,
                                       allowedMemberTypes: Switch(r.Members, "Applications", "Application", "Both", "User,Application", "User"),
-                                      assignGroups: ForAll(Filter(colRoleGroups, RoleKey = r.Key) As g, {mode: "existing", id: g.GroupId, displayName: g.DisplayName})
+                                      assignGroups: ForAll(Filter(colRoleGroups, RoleKey = r.Key) As g, {mode: g.Mode, id: g.GroupId, displayName: g.DisplayName})
                                   }),
-                                  createServicePrincipal: tglCreateSp_NewApp.Value || CountRows(colRoleGroups) > 0,
-                                  appRoleAssignmentRequired: tglAssign_NewApp.Value,
+                                  createServicePrincipal: true,
+                                  appRoleAssignmentRequired: true,
                                   tags: Trim(txtTags_NewApp.Text)
                               }, JSONFormat.Compact)
                               )
@@ -2037,11 +2738,11 @@
             Text: ="Next  ›"
             OnSelect: |-
               =With({cur: Coalesce(varStep, 1)},
-                  With({err: Switch(cur, 1, lblErr1_NewApp.Text, 2, lblErr2_NewApp.Text, 3, lblErr3_NewApp.Text, "")},
+                  With({err: Switch(cur, 1, lblErr1_NewApp.Text, 2, lblErr2_NewApp.Text, 4, lblErr3_NewApp.Text, "")},
                       If(IsBlank(err),
                           Set(varStepError, "");
-                          Set(varStep, Min(cur + 1, 5));
-                          Set(varMaxStep, Max(Coalesce(varMaxStep, 1), Min(cur + 1, 5))),
+                          Set(varStep, Min(cur + 1, 6));
+                          Set(varMaxStep, Max(Coalesce(varMaxStep, 1), Min(cur + 1, 6))),
                           Set(varStepError, err);
                           Notify(err, NotificationType.Warning)
                       )
@@ -2066,7 +2767,7 @@
             BorderThickness: =1
             HoverColor: =gTheme.PrimaryHover
             HoverBorderColor: =gTheme.PrimaryHover
-            Visible: =Coalesce(varStep, 1) < 5
+            Visible: =Coalesce(varStep, 1) < 6
       - btnBack_NewApp:
           Control: Classic/Button
           Properties:
@@ -2119,7 +2820,7 @@
       - lblStepOf_NewApp:
           Control: Label
           Properties:
-            Text: ="Step " & Coalesce(varStep, 1) & " of 5"
+            Text: ="Step " & Coalesce(varStep, 1) & " of 6"
             X: =24
             Y: =Parent.Height - 50
             Width: =200
@@ -2168,7 +2869,7 @@
             Text: |-
               =Coalesce(
                   If(!IsMatch(Upper(Trim(txtAppCatId_NewApp.Text)), gAppCatPattern), "App BoR ID (appCatID) looks like APPCAT-001."),
-                  If(!IsMatch(Trim(txtBorShort_NewApp.Text), "^[A-Za-z0-9]{2,20}$"), "App BoR short name: 2–20 letters or digits, no spaces."),
+                  If(!IsMatch(Trim(txtBorShort_NewApp.Text), "^[A-Za-z0-9][A-Za-z0-9-]{0,18}[A-Za-z0-9]$"), "App BoR short name: 2–20 letters, digits or hyphens (not at the start or end), no spaces."),
                   If(!IsMatch(Trim(txtAppName_NewApp.Text), "^[A-Za-z0-9][A-Za-z0-9 ._-]{1,79}$"), "Display name: enter the free-text part after the prefix (2–80 letters, digits, spaces, . _ -)."),
                   If(Len(lblFullName_NewApp.Text) > 120, "The full display name is longer than 120 characters; shorten the free-text part."),
                   If(Len(Trim(txtJustification_NewApp.Text)) < 10, "Business justification is required (10+ characters)."),
@@ -2212,7 +2913,9 @@
             Text: |-
               =Coalesce(
                   If(CountRows(Filter(colRoles, !IsMatch(Value, gValuePattern) || IsBlank(Trim(DisplayName)) || IsBlank(Trim(Description)))) > 0, "Each role needs a value (letters, digits, . _ -), a display name and a description."),
-                  If(CountRows(colRoles) <> CountRows(Distinct(colRoles, Value)), "Role values must be unique.")
+                  If(CountRows(colRoles) <> CountRows(Distinct(colRoles, Value)), "Role values must be unique."),
+                  If(CountRows(colRoles) > 0 && IsBlank(ddOwnerRole_NewApp.Selected.Value), "Choose the role the owner gets (Owner's role)."),
+                  If(CountRows(Filter(colRoles, Members = "Applications" && CountRows(Filter(colRoleGroups, RoleKey = Key)) > 0)) > 0, "A role that allows only applications can't be held by users or groups; remove them or change Allowed members.")
               )
             X: =0
             Y: =0

@@ -1,5 +1,0 @@
-{
-  "principalId": "@{if(empty(variables('varTeamGroupId')), body('HTTP_Get_requester')?['id'], variables('varTeamGroupId'))}",
-  "resourceId": "@{variables('varSpId')}",
-  "appRoleId": "00000000-0000-0000-0000-000000000000"
-}

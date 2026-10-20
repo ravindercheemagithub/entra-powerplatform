@@ -85,6 +85,10 @@ for f in sorted(glob.glob('src/Workflows/*.json')):
                 pa = all_actions[p][0]
                 if pa['type'] == 'Foreach' and pa.get('runtimeConfiguration', {}).get('concurrency', {}).get('repetitions', 20) != 1:
                     errors.append(f"{flow}: {k}: sets a variable inside parallel loop {p}; use concurrency 1")
+    # Power Automate allows at most 8 levels of nested containers (scopes, conditions, loops, switches).
+    for k, (a, parents) in all_actions.items():
+        if len(parents) > 8:
+            errors.append(f"{flow}: {k}: nested {len(parents)} levels deep; Power Automate allows 8")
     roots = [k for k, a in defn['actions'].items() if not a.get('runAfter')]
     if len(roots) != 1: errors.append(f"{flow}: top level has {len(roots)} start actions {roots}")
     init_vars = set()

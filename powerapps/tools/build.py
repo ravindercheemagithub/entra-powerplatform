@@ -34,6 +34,26 @@ def clean(expr: str) -> str:
 USERS = "Office365Users.SearchUserV2({searchTerm: Self.SearchText, top: 15, isSearchTermRequired: false}).value"
 
 
+def add_user(textbox: str, role_key: str) -> str:
+    """Looks a user up by email/UPN (Office 365 Users, a Standard connector) and adds them to colRoleGroups as a holder
+    of role_key. Users and groups are assigned the same way (appRoleAssignedTo), so ER-02 needs no change."""
+    return f"""With({{e: Trim({textbox}.Text)}},
+    If(!IsMatch(e, Match.Email),
+        Notify("Enter the user's email address or UPN.", NotificationType.Warning),
+        IfError(
+            With({{u: Office365Users.UserProfileV2(e)}},
+                If(CountRows(Filter(colRoleGroups, RoleKey = {role_key} && GroupId = u.id)) > 0,
+                    Notify(u.displayName & " is already added.", NotificationType.Information),
+                    Collect(colRoleGroups, {{RoleKey: {role_key}, Mode: "user", GroupId: u.id, DisplayName: u.displayName & " (user)", Description: "", OwnerIds: ""}});
+                    Reset({textbox})
+                )
+            ),
+            Notify("No user found for " & e & ".", NotificationType.Error)
+        )
+    )
+)"""
+
+
 def root(sfx: str, children: list) -> list:
     return [container(f"cntRoot_{sfx}", 0, 0, "Parent.Width", "Parent.Height", children, fill="gTheme.Bg")]
 
@@ -53,6 +73,7 @@ def home() -> None:
     "newApp", Set(varClone, Blank()); Set(varResetNewApp, true); Navigate(scrNewApp, ScreenTransition.Fade),
     "onboardGroup", Navigate(scrAddGroup, ScreenTransition.Fade),
     "tagOwnerGroup", Navigate(scrTagGroup, ScreenTransition.Fade),
+    "deleteApp", Set(varDelApp, Blank()); Navigate(scrDeleteApp, ScreenTransition.Fade),
     "myRequests", Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade),
     Set(varCloneChange, Blank()); Set(varOp, ThisItem.Key); Set(varResetChange, true); Navigate(scrAppChange, ScreenTransition.Fade)
 )""",
@@ -62,7 +83,7 @@ def home() -> None:
             rect("recCardAccent_Home", 8, 8, 4, "Parent.TemplateHeight - 16", fill="gTheme.Primary", thickness=0, OnSelect="Select(Parent)"),
             icon("icoCard_Home",
                  'Switch(ThisItem.Key, "newApp", Icon.AddDocument, "exposeApi", Icon.Settings, "addAppRoles", Icon.Lock, '
-                 '"assignGroups", Icon.People, "createSP", Icon.Waffle, "onboardGroup", Icon.AddUser, "tagOwnerGroup", Icon.Edit, Icon.DetailList)',
+                 '"assignGroups", Icon.People, "createSP", Icon.Waffle, "onboardGroup", Icon.AddUser, "tagOwnerGroup", Icon.Edit, "deleteApp", Icon.Trash, Icon.DetailList)',
                  28, 28, 44, 44, color="gTheme.Primary", on_select="Select(Parent)", Fill="gTheme.PrimaryLight",
                  PaddingTop=10, PaddingBottom=10, PaddingLeft=10, PaddingRight=10),
             label("lblCardTitle_Home", "ThisItem.Title", 84, 26, "Parent.TemplateWidth - 140", 26, size=13, bold=True, OnSelect="Select(Parent)"),
@@ -104,7 +125,7 @@ def home() -> None:
 def steps_nav(s: str) -> list:
     return [
         rect(f"recSteps_{s}", 24, 146, 256, "Parent.Height - 146 - 80"),
-        gallery(f"galSteps_{s}", "gSteps", 24, 156, 256, 340, 64,
+        gallery(f"galSteps_{s}", "gSteps", 24, 156, 256, 400, 64,
                 on_select='If(ThisItem.Step <= Coalesce(varMaxStep, 1), Set(varStepError, ""); Set(varStep, ThisItem.Step))',
                 children=[
                     rect(f"recStepSel_{s}", 0, 8, 4, 48, fill="If(ThisItem.Step = varStep, gTheme.Primary, RGBA(0, 0, 0, 0))", thickness=0,
@@ -119,7 +140,7 @@ def steps_nav(s: str) -> list:
                     label(f"lblStepHint_{s}", "ThisItem.Hint", 60, 34, 190, 20, size=9, color="gTheme.Muted", OnSelect="Select(Parent)"),
                 ]),
         label(f"lblStepNote_{s}", q("Only Basics is required. Use Next for optional configuration, or Submit at any step."),
-              40, 512, 224, 64, size=9, color="gTheme.Muted", Wrap="true", VerticalAlign="VerticalAlign.Top"),
+              40, 566, 224, 64, size=9, color="gTheme.Muted", Wrap="true", VerticalAlign="VerticalAlign.Top"),
     ]
 
 
@@ -176,8 +197,8 @@ def roles_editor(s: str, top: int) -> list:
         hint(f"lblRoleColValue_{s}", q("Value (in the roles claim)"), 12, top, 200),
         hint(f"lblRoleColName_{s}", q("Display name"), 222, top, 230),
         hint(f"lblRoleColMembers_{s}", q("Allowed members"), 462, top, 160),
-        gallery(f"galRoles_{s}", "colRoles", 0, top + 22, "Parent.Width", f"Parent.Height - {top + 22}", 136, children=[
-            rect(f"recRole_{s}", 0, 4, "Parent.TemplateWidth", 126, fill="RGBA(250, 249, 248, 1)"),
+        gallery(f"galRoles_{s}", "colRoles", 0, top + 22, "Parent.Width", f"Parent.Height - {top + 22}", 172, children=[
+            rect(f"recRole_{s}", 0, 4, "Parent.TemplateWidth", 162, fill="RGBA(250, 249, 248, 1)"),
             text_input(f"txtRoleValue_{s}", "ThisItem.Value", q("Orders.Admin"), 12, 14, 200, 36,
                        OnChange="Patch(colRoles, ThisItem, {Value: Trim(Self.Text)})"),
             text_input(f"txtRoleName_{s}", "ThisItem.DisplayName", q("Display name"), 222, 14, 230, 36,
@@ -188,10 +209,10 @@ def roles_editor(s: str, top: int) -> list:
                  on_select="RemoveIf(colRoleGroups, RoleKey = ThisItem.Key); Remove(colRoles, ThisItem)"),
             text_input(f"txtRoleDesc_{s}", "ThisItem.Description", q("Description (shown when assigning the role)"), 12, 54, 610, 36,
                        OnChange="Patch(colRoles, ThisItem, {Description: Self.Text})"),
-            label(f"lblRoleGroupsCap_{s}", q("Groups:"), 12, 98, 60, 24, size=10, bold=True),
+            label(f"lblRoleGroupsCap_{s}", q("Held by:"), 12, 98, 60, 24, size=10, bold=True),
             label(f"lblRoleGroups_{s}",
                   'Coalesce(Concat(Filter(colRoleGroups, RoleKey = ThisItem.Key), DisplayName, ",  "), '
-                  '"None — nobody holds this role yet")', 72, 98, "Parent.TemplateWidth - 560", 24, size=10,
+                  '"None — nobody holds this role yet")', 72, 98, "Parent.TemplateWidth - 560", 24, size=10, Wrap="true",
                   color='If(CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key)) = 0, gTheme.Muted, gTheme.Text)'),
             group_dropdown(f"cmbRoleGroup_{s}", "gMyGroups", "Title", "Parent.TemplateWidth - 480", 94, 210, 32,
                      hint="Add one of your groups to this role",
@@ -201,13 +222,20 @@ def roles_editor(s: str, top: int) -> list:
             link(f"lnkRoleAddGroup_{s}", q("Group not listed?"), ADD_EXISTING, "Parent.TemplateWidth - 260", 98, 180, 24),
             icon(f"icoRoleClear_{s}", "Icon.Cancel", "Parent.TemplateWidth - 36", 98, 24, 24, color="gTheme.Muted",
                  on_select="RemoveIf(colRoleGroups, RoleKey = ThisItem.Key)",
-                 Visible="CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key)) > 0", Tooltip=q("Remove all groups from this role")),
+                 Visible="CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key)) > 0", Tooltip=q("Remove everyone from this role")),
+            label(f"lblRoleUserCap_{s}", q("Add a user:"), 12, 134, 80, 28, size=10, bold=True, Visible='ThisItem.Members <> "Applications"'),
+            text_input(f"txtRoleUser_{s}", '""', q("user@contoso.com"), 96, 130, 260, 32, Visible='ThisItem.Members <> "Applications"'),
+            button(f"btnRoleUser_{s}", q("Add user"), add_user(f"txtRoleUser_{s}", "ThisItem.Key"), 364, 130, 100, 32, kind="subtle",
+                   Visible='ThisItem.Members <> "Applications"'),
+            hint(f"hntRoleApps_{s}", q("Only applications can hold this role (Allowed members = Applications)."), 12, 136, 500,
+                 Visible='ThisItem.Members = "Applications"'),
         ]),
     ]
 
 
 def new_app() -> None:
     s = "NewApp"
+    claims_on = f'lblClaimsOn_{s}.Text = "yes"'   # any optional token claim chosen on step 2
     team = (f'{{Mode: "existing", GroupId: cmbTeam_{s}.Selected.GroupId, DisplayName: cmbTeam_{s}.Selected.Title, Description: "", OwnerIds: ""}}')
     # Naming convention: <App BoR ID = appCatID>-<App Env>-<App BoR short name>-<free text>. The prefix is built from
     # the three fields above it and cannot be edited in the name box; lblFullName_NewApp holds the full display name.
@@ -224,7 +252,7 @@ def new_app() -> None:
 
         field_label(f"lblBorShort_{s}", "App BoR short name", COL1_X, 154, COL_W, required=True),
         text_input(f"txtBorShort_{s}", 'Coalesce(varClone.bor, "")', q("ORDERS"), COL1_X, 176, COL_W),
-        hint(f"hntBorShort_{s}", q("Short name of the application in the book of record: 2–20 letters or digits."), COL1_X, 214, COL_W),
+        hint(f"hntBorShort_{s}", q("Short name of the application in the book of record: 2–20 letters, digits or hyphens."), COL1_X, 214, COL_W),
         field_label(f"lblTeam_{s}", "Owning group (optional)", COL2_X, 154, COL_W),
         group_dropdown(f"cmbTeam_{s}", "gMyTeams", "Title", COL2_X, 176, COL_W, default='Coalesce(LookUp(gMyTeams, GroupId = varClone.teamId).Title, "")',
                        hint="Optional. Tagged team:group\\<group id>. Leave empty and the app is tagged team:user\\<your id>; hand it to a group later with Owning group."),
@@ -273,8 +301,57 @@ def new_app() -> None:
         hint(f"hntGroupsClaim_{s}", q("ApplicationGroup = only groups assigned to this app. Prefer app roles over group claims."), 460, 464, "Parent.Width - 460"),
     ])
 
-    step3 = step_container(s, 3, section_head(f"S3_{s}", "App roles & groups",
-                                              "Roles appear in the token's roles claim. Give each role an existing group — the group's owners then manage access without another request.") + [
+    step_perm = step_container(s, 3, section_head(f"S3_{s}", "API permissions",
+                                                  "Microsoft Graph permissions the app asks for when a user signs in (delegated). Granted by user consent or by the Entra ID team.") + [
+        field_label(f"lblPDefault_{s}", "Sign-in permissions", 0, 64, 400),
+        checkbox(f"chkPOpenid_{s}", q("openid"), 'If(IsBlank(varClone), true, ",openid," in "," & Coalesce(varClone.graphScopes, "") & ",")', 0, 92, 130,
+                 Visible=f'!(lblClaimsOn_{s}.Text = "yes")'),
+        checkbox(f"chkPLOpenid_{s}", q("openid"), "true", 0, 92, 130, DisplayMode="DisplayMode.Disabled", Visible=f'lblClaimsOn_{s}.Text = "yes"'),
+        checkbox(f"chkPEmail_{s}", q("email"), 'If(IsBlank(varClone), true, ",email," in "," & Coalesce(varClone.graphScopes, "") & ",")', 140, 92, 130,
+                 Visible=f'!(lblClaimsOn_{s}.Text = "yes")'),
+        checkbox(f"chkPLEmail_{s}", q("email"), "true", 140, 92, 130, DisplayMode="DisplayMode.Disabled", Visible=f'lblClaimsOn_{s}.Text = "yes"'),
+        checkbox(f"chkPProfile_{s}", q("profile"), 'If(IsBlank(varClone), true, ",profile," in "," & Coalesce(varClone.graphScopes, "") & ",")', 280, 92, 130,
+                 Visible=f'!(lblClaimsOn_{s}.Text = "yes")'),
+        checkbox(f"chkPLProfile_{s}", q("profile"), "true", 280, 92, 130, DisplayMode="DisplayMode.Disabled", Visible=f'lblClaimsOn_{s}.Text = "yes"'),
+        checkbox(f"chkPUserRead_{s}", q("User.Read"), 'If(IsBlank(varClone), true, ",User.Read," in "," & Coalesce(varClone.graphScopes, "") & ",")', 420, 92, 130,
+                 Visible=f'!(lblClaimsOn_{s}.Text = "yes")'),
+        checkbox(f"chkPLUserRead_{s}", q("User.Read"), "true", 420, 92, 130, DisplayMode="DisplayMode.Disabled", Visible=f'lblClaimsOn_{s}.Text = "yes"'),
+        hint(f"hntPDefault_{s}", f'If({claims_on}, "Always added: the token claims you chose on the previous step need them.", "Selected by default. They are locked once you choose token claims on the previous step.")',
+             0, 128, "Parent.Width"),
+        field_label(f"lblPMore_{s}", "Other Microsoft Graph permissions (delegated)", 0, 168, 500),
+        text_input(f"txtPerm_{s}", '""', q("Permission name, e.g. Mail.Read"), 0, 190, 300),
+        button(f"btnAddPerm_{s}", q("Add"), f"""With({{v: Trim(txtPerm_{s}.Text)}},
+    If(!IsMatch(v, "^[A-Za-z][A-Za-z0-9._-]{{1,99}}$"),
+        Notify("Enter a Microsoft Graph delegated permission name, for example Mail.Read or Calendars.Read.", NotificationType.Warning),
+        Lower(v) in ["openid", "email", "profile", "user.read"],
+        Notify("openid, email, profile and User.Read are listed above.", NotificationType.Information),
+        CountRows(Filter(colPerms, Lower(Value) = Lower(v))) > 0,
+        Notify(v & " is already added.", NotificationType.Information),
+        Collect(colPerms, {{Value: v}}); Reset(txtPerm_{s})
+    )
+)""", 310, 190, 90, 36),
+        label(f"lblPCommon_{s}", q("Common:"), 420, 196, 70, 24, size=10, color="gTheme.Muted"),
+        link(f"lnkPOffline_{s}", q("offline_access"), 'If(CountRows(Filter(colPerms, Value = "offline_access")) = 0, Collect(colPerms, {Value: "offline_access"}))', 490, 196, 110),
+        link(f"lnkPMail_{s}", q("Mail.Read"), 'If(CountRows(Filter(colPerms, Value = "Mail.Read")) = 0, Collect(colPerms, {Value: "Mail.Read"}))', 605, 196, 90),
+        link(f"lnkPCal_{s}", q("Calendars.Read"), 'If(CountRows(Filter(colPerms, Value = "Calendars.Read")) = 0, Collect(colPerms, {Value: "Calendars.Read"}))', 700, 196, 120),
+        link(f"lnkPFiles_{s}", q("Files.Read"), 'If(CountRows(Filter(colPerms, Value = "Files.Read")) = 0, Collect(colPerms, {Value: "Files.Read"}))', 825, 196, 90),
+        gallery(f"galPerms_{s}", "colPerms", 0, 236, 520, "Parent.Height - 300", 40, children=[
+            label(f"lblPermRow_{s}", "ThisItem.Value", 8, 4, "Parent.TemplateWidth - 56", 32, size=11),
+            icon(f"icoPermRemove_{s}", "Icon.Trash", "Parent.TemplateWidth - 36", 8, 24, 24, color="gTheme.Danger", on_select="Remove(colPerms, ThisItem)"),
+            rect(f"recPermSep_{s}", 8, 39, "Parent.TemplateWidth - 16", 1, fill="gTheme.Border", thickness=0),
+        ]),
+        hint(f"lblNoPerms_{s}", q("None added. Most apps need only the sign-in permissions above."), 0, 244, 520, Visible="CountRows(colPerms) = 0"),
+        rect(f"recPInfo_{s}", 560, 236, "Parent.Width - 560", 150, fill="gTheme.PrimaryLight", border="gTheme.PrimaryLight"),
+        label(f"lblPInfo_{s}", q("Names are checked against Microsoft Graph when the request runs; unknown names are reported and not added. "
+                                  "The platform doesn't grant consent: users consent the first time they sign in, or the Entra ID team grants admin consent. "
+                                  "Permissions that need admin consent (e.g. Directory.Read.All) are reviewed in the Entra ID team's approval."),
+              574, 244, "Parent.Width - 588", 136, size=10, Wrap="true", VerticalAlign="VerticalAlign.Top"),
+        label(f"lblClaimsOn_{s}", f'If(chkIdEmail_{s}.Value || chkIdUpn_{s}.Value || chkIdGiven_{s}.Value || chkIdFamily_{s}.Value || chkAtEmail_{s}.Value || chkAtUpn_{s}.Value || chkAtIdtyp_{s}.Value, "yes", "")',
+              0, 0, 10, 10, Visible="false"),
+    ])
+
+    step3 = step_container(s, 4, section_head(f"S4r_{s}", "App roles & access",
+                                              "Roles appear in the token's roles claim. Give each role existing groups or users. The owner is always assigned so someone can sign in.") + [
         button(f"btnStdRoles_{s}", q("＋ User + Admin roles"),
                f"""With({{n: Trim(txtAppName_{s}.Text)}},
     With({{p: Concat(Split(Substitute(n, " ", "-"), "-"), Upper(Left(Value, 1)) & Mid(Value, 2))}},
@@ -288,19 +365,35 @@ def new_app() -> None:
 )""", 0, 60, 230, 34, kind="secondary"),
         button(f"btnAddRole_{s}", q("＋ Custom role"),
                'Collect(colRoles, {Key: Text(GUID()), Value: "", DisplayName: "", Description: "", Members: "Users/Groups"})', 240, 60, 150, 34, kind="subtle"),
+        label(f"lblOwnerRole_{s}", q("Owner's role:"), 420, 60, 110, 34, size=11, bold=True, Visible="CountRows(colRoles) > 0"),
+        dropdown(f"ddOwnerRole_{s}", 'Filter(colRoles, !IsBlank(Value) && Members <> "Applications")',
+                 'Coalesce(varClone.ownerRole, LookUp(colRoles, EndsWith(Value, ".Admin")).Value, First(colRoles).Value)', 530, 60, 260, 34,
+                 Visible="CountRows(colRoles) > 0"),
+        hint(f"hntOwnerRole_{s}", q("The owner (owning group, or you) gets this role."), 800, 66, "Parent.Width - 800", Visible="CountRows(colRoles) > 0"),
         *roles_editor(s, 108),
-        label(f"lblNoRoles_{s}", q("No app roles yet. Most applications want a User and an Admin role — add both in one click, then pick the existing group that should hold each role."),
-              12, 140, "Parent.Width - 24", 48, size=10, color="gTheme.Muted", Wrap="true", Visible="CountRows(colRoles) = 0"),
+        # No roles: the owner gets Default Access; others can be given Default Access too.
+        label(f"lblNoRoles_{s}", q("No app roles: the owner (owning group, or you) gets Default Access so they can sign in. Add anyone else who should be able to sign in, or add roles above."),
+              0, 108, "Parent.Width", 44, size=11, color="gTheme.Text", Wrap="true", Visible="CountRows(colRoles) = 0"),
+        group_dropdown(f"cmbDefGroup_{s}", "gMyGroups", "Title", 0, 160, 280, 36, hint="Give one of your groups Default Access",
+                       Visible="CountRows(colRoles) = 0",
+                       OnChange='If(!IsBlank(Self.Selected.GroupId) && CountRows(Filter(colRoleGroups, RoleKey = "default" && GroupId = Self.Selected.GroupId)) = 0, '
+                                'Collect(colRoleGroups, {RoleKey: "default", Mode: "existing", GroupId: Self.Selected.GroupId, DisplayName: Self.Selected.Title, Description: "", OwnerIds: ""})); Reset(Self)'),
+        text_input(f"txtDefUser_{s}", '""', q("or a user: user@contoso.com"), 300, 160, 260, 36, Visible="CountRows(colRoles) = 0"),
+        button(f"btnDefUser_{s}", q("Add user"), add_user(f"txtDefUser_{s}", '"default"'), 570, 160, 110, 36, kind="subtle", Visible="CountRows(colRoles) = 0"),
+        link(f"lnkDefGroup_{s}", q("Group not listed?"), ADD_EXISTING, 700, 166, 160, Visible="CountRows(colRoles) = 0"),
+        gallery(f"galDefault_{s}", 'Filter(colRoleGroups, RoleKey = "default")', 0, 206, 680, "Parent.Height - 210", 40, Visible="CountRows(colRoles) = 0", children=[
+            label(f"lblDefRow_{s}", 'ThisItem.DisplayName & "   →   Default Access"', 8, 4, "Parent.TemplateWidth - 56", 32, size=11),
+            icon(f"icoDefRemove_{s}", "Icon.Trash", "Parent.TemplateWidth - 36", 8, 24, 24, color="gTheme.Danger", on_select="Remove(colRoleGroups, ThisItem)"),
+        ]),
     ])
 
-    step4 = step_container(s, 4, section_head(f"S4_{s}", "Enterprise application & sign-in",
+    step4 = step_container(s, 5, section_head(f"S4_{s}", "Enterprise application & sign-in",
                                               "The enterprise application (service principal) is what users sign in to and what holds role assignments.") + [
-        field_label(f"lblCreateSp_{s}", "Create the enterprise application", 0, 64, 400),
-        toggle(f"tglCreateSp_{s}", "Coalesce(varClone.createSp, true)", 0, 86, DisplayMode="If(CountRows(colRoleGroups) > 0, DisplayMode.Disabled, DisplayMode.Edit)"),
-        hint(f"hntCreateSp_{s}", q("Created for this app registration (same appId). Required for role assignments — always created when any role has groups."), 0, 122, "Parent.Width"),
-        field_label(f"lblAssign_{s}", "Assignment required (appRoleAssignmentRequired)", 0, 156, 500),
-        toggle(f"tglAssign_{s}", "Coalesce(varClone.assignReq, true)", 0, 178),
-        hint(f"hntAssign_{s}", q("Yes: only users in an assigned group can sign in or get tokens (recommended). No: any user in the tenant can."), 0, 214, "Parent.Width"),
+        rect(f"recSpInfo_{s}", 0, 64, "Parent.Width", 150, fill="gTheme.PrimaryLight", border="gTheme.PrimaryLight"),
+        label(f"lblSpInfo_{s}", q("Always created for this app registration (same appId), with Assignment required = Yes: only assigned users and groups "
+                                  "can sign in or get tokens. The owner (owning group, or you) is assigned automatically: Default Access when the app has no "
+                                  "roles, otherwise the role chosen on the App roles step."),
+              16, 74, "Parent.Width - 32", 130, size=11, Wrap="true", VerticalAlign="VerticalAlign.Top"),
         field_label(f"lblAudience_{s}", "Supported account types", 0, 248, COL_W),
         radio(f"radAudience_{s}", '["Single tenant", "Multitenant"]', 'Coalesce(varClone.audience, "Single tenant")', 0, 270, COL_W, 36),
         hint(f"hntAudience_{s}", q("Single tenant: only accounts in this organization (recommended)."), 0, 306, COL_W),
@@ -321,23 +414,26 @@ def new_app() -> None:
 "<tr><td style='color:#605e5c; padding:4px 0'>Redirect URIs</td><td>" & If(ddPlatform_{s}.Selected.Value = "None", "none", ddPlatform_{s}.Selected.Value & ": " & txtRedirect_{s}.Text) & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Expose an API</td><td>" & If(chkExpose_{s}.Value, If(radUri_{s}.Selected.Value = "Custom", txtCustomUri_{s}.Text, "api://{{appId}}") & If(CountRows(colScopes) > 0, " — scopes: " & Concat(colScopes, Value, ", "), ""), "no") & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Groups claim</td><td>" & ddGroupsClaim_{s}.Selected.Value & "</td></tr>" &
+"<tr><td style='color:#605e5c; padding:4px 0'>API permissions</td><td>" & Coalesce(Substitute(With({{raw: Concat(Filter(Table({{n: "openid", on: chkPOpenid_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "email", on: chkPEmail_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "profile", on: chkPProfile_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "User.Read", on: chkPUserRead_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}), on), n & ",") & Concat(colPerms, Value & ",")}}, If(Len(raw) > 0, Left(raw, Len(raw) - 1), "")), ",", ", "), "none") & " (Microsoft Graph, delegated)</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0; vertical-align:top'>App roles</td><td>" &
     If(CountRows(colRoles) = 0, "none", "<ul style='margin:0; padding-left:18px'>" &
-        Concat(ForAll(colRoles As r, {{t: "<li><b>" & r.Value & "</b> → " & Coalesce(Concat(Filter(colRoleGroups, RoleKey = r.Key), DisplayName, ", "), "<i>no groups</i>") & "</li>"}}), t) & "</ul>") & "</td></tr>" &
-"<tr><td style='color:#605e5c; padding:4px 0'>Enterprise app</td><td>" & If(tglCreateSp_{s}.Value || CountRows(colRoleGroups) > 0, "yes" & If(tglAssign_{s}.Value, ", assignment required", ", assignment not required"), "no") & "</td></tr>" &
+        Concat(ForAll(colRoles As r, {{t: "<li><b>" & r.Value & "</b> → " & Coalesce(Concat(Filter(colRoleGroups, RoleKey = r.Key), DisplayName, ", "), "<i>nobody</i>") & "</li>"}}), t) & "</ul>") & "</td></tr>" &
+"<tr><td style='color:#605e5c; padding:4px 0'>Enterprise app</td><td>always created, assignment required</td></tr>" &
+"<tr><td style='color:#605e5c; padding:4px 0'>Owner's access</td><td>" & If(IsBlank(team.GroupId), "you", team.DisplayName) & " → " & If(CountRows(colRoles) = 0, "Default Access", Coalesce(ddOwnerRole_{s}.Selected.Value, "<i>choose a role</i>")) & "</td></tr>" &
+If(CountRows(colRoles) = 0 && CountRows(Filter(colRoleGroups, RoleKey = "default")) > 0, "<tr><td style='color:#605e5c; padding:4px 0'>Default Access also for</td><td>" & Concat(Filter(colRoleGroups, RoleKey = "default"), DisplayName, ", ") & "</td></tr>", "") &
 "<tr><td style='color:#605e5c; padding:4px 0'>Owners</td><td>none (who may change it is set by the team tag; who may sign in by the role groups)</td></tr>" &
 "</table>" &
 "<p style='margin-top:14px; padding:10px 12px; background:#ebf3fc; border-left:3px solid #0f6cbd'><b>What happens next</b><br>" &
 "1. Your manager approves in Outlook / Teams.  2. The Entra ID team approves.  3. The app registration, roles, role assignments and enterprise app are created automatically and appear under My requests.</p>" &
 "</div>"
 )"""
-    step5 = step_container(s, 5, section_head(f"S5_{s}", "Review + submit", "Check the request. You can still go back to any section.") + [
+    step5 = step_container(s, 6, section_head(f"S5_{s}", "Review + submit", "Check the request. You can still go back to any section.") + [
         html(f"htmlReview_{s}", review_html, 0, 60, "Parent.Width", "Parent.Height - 60"),
     ])
 
     err1 = f"""Coalesce(
     If(!IsMatch(Upper(Trim(txtAppCatId_{s}.Text)), gAppCatPattern), "App BoR ID (appCatID) looks like APPCAT-001."),
-    If(!IsMatch(Trim(txtBorShort_{s}.Text), "^[A-Za-z0-9]{{2,20}}$"), "App BoR short name: 2–20 letters or digits, no spaces."),
+    If(!IsMatch(Trim(txtBorShort_{s}.Text), "^[A-Za-z0-9][A-Za-z0-9-]{{0,18}}[A-Za-z0-9]$"), "App BoR short name: 2–20 letters, digits or hyphens (not at the start or end), no spaces."),
     If(!IsMatch(Trim(txtAppName_{s}.Text), "^[A-Za-z0-9][A-Za-z0-9 ._-]{{1,79}}$"), "Display name: enter the free-text part after the prefix (2–80 letters, digits, spaces, . _ -)."),
     If(Len({full}) > 120, "The full display name is longer than 120 characters; shorten the free-text part."),
     If(Len(Trim(txtJustification_{s}.Text)) < 10, "Business justification is required (10+ characters)."),
@@ -349,9 +445,11 @@ def new_app() -> None:
     If(CountRows(Filter(colScopes, !IsMatch(Value, gValuePattern) || IsBlank(Trim(AdminName)) || IsBlank(Trim(AdminDesc)))) > 0, "Each scope needs a name (letters, digits, . _ -), an admin consent display name and a description."),
     If(CountRows(colScopes) <> CountRows(Distinct(colScopes, Value)), "Scope names must be unique.")
 )"""
-    err3 = """Coalesce(
+    err3 = f"""Coalesce(
     If(CountRows(Filter(colRoles, !IsMatch(Value, gValuePattern) || IsBlank(Trim(DisplayName)) || IsBlank(Trim(Description)))) > 0, "Each role needs a value (letters, digits, . _ -), a display name and a description."),
-    If(CountRows(colRoles) <> CountRows(Distinct(colRoles, Value)), "Role values must be unique.")
+    If(CountRows(colRoles) <> CountRows(Distinct(colRoles, Value)), "Role values must be unique."),
+    If(CountRows(colRoles) > 0 && IsBlank(ddOwnerRole_{s}.Selected.Value), "Choose the role the owner gets (Owner's role)."),
+    If(CountRows(Filter(colRoles, Members = "Applications" && CountRows(Filter(colRoleGroups, RoleKey = Key)) > 0)) > 0, "A role that allows only applications can't be held by users or groups; remove them or change Allowed members.")
 )"""
 
     payload = f"""With({{team: {team}}},
@@ -373,13 +471,16 @@ JSON({{
     optionalClaimsIdToken: Concat(Filter(Table({{n: "email", on: chkIdEmail_{s}.Value}}, {{n: "upn", on: chkIdUpn_{s}.Value}}, {{n: "given_name", on: chkIdGiven_{s}.Value}}, {{n: "family_name", on: chkIdFamily_{s}.Value}}), on), n, ","),
     optionalClaimsAccessToken: Concat(Filter(Table({{n: "email", on: chkAtEmail_{s}.Value}}, {{n: "upn", on: chkAtUpn_{s}.Value}}, {{n: "idtyp", on: chkAtIdtyp_{s}.Value}}), on), n, ","),
     groupMembershipClaims: ddGroupsClaim_{s}.Selected.Value,
+    graphDelegatedScopes: With({{raw: Concat(Filter(Table({{n: "openid", on: chkPOpenid_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "email", on: chkPEmail_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "profile", on: chkPProfile_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "User.Read", on: chkPUserRead_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}), on), n & ",") & Concat(colPerms, Value & ",")}}, If(Len(raw) > 0, Left(raw, Len(raw) - 1), "")),
+    ownerRole: If(CountRows(colRoles) > 0, ddOwnerRole_{s}.Selected.Value, ""),
+    defaultAccess: ForAll(Filter(colRoleGroups, RoleKey = "default" && CountRows(colRoles) = 0) As g, {{mode: g.Mode, id: g.GroupId, displayName: g.DisplayName}}),
     appRoles: ForAll(colRoles As r, {{
         value: r.Value, displayName: r.DisplayName, description: r.Description,
         allowedMemberTypes: Switch(r.Members, "Applications", "Application", "Both", "User,Application", "User"),
-        assignGroups: ForAll(Filter(colRoleGroups, RoleKey = r.Key) As g, {{mode: "existing", id: g.GroupId, displayName: g.DisplayName}})
+        assignGroups: ForAll(Filter(colRoleGroups, RoleKey = r.Key) As g, {{mode: g.Mode, id: g.GroupId, displayName: g.DisplayName}})
     }}),
-    createServicePrincipal: tglCreateSp_{s}.Value || CountRows(colRoleGroups) > 0,
-    appRoleAssignmentRequired: tglAssign_{s}.Value,
+    createServicePrincipal: true,
+    appRoleAssignmentRequired: true,
     tags: Trim(txtTags_{s}.Text)
 }}, JSONFormat.Compact)
 )"""
@@ -409,11 +510,11 @@ JSON({{
 )"""
     # Coalesce(varStep, 1): works even when the screen was opened without the Home card (e.g. preview in Studio).
     next_ = f"""With({{cur: Coalesce(varStep, 1)}},
-    With({{err: Switch(cur, 1, lblErr1_{s}.Text, 2, lblErr2_{s}.Text, 3, lblErr3_{s}.Text, "")}},
+    With({{err: Switch(cur, 1, lblErr1_{s}.Text, 2, lblErr2_{s}.Text, 4, lblErr3_{s}.Text, "")}},
         If(IsBlank(err),
             Set(varStepError, "");
-            Set(varStep, Min(cur + 1, 5));
-            Set(varMaxStep, Max(Coalesce(varMaxStep, 1), Min(cur + 1, 5))),
+            Set(varStep, Min(cur + 1, 6));
+            Set(varMaxStep, Max(Coalesce(varMaxStep, 1), Min(cur + 1, 6))),
             Set(varStepError, err);
             Notify(err, NotificationType.Warning)
         )
@@ -423,12 +524,12 @@ JSON({{
     command_bar = [
         rect(f"recCmd_{s}", 0, "Parent.Height - 64", "Parent.Width", 64, border="gTheme.Border"),
         button(f"btnSubmit_{s}", q("Submit request"), submit, 320, bar_y, 170, 36),
-        button(f"btnNext_{s}", q("Next  ›"), next_, 500, bar_y, 120, 36, kind="secondary", Visible="Coalesce(varStep, 1) < 5"),
+        button(f"btnNext_{s}", q("Next  ›"), next_, 500, bar_y, 120, 36, kind="secondary", Visible="Coalesce(varStep, 1) < 6"),
         button(f"btnBack_{s}", q("‹  Previous"), 'Set(varStepError, ""); Set(varStep, Max(1, Coalesce(varStep, 1) - 1))', 630, bar_y, 120, 36,
                kind="subtle", Visible="Coalesce(varStep, 1) > 1"),
         button(f"btnCancel_{s}", q("Cancel"), 'Set(varStepError, ""); Set(varResetNewApp, true); Navigate(scrHome, ScreenTransition.Fade)',
                "Parent.Width - 144", bar_y, 120, 36, kind="subtle"),
-        label(f"lblStepOf_{s}", '"Step " & Coalesce(varStep, 1) & " of 5"', 24, bar_y, 200, 36, size=10, color="gTheme.Muted"),
+        label(f"lblStepOf_{s}", '"Step " & Coalesce(varStep, 1) & " of 6"', 24, bar_y, 200, 36, size=10, color="gTheme.Muted"),
         label(f"lblStepError_{s}", "varStepError", 764, "Parent.Height - 58", "Parent.Width - 764 - 160", 52, size=10, bold=True,
               color="gTheme.Danger", Wrap="true", VerticalAlign="VerticalAlign.Middle", Visible="!IsBlank(varStepError)"),
         label(f"lblFullName_{s}", f'{prefix} & Trim(txtAppName_{s}.Text)', 0, 0, 10, 10, Visible="false"),
@@ -442,7 +543,7 @@ JSON({{
                      q("App registration, Application ID URI, scopes, app roles, role assignments and enterprise app — in one request."),
                      q("Home  ›  App registrations  ›  Register an application")) + steps_nav(s) + [
         rect(f"recMain_{s}", 296, 146, "Parent.Width - 320", "Parent.Height - 146 - 80"),
-        step1, step2, step3, step4, step5,
+        step1, step2, step_perm, step3, step4, step5,
     ] + command_bar
     write("scrNewApp", root(s, children), "Register an application: 5-section wizard (Basics required; Submit / Next / Cancel)")
 
@@ -567,7 +668,7 @@ def app_change() -> None:
                 "exposeApi", JSON({{applicationObjectId: varApp.ObjectId, applicationDisplayName: varApp.Title, identifierUriTemplate: If(radUri_{s}.Selected.Value = "Custom", Trim(txtCustomUri_{s}.Text), "api://{{appId}}"), scopes: ForAll(colScopes, {scope_rec})}}, JSONFormat.Compact),
                 "addAppRoles", JSON({{applicationObjectId: varApp.ObjectId, applicationDisplayName: varApp.Title, appRoles: {roles_json}}}, JSONFormat.Compact),
                 "assignGroups", JSON({{applicationObjectId: varApp.ObjectId, applicationDisplayName: varApp.Title, assignments: ForAll(colAssign, {{appRoleId: ThisRecord.RoleId, appRoleValue: ThisRecord.RoleValue, mode: ThisRecord.Mode, id: ThisRecord.GroupId, displayName: ThisRecord.DisplayName, description: ThisRecord.Description, ownerIds: ThisRecord.OwnerIds}})}}, JSONFormat.Compact),
-                JSON({{applicationObjectId: varApp.ObjectId, applicationDisplayName: varApp.Title, appRoleAssignmentRequired: tglAssign_{s}.Value}}, JSONFormat.Compact)
+                JSON({{applicationObjectId: varApp.ObjectId, applicationDisplayName: varApp.Title, appRoleAssignmentRequired: true}}, JSONFormat.Compact)
             )
         }},
             IfError(
@@ -588,7 +689,9 @@ def app_change() -> None:
         )
     )
 )"""
-    role_items = 'ForAll(Table(ParseJSON(Coalesce(varApp.AppRolesJson, "[]"))), {Id: Text(ThisRecord.Value.id), Value: Text(ThisRecord.Value.value)})'
+    # An app without roles offers Default Access (appRoleId 0000…), which Graph accepts only for apps without roles.
+    role_items = ('With({r: ForAll(Table(ParseJSON(Coalesce(varApp.AppRolesJson, "[]"))), {Id: Text(ThisRecord.Value.id), Value: Text(ThisRecord.Value.value)})}, '
+                  'If(CountRows(r) = 0, Table({Id: "00000000-0000-0000-0000-000000000000", Value: "Default Access"}), r))')
     sections_h = "Parent.Height - 96 - 150"
     expose = container(f"cntExpose_{s}", 0, 96, "Parent.Width", sections_h, [
         field_label(f"lblUri_{s}", "Application ID URI (added; existing URIs are kept)", 0, 0, 420),
@@ -618,20 +721,34 @@ def app_change() -> None:
                f'Mode: "existing", GroupId: cmbGroup_{s}.Selected.GroupId, DisplayName: cmbGroup_{s}.Selected.Title, Description: "", OwnerIds: ""}}); Reset(cmbGroup_{s}))',
                560, 22, 90, 36),
         link(f"lnkAddGroup_{s}", q("Group not listed? Add an existing group"), ADD_EXISTING, 665, 28, 300),
-        gallery(f"galAssign_{s}", "colAssign", 0, 72, "Parent.Width", "Parent.Height - 72", 44, children=[
+        label(f"lblAUser_{s}", q("or a user:"), 160, 66, 86, 32, size=10, color="gTheme.Muted"),
+        text_input(f"txtAssignUser_{s}", '""', q("user@contoso.com"), 250, 64, 300, 34),
+        button(f"btnAssignUser_{s}", q("Add user"), f"""If(IsBlank(ddRole_{s}.Selected.Id),
+    Notify("Pick the app role first.", NotificationType.Warning),
+    With({{e: Trim(txtAssignUser_{s}.Text)}},
+        IfError(
+            With({{u: Office365Users.UserProfileV2(e)}},
+                Collect(colAssign, {{RoleId: ddRole_{s}.Selected.Id, RoleValue: ddRole_{s}.Selected.Value, Mode: "user", GroupId: u.id,
+                    DisplayName: u.displayName & " (user)", Description: "", OwnerIds: ""}});
+                Reset(txtAssignUser_{s})
+            ),
+            Notify("No user found for " & e & ".", NotificationType.Error)
+        )
+    )
+)""", 560, 64, 100, 34, kind="subtle"),
+        gallery(f"galAssign_{s}", "colAssign", 0, 112, "Parent.Width", "Parent.Height - 112", 44, children=[
             label(f"lblAssignRow_{s}", 'ThisItem.RoleValue & "   →   " & ThisItem.DisplayName',
                   8, 8, "Parent.TemplateWidth - 56", 28, size=11),
             icon(f"icoAssignRemove_{s}", "Icon.Trash", "Parent.TemplateWidth - 36", 10, 24, 24, color="gTheme.Danger", on_select="Remove(colAssign, ThisItem)"),
             rect(f"recAssignSep_{s}", 8, 43, "Parent.TemplateWidth - 16", 1, fill="gTheme.Border", thickness=0),
         ]),
-        hint(f"lblNoAssign_{s}", q("No assignments yet. Pick a role and a group, then Add."), 0, 80, "Parent.Width", Visible="CountRows(colAssign) = 0"),
+        hint(f"lblNoAssign_{s}", q("No assignments yet. Pick a role, then a group (Add) or a user (Add user). Apps without roles offer Default Access."), 0, 120, "Parent.Width", Visible="CountRows(colAssign) = 0"),
     ], Visible='varOp = "assignGroups"')
     sp = container(f"cntSp_{s}", 0, 96, "Parent.Width", sections_h, [
         label(f"lblSpState_{s}", 'If(IsBlank(varApp.ServicePrincipalId), "This app has no enterprise application yet.", "This app already has an enterprise application.")',
               0, 0, "Parent.Width", 28, size=11, bold=True),
-        field_label(f"lblSpAssign_{s}", "Assignment required", 0, 40, 300),
-        toggle(f"tglAssign_{s}", "Coalesce(varCloneChange.assignReq, true)", 0, 62),
-        hint(f"hntSpAssign_{s}", q("Only users in an assigned group can sign in or get tokens. Recommended."), 0, 98, "Parent.Width"),
+        label(f"lblSpAssign_{s}", q("Assignment required: Yes (always). Only assigned users and groups can sign in or get tokens; use Role assignments afterwards."),
+              0, 40, "Parent.Width", 48, size=11, Wrap="true"),
     ], Visible='varOp = "createSP"')
 
     detail = container(f"cntDetail_{s}", 376, 160, "Parent.Width - 416", "Parent.Height - 160 - 92", [
@@ -815,6 +932,128 @@ With({{r: LookUp(EntraRequests, ID = varTagRec.ID)}},
     write("scrTagGroup", root(s, children), "Hand an app registration to a group (request type tagOwnerGroup, processed by flow ER-06)")
 
 
+# ============================================================================ scrDeleteApp
+DEL_OPTS = [("soft", "Delete the app registration and its enterprise app (can be restored for 30 days)"),
+            ("permanent", "Delete permanently: no restore"),
+            ("disable", "Disable sign-in only: keep everything, nobody can sign in"),
+            ("spOnly", "Delete only the enterprise application: keep the app registration")]
+
+
+def delete_app() -> None:
+    """Delete (or disable) an app registration the requester owns. Search uses ER-05 (owner check); the request then
+    goes through ER-01 (manager, then Entra ID team) and ER-02 (owner check again, then Graph)."""
+    s = "Delete"
+    a_in = f"Lower(Trim(txtAppId_{s}.Text))"
+    find = f"""If(
+    !IsMatch({a_in}, {GUID_RX}),
+        Notify("Enter the app registration's Object ID or Application (client) ID (a GUID).", NotificationType.Warning),
+    varDelBusy,
+        Notify("Still searching, one moment.", NotificationType.Information),
+    {NEW_REQ_ID};
+    Set(varDelApp, Blank()); Set(varDelMsg, ""); Set(varDelConfirm, false);
+    IfError(
+        Set(varDelRec, Patch(EntraRequests, Defaults(EntraRequests), {{
+            Title: varReqId, RequestType: {{Value: "lookupApp"}}, Status: {{Value: "Submitted"}},
+            TargetDisplayName: {a_in}, TargetObjectId: {a_in}, Justification: "Find an app registration to delete"
+        }})),
+        Notify("The search could not start: " & FirstError.Message, NotificationType.Error),
+        Set(varDelPolls, 0); Set(varDelBusy, true)
+    )
+)"""
+    poll = f"""Set(varDelPolls, varDelPolls + 1);
+Refresh(EntraRequests);
+With({{r: LookUp(EntraRequests, ID = varDelRec.ID)}},
+    If(
+        r.Status.Value = "Completed",
+            With({{j: ParseJSON(r.ResultJson)}},
+                Set(varDelApp, {{Title: Text(j.displayName), ObjectId: Text(j.objectId), AppId: Text(j.appId), AppCatId: Text(j.appCatId),
+                    Team: Text(j.team), TeamName: Text(j.teamName), ServicePrincipalId: Text(j.servicePrincipalId)}})
+            );
+            Set(varDelBusy, false),
+        r.Status.Value = "Failed",
+            Set(varDelBusy, false);
+            Set(varDelMsg, Coalesce(r.ErrorMessage, "Not found, or you are not an authorized owner of this app registration."));
+            Notify(varDelMsg, NotificationType.Error),
+        varDelPolls >= 40,
+            Set(varDelBusy, false); Set(varDelMsg, "No answer yet. Search again in a minute.")
+    )
+)"""
+    opts = "[" + ", ".join(f'"{label}"' for _, label in DEL_OPTS) + "]"
+    action = "Switch(radDelAction_Delete.Selected.Value, " + ", ".join(f'"{label}", "{key}"' for key, label in DEL_OPTS[:-1]) + f', "{DEL_OPTS[-1][0]}")'
+    permanent = f'radDelAction_{s}.Selected.Value = "{DEL_OPTS[1][1]}"'
+    submit = f"""{NEW_REQ_ID};
+IfError(
+    Patch(EntraRequests, Defaults(EntraRequests), {{
+        Title: varReqId,
+        RequestType: {{Value: "deleteAppRegistration"}},
+        Status: {{Value: "Submitted"}},
+        AppCatId: varDelApp.AppCatId,
+        TargetDisplayName: varDelApp.Title,
+        TargetObjectId: varDelApp.ObjectId,
+        Justification: Trim(txtJust_{s}.Text),
+        TicketReference: Trim(txtTicket_{s}.Text),
+        PayloadJson: JSON({{applicationObjectId: varDelApp.ObjectId, appId: varDelApp.AppId, displayName: varDelApp.Title,
+            action: {action}, actionLabel: radDelAction_{s}.Selected.Value}}, JSONFormat.Compact)
+    }}),
+    Notify("The request could not be submitted: " & FirstError.Message, NotificationType.Error),
+    Set(varDelConfirm, false); Set(varDelApp, Blank()); Reset(txtAppId_{s}); Reset(txtJust_{s}); Reset(txtTicket_{s}); Reset(txtConfirm_{s});
+    Notify("Request " & varReqId & " submitted. Your manager and the Entra ID team approve it before anything is deleted.", NotificationType.Success);
+    Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade)
+)"""
+    detail = container(f"cntDetail_{s}", 376, 160, "Parent.Width - 416", "Parent.Height - 160 - 92", [
+        label(f"lblAppTitle_{s}", "varDelApp.Title", 0, 0, "Parent.Width", 30, size=15, bold=True),
+        hint(f"lblAppInfo_{s}", '"Object ID " & varDelApp.ObjectId & "    ·    App ID " & varDelApp.AppId', 0, 32, "Parent.Width"),
+        hint(f"lblAppInfo2_{s}", '"Owner tag " & varDelApp.Team & If(IsBlank(varDelApp.TeamName), "", " (" & varDelApp.TeamName & ")") & "    ·    Enterprise app: " & If(IsBlank(varDelApp.ServicePrincipalId), "none", "yes")',
+             0, 54, "Parent.Width"),
+        field_label(f"lblAction_{s}", "What should happen?", 0, 92, 400, required=True),
+        radio(f"radDelAction_{s}", opts, f'"{DEL_OPTS[0][1]}"', 0, 116, "Parent.Width", 150, horizontal=False),
+        label(f"lblActionNote_{s}",
+              f'Switch(radDelAction_{s}.Selected.Value, "{DEL_OPTS[0][1]}", "Deleting an app registration always deletes its enterprise app and role assignments in this tenant. The Entra ID team can restore both from Deleted applications for 30 days.", '
+              f'"{DEL_OPTS[1][1]}", "Gone for good: the app registration, its enterprise app and role assignments can not be restored. Anything still using its client ID or certificate stops working.", '
+              f'"{DEL_OPTS[2][1]}", "Safest choice: sets the enterprise app to not allow sign-in. Undo any time in Entra (Enterprise applications > Properties).", '
+              f'"Removes the enterprise app and its role assignments; the app registration stays. Create the enterprise app again with the Enterprise application card.")',
+              0, 272, "Parent.Width", 48, size=10, Wrap="true", color=f'If({permanent}, gTheme.Danger, gTheme.Muted)'),
+        field_label(f"lblJust_{s}", "Business justification", COL1_X, "Parent.Height - 140", COL_W, required=True),
+        text_input(f"txtJust_{s}", '""', q("Why should it be deleted or disabled?"), COL1_X, "Parent.Height - 118", COL_W, 72, multiline=True),
+        field_label(f"lblTicket_{s}", "Change ticket", COL2_X, "Parent.Height - 140", COL_W),
+        text_input(f"txtTicket_{s}", '""', q("Optional"), COL2_X, "Parent.Height - 118", COL_W),
+    ], Visible="!IsBlank(varDelApp)")
+    confirm_ok = f'If({permanent} && Trim(txtConfirm_{s}.Text) <> "DELETE", DisplayMode.Disabled, DisplayMode.Edit)'
+    overlay = [
+        rect(f"recShade_{s}", 0, 0, "Parent.Width", "Parent.Height", fill="RGBA(0, 0, 0, 0.45)", border="RGBA(0, 0, 0, 0)", Visible="varDelConfirm"),
+        rect(f"recConfirm_{s}", "(Parent.Width - 620) / 2", 190, 620, 320, Visible="varDelConfirm"),
+        label(f"lblConfirmHead_{s}", '"Delete " & varDelApp.Title & "?"', "(Parent.Width - 620) / 2 + 28", 210, 564, 34, size=16, bold=True, Visible="varDelConfirm"),
+        label(f"lblConfirmText_{s}", f'"You asked to: " & radDelAction_{s}.Selected.Value & ". Your manager and the Entra ID team approve first; nothing changes until then."',
+              "(Parent.Width - 620) / 2 + 28", 252, 564, 70, size=11, Wrap="true", Visible="varDelConfirm"),
+        text_input(f"txtConfirm_{s}", '""', q("Type DELETE to confirm a permanent delete"), "(Parent.Width - 620) / 2 + 28", 334, 300, 36, Visible=f"varDelConfirm && {permanent}"),
+        button(f"btnConfirmYes_{s}", q("Yes, submit for approval"), submit, "(Parent.Width - 620) / 2 + 28", 442, 240, 40, DisplayMode=confirm_ok, Visible="varDelConfirm"),
+        button(f"btnConfirmNo_{s}", q("Cancel"), "Set(varDelConfirm, false)", "(Parent.Width - 620) / 2 + 280", 442, 120, 40, kind="subtle", Visible="varDelConfirm"),
+    ]
+    children = frame(s, q("Delete app registration"), q("Delete or disable an app registration you own. Manager and Entra ID team approve first."),
+                     q("Home  ›  App registrations  ›  Delete")) + [
+        rect(f"recApps_{s}", 24, 146, 320, "Parent.Height - 146 - 80"),
+        label(f"lblAppsHead_{s}", q("Find the app registration"), 40, 156, 288, 26, size=12, bold=True),
+        field_label(f"lblAppId_{s}", "Object ID or Application (client) ID", 40, 190, 288, required=True),
+        text_input(f"txtAppId_{s}", '""', q("00000000-0000-0000-0000-000000000000"), 40, 212, 288, 34, DisplayMode="If(varDelBusy, DisplayMode.Disabled, DisplayMode.Edit)"),
+        button(f"btnFind_{s}", q("Search"), find, 40, 256, 120, 34, DisplayMode="If(varDelBusy, DisplayMode.Disabled, DisplayMode.Edit)"),
+        label(f"lblLookupBusy_{s}", q("Searching Entra…"), 170, 256, 158, 34, size=10, bold=True, color="gTheme.Primary", Visible="varDelBusy"),
+        label(f"lblLookupMsg_{s}", "varDelMsg", 40, 300, 288, 96, size=10, bold=True, color="gTheme.Danger", Wrap="true", VerticalAlign="VerticalAlign.Top", Visible="!IsBlank(varDelMsg)"),
+        label(f"lblLookupInfo_{s}", q("Only the app's owner can delete it: the user in its team:user\\\\… tag, or a member of the group in its team:group\\\\… tag."),
+              40, 404, 288, 80, size=9, color="gTheme.Muted", Wrap="true", VerticalAlign="VerticalAlign.Top"),
+        timer(f"tmrLookup_{s}", poll, "varDelBusy"),
+        rect(f"recDetail_{s}", 360, 146, "Parent.Width - 384", "Parent.Height - 146 - 80"),
+        label(f"lblPick_{s}", q("Search for the app registration on the left."), 376, 170, 500, 30, size=11, color="gTheme.Muted", Visible="IsBlank(varDelApp)"),
+        detail,
+        rect(f"recCmd_{s}", 0, "Parent.Height - 64", "Parent.Width", 64),
+        button(f"btnSubmit_{s}", q("Delete…"), f"""If(Len(Trim(txtJust_{s}.Text)) < 10,
+    Notify("Business justification is required (10+ characters).", NotificationType.Warning),
+    Reset(txtConfirm_{s}); Set(varDelConfirm, true)
+)""", 360, "Parent.Height - 50", 170, 36, DisplayMode="If(IsBlank(varDelApp), DisplayMode.Disabled, DisplayMode.Edit)"),
+        button(f"btnCancel_{s}", q("Cancel"), "Set(varDelApp, Blank()); Navigate(scrHome, ScreenTransition.Fade)", 540, "Parent.Height - 50", 120, 36, kind="subtle"),
+    ] + overlay
+    write("scrDeleteApp", root(s, children), "Delete or disable an app registration you own (request type deleteAppRegistration: ER-01 approvals, then ER-02)")
+
+
 # ============================================================================ scrMyRequests
 def my_requests() -> None:
     s = "My"
@@ -879,7 +1118,8 @@ If(!IsBlank({sel}.RequestSummary), "<p style='margin-top:10px; color:#605e5c'><b
             redirect: Coalesce(Text(j.redirectUrisWeb), Text(j.redirectUrisSpa)),
             expose: Boolean(j.exposeApi.enabled), uriTemplate: Text(j.exposeApi.identifierUriTemplate),
             idClaims: Text(j.optionalClaimsIdToken), atClaims: Text(j.optionalClaimsAccessToken), groupsClaim: Text(j.groupMembershipClaims),
-            createSp: Boolean(j.createServicePrincipal), assignReq: Boolean(j.appRoleAssignmentRequired),
+            createSp: Boolean(j.createServicePrincipal), assignReq: Boolean(j.appRoleAssignmentRequired), graphScopes: Text(j.graphDelegatedScopes),
+            ownerRole: Text(j.ownerRole),
             audience: If(Text(j.signInAudience) = "AzureADMultipleOrgs", "Multitenant", "Single tenant"), tags: Text(j.tags)
         }});
         Set(varResetNewApp, true);
@@ -950,5 +1190,6 @@ if __name__ == "__main__":
     add_group()
     app_change()
     tag_group()
+    delete_app()
     my_requests()
     print("generated:", ", ".join(sorted(p.name for p in OUT.glob("*.pa.yaml"))))

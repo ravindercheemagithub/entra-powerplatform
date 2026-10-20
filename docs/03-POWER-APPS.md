@@ -1,12 +1,13 @@
 # 3. Power Apps: the canvas app
 
-Six screens, built by pasting YAML into Power Apps Studio. Every control is a classic control, every formula uses English-locale separators (`,` and `;`), and nothing pins a control version. Studio uses the current version of each control.
+Seven screens, built by pasting YAML into Power Apps Studio. Every control is a classic control, every formula uses English-locale separators (`,` and `;`), and nothing pins a control version. Studio uses the current version of each control.
 
 | Screen | Purpose |
 |---|---|
 | `scrHome` | operation cards + your recent requests |
 | `scrNewApp` | **Register an application**: 5 sections, Submit / Next / Cancel at the bottom |
 | `scrAppChange` | changes to an existing app: **Search** by Application (client) ID or Object ID (flow ER-05 checks you are its authorized owner), then Expose an API, App roles, Role assignments, Enterprise app |
+| `scrDeleteApp` | **Delete app registration**: delete, permanently delete, disable sign-in, or delete only the enterprise app, for an app you own; manager and Entra ID team approve first |
 | `scrTagGroup` | **Owning group**: hand an app registration you own to one of your groups (flow ER-06 replaces `team:user\…` with `team:group\…`; no approval) |
 | `scrAddGroup` | **Add existing group**: enter a group's name or Object ID to make it selectable (flow ER-04 checks you are a member or owner; no approval). Groups are created outside this app. |
 | `scrMyRequests` | history with approval stages, created IDs and errors |
@@ -85,9 +86,10 @@ Left: a step list (`galSteps_NewApp`). You can click back to any step you've vis
 |---|---|---|
 | 1 Basics | **App BoR ID** (appCatID) `txtAppCatId_NewApp`; **App environment** `ddEnv_NewApp`; **App BoR short name** `txtBorShort_NewApp`; **Owning group (optional)** `cmbTeam_NewApp` (+ link *Group not listed? Add an existing group*); **Display name**: read-only prefix `lblNamePrefix_NewApp` + free text `txtAppName_NewApp`; Justification; Description; Redirect URI platform + URIs | appCatID, environment, BoR short name, free-text name, justification |
 | 2 Expose an API & claims | Expose an API `chkExpose_NewApp`; App ID URI (`api://{appId}` or custom); scopes editor (**＋ access_as_user**, **＋ Custom scope**); optional claims in ID / access token; groups claim | – |
-| 3 App roles & groups | **＋ User + Admin roles** (adds `<Name>.User` / `<Name>.Admin`); **＋ Custom role**; per role: value, display name, members, description, and the **existing** groups that hold it (pick from your groups; *Group not listed?* opens Add existing group) | – |
-| 4 Enterprise app & sign-in | Create the enterprise application (forced on when any role has groups); **Assignment required** (`appRoleAssignmentRequired`); Supported account types; Optional tags; Change ticket | – |
-| 5 Review + submit | HTML summary of everything + what happens next | – |
+| 3 API permissions | **Sign-in permissions** `openid`, `email`, `profile`, `User.Read` (Microsoft Graph, delegated): selected by default; **locked on** when any optional token claim is chosen on step 2. **Other Microsoft Graph permissions**: type a delegated permission name (e.g. `Mail.Read`) and **Add**, or click a *Common* one. ER-02 checks the names against Graph; unknown names are reported in the completion notes. No consent is granted: users consent at first sign-in, or the Entra ID team grants admin consent | – |
+| 4 App roles & access | **＋ User + Admin roles**; **＋ Custom role**; per role: value, display name, allowed members, description, and who **holds** it: existing groups (dropdown) and/or **users** (type the email, **Add user**; looked up with Office 365 Users). **Owner's role** (when there are roles): the role the owner (owning group, or the requester) gets. **No roles:** the owner gets *Default Access*; add other groups or users who should get Default Access too | Owner's role, when roles exist |
+| 5 Enterprise app & sign-in | Information only: the enterprise application is **always** created, with **Assignment required = Yes**. Supported account types; Optional tags; Change ticket | – |
+| 6 Review + submit | HTML summary of everything (API permissions, role holders, owner's access) + what happens next | – |
 
 - **Display name follows the naming convention** `<App BoR ID>-<App Env>-<App BoR short name>-<free text>`, e.g. `APP-1234-Q-ORDERS-orders-api`. The prefix is built from the three fields above it and can't be typed over; only the free text is editable. Environments: **P** production, **Q** QA, **D** development, **L** lab, **U** UAT, **F** performance, **T** dev integration testing, **S** system integration testing (`gEnvironments`). The full name is in the hidden label `lblFullName_NewApp`, max 120 characters. The payload also carries `appEnv` and `borShortName`; ER-02 stamps them as tags.
 - **Next** validates the current section (hidden labels `lblErr1/2/3_NewApp` hold the rules). If something is missing, the message appears in red next to the buttons, as well as in a banner.
@@ -114,9 +116,19 @@ So a group that already exists in Entra appears only after it has been onboarded
 - Right, once found: app details (App ID, owner tag, App ID URI, enterprise app), plus the section for `varOp`:
   - **Expose an API**: URI (added; existing ones are kept) + new scopes
   - **App roles**: new roles, each with existing groups
-  - **Role assignments**: pick an app role (from the app's roles) and one of your groups, **Add**; *Group not listed?* opens Add existing group
-  - **Enterprise application**: assignment required toggle (disabled if one exists)
+  - **Role assignments**: pick an app role (from the app's roles, or **Default Access** when the app has none) and one of your groups (**Add**) or a user by email (**Add user**); *Group not listed?* opens Add existing group
+  - **Enterprise application**: created with assignment required = Yes (always)
 - Justification, change ticket, and **appCatID** (read-only when the app has one; required when it doesn't, and then added) + **Submit request** → `exposeApi` / `addAppRoles` / `assignGroupsToAppRoles` / `createServicePrincipal`. ER-02 checks ownership again before changing anything.
+
+### scrDeleteApp: Delete app registration
+- **Search** by Object ID or Application (client) ID (ER-05: only the app's owner by its `team:` tag gets a result).
+- **What should happen?**
+  - *Delete the app registration and its enterprise app* (restorable for 30 days from *Deleted applications*): the default. Deleting an app registration always deletes its enterprise app and role assignments in this tenant.
+  - *Delete permanently*: also removes it from *Deleted applications*; the confirmation asks you to type **DELETE**.
+  - *Disable sign-in only*: keeps everything and sets the enterprise app to not allow sign-in; easy to undo.
+  - *Delete only the enterprise application*: removes it and its role assignments, keeps the app registration.
+- Justification (required), ticket → **Delete…** → a confirmation dialog → **Yes, submit for approval** writes a `deleteAppRegistration` request.
+- It goes through **ER-01** (manager, then the Entra ID team), then **ER-02**, which checks ownership again before deleting, removes the app's catalog row, and reports the result in the completion notes.
 
 ### scrTagGroup: Owning group
 - **App registration** (Application (client) ID or Object ID) and the **group's Object ID**. *Pick one of your groups* fills the Object ID in for you.

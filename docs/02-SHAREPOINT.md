@@ -141,7 +141,7 @@ The flow doesn't change permissions. Set them in each list's **Settings → List
 | Column | Type | Notes |
 |---|---|---|
 | Title | (built-in) | rename display name to *RequestId*; `REQ-2610-K7M4X2`; **index** it |
-| RequestType | Choice | `createAppRegistration`, `exposeApi`, `addAppRoles`, `assignGroupsToAppRoles`, `createServicePrincipal`, `onboardGroup`, `lookupApp`, `tagOwnerGroup`; **index**. (`createGroup` from earlier versions is no longer used: groups are created outside this platform.) Lists created by an earlier version: *List settings → RequestType → add the missing choices* (`onboardGroup` from 1.1, `lookupApp` and `tagOwnerGroup` from 1.3). |
+| RequestType | Choice | `createAppRegistration`, `exposeApi`, `addAppRoles`, `assignGroupsToAppRoles`, `createServicePrincipal`, `onboardGroup`, `lookupApp`, `tagOwnerGroup`, `deleteAppRegistration`; **index**. (`createGroup` from earlier versions is no longer used: groups are created outside this platform.) Lists created by an earlier version: *List settings → RequestType → add the missing choices* (`onboardGroup` from 1.1, `lookupApp` and `tagOwnerGroup` from 1.3, `deleteAppRegistration` from 1.7). |
 | Status | Choice | `Submitted` (default), `PendingManagerApproval`, `PendingEntraApproval`, `Approved`, `InProgress`, `Completed`, `Failed`, `Rejected`; **index** |
 | AppCatId | Single line | **index** |
 | TargetDisplayName | Single line | the app / group name |

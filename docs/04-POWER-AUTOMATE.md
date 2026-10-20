@@ -332,6 +332,33 @@ Step 13 `Queue new role assignment` Value (text with tokens):
 | `HTTP Patch tags sp` | Graph | `PATCH` `https://graph.microsoft.com/v1.0/applications/@{triggerOutputs()?['body/TargetObjectId']}`; Body [`HTTP_Patch_tags.json`](../powerautomate/actions/HTTP_Patch_tags.json) |
 | `Result sp` | Set variable | Name `varResult`; Value `{"applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}", "servicePrincipalId": "@{body('HTTP_Create_SP_existing')?['id']}"}` |
 
+#### Case `deleteAppRegistration` → Scope `Do deleteAppRegistration` (1.7)
+
+Ownership is checked by *Has target app* above (team tag), exactly as for changes. `PayloadJson.action` is `soft`, `permanent`, `disable` or `spOnly`.
+
+| Action | Type | Configuration |
+|---|---|---|
+| `Delete action` | Compose | `coalesce(outputs('Payload')?['action'], 'soft')` |
+| `Delete the app` | Condition | `soft` or `permanent`. **If yes:** `HTTP Delete application` (`DELETE https://graph.microsoft.com/v1.0/applications/@{triggerOutputs()?['body/TargetObjectId']}`; deletes its enterprise app too) → **Log** `Done: app registration … deleted together with its enterprise app…` → `Permanent delete` (Condition `permanent`; If yes: the **retry pattern** with `HTTP Purge application` = `DELETE https://graph.microsoft.com/v1.0/directory/deletedItems/@{triggerOutputs()?['body/TargetObjectId']}`, status `204`, flag `varPurgeOk` → **Log** / **Log failed**). **If no:** `Disable only` (Condition `disable`; If yes: `SP to disable` → `HTTP Disable SP` = `PATCH …/servicePrincipals/@{variables('varSpId')}` body `{"accountEnabled": false}`; If no (spOnly): `SP to delete` → `HTTP Delete SP` = `DELETE …/servicePrincipals/@{variables('varSpId')}`). Without an enterprise app, disable / spOnly log *Failed: nothing to change*. |
+| `Get deleted app row` → `Catalog row exists` | SharePoint – Get items, Condition | EntraCatalogApps `ObjectId eq '@{triggerOutputs()?['body/TargetObjectId']}'`; soft / permanent → **Delete item** (`Delete catalog row`); spOnly → Update item `ServicePrincipalId` empty |
+| `Result delete` | Set variable | `varResult` = `{applicationObjectId, appId, action}` |
+
+Planned steps: `delete` (label = the option chosen), plus `purge` for a permanent delete.
+
+### 1.7 additions to createAppRegistration
+
+| Action | Type | Configuration |
+|---|---|---|
+| `Requested scope names` / `Requested scope keys` | Filter array, Select | the names in `Payload.graphDelegatedScopes` (comma-separated), and their lower-case form |
+| `HTTP Graph permissions` | Graph | `GET https://graph.microsoft.com/v1.0/servicePrincipals(appId='00000003-0000-0000-c000-000000000000')?$select=oauth2PermissionScopes` (Microsoft Graph's own delegated permissions) |
+| `Known graph scopes`, `Known scope keys`, `Known scope names`, `Unknown graph scopes` | Filter / Select | match the requested names (case-insensitive) to Graph's permissions; the rest are unknown |
+| `Select graph permissions` → `Required resource access` | Select, Compose | `{id, type: "Scope"}` per known permission; `[{resourceAppId: "00000003-0000-0000-c000-000000000000", resourceAccess: […]}]`, sent as `requiredResourceAccess` in [`HTTP_Create_application.json`](../powerautomate/actions/HTTP_Create_application.json) |
+| `Permissions requested` | Condition | after the app is created: **Log** `Done: API permissions …` (key `permissions`), or **Log failed** listing the unknown names; then a **Note** that consent is not granted |
+| `For each default holder` | Apply to each | `Payload.defaultAccess` (only sent for apps without roles) → queued like role assignments with `roleId` `00000000-0000-0000-0000-000000000000` (*Default Access*) |
+| `Owner access` (after the role assignments) | Condition | createAppRegistration with an enterprise app → `Filter owner role` (the created role whose value = `Payload.ownerRole`) → `Owner role id` (`00000000-…` when the app has no roles) → `Owner principal id` (owning group id, else the requester's object id) → the **retry pattern** with `HTTP Assign owner access` ([`HTTP_Assign_owner_access.json`](../powerautomate/actions/HTTP_Assign_owner_access.json)) → **Log** `Done: the owner … has default access / the X role` (key `owner`) |
+
+Role holders can be **users** as well as groups (`assignGroups[].mode` = `user` or `existing`): `appRoleAssignedTo` takes either object id, so the assignment loop is unchanged. The enterprise app is always created with assignment required (the app sends `createServicePrincipal` and `appRoleAssignmentRequired` = `true`).
+
 #### Inside `Try`, after the Switch: role assignments (shared by three cases), then finish
 
 Each assignment is tried on its own and logged; one failure doesn't stop the others.

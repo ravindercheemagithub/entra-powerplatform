@@ -9,6 +9,8 @@ ClearCollect(colRoles, { Key: "", Value: "", DisplayName: "", Description: "", M
 Clear(colRoles);
 ClearCollect(colRoleGroups, { RoleKey: "", Mode: "", GroupId: "", DisplayName: "", Description: "", OwnerIds: "" });
 Clear(colRoleGroups);
+ClearCollect(colPerms, { Value: "" });
+Clear(colPerms);
 ClearCollect(colAssign, { RoleId: "", RoleValue: "", Mode: "", GroupId: "", DisplayName: "", Description: "", OwnerIds: "" });
 Clear(colAssign);
 
@@ -22,6 +24,11 @@ Set(varLookupPolls, 0);
 Set(varLookupMsg, "");
 Set(varTagBusy, false);
 Set(varTagPolls, 0);
+Set(varDelBusy, false);
+Set(varDelPolls, 0);
+Set(varDelMsg, "");
+Set(varDelConfirm, false);
+Set(varDelApp, Blank());
 Set(varOp, "exposeApi");
 Set(varReqId, "");
 Set(varSelectedReqId, Blank());

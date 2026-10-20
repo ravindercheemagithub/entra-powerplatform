@@ -1,6 +1,6 @@
 # 9. Import the flows as a solution
 
-Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_5_0_0.zip`](../solution/dist/EntraSelfService_1_5_0_0.zip) (version 1.5) is an **unmanaged** solution containing:
+Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_7_0_0.zip`](../solution/dist/EntraSelfService_1_7_0_0.zip) (version 1.7) is an **unmanaged** solution containing:
 
 | Component | What it is |
 |---|---|
@@ -38,7 +38,7 @@ Import **as the account that should own the flows** (your account while testing,
 
 ## 9.2 Download the zip
 
-On GitHub open [`solution/dist/EntraSelfService_1_5_0_0.zip`](../solution/dist/EntraSelfService_1_5_0_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
+On GitHub open [`solution/dist/EntraSelfService_1_7_0_0.zip`](../solution/dist/EntraSelfService_1_7_0_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
 
 ## 9.3 Import
 
@@ -90,6 +90,18 @@ Open each flow once in the designer and check it has no errors before turning it
 | SharePoint actions fail with *List not found* | The site URL variable is wrong, or SP-00 hasn't created the lists yet |
 
 ## 9.6 Updating
+
+**1.7:** API permissions, users as role holders, owner access, always an enterprise app, and deleting app registrations.
+- **API permissions** step in the wizard: `openid`, `email`, `profile`, `User.Read` selected by default (locked on when token claims are chosen), plus any Microsoft Graph delegated permission by name. ER-02 looks the names up in Graph and adds them as the app's API permissions; consent is not granted by the platform.
+- **Role holders can be users** as well as groups (wizard and *Role assignments*). Apps without roles can give groups or users **Default Access**.
+- **The enterprise app is always created, with assignment required.** The **owner** (owning group, or the requester) is always assigned: *Default Access* when the app has no roles, otherwise the role picked as *Owner's role*.
+- **Hyphens** are allowed in the App BoR short name.
+- **Delete app registration** card: soft delete (30-day restore), permanent delete, disable sign-in only, or delete only the enterprise app. Only the app's owner (by its `team:` tag) can request it; the manager and the Entra ID team approve; ER-02 checks ownership again.
+
+To upgrade:
+1. EntraRequests → **List settings → RequestType** → add the choice `deleteAppRegistration`.
+2. Import the 1.7 zip over the existing solution.
+3. Re-import the app (`EntraSelfService.msapp`), add the data sources, Save and Publish.
 
 **1.5:** the completion notes list every step the request asked for. ER-02 builds a plan from the request first (create the app, URI and scopes, enterprise app, each role assignment, default access…), then reports *N of M requested steps done*, each Done / Failed line, and **Not run:** for every planned step that didn't happen, instead of "every step after the failed one". Emails and *My requests* colour the lines: Done green; Failed, Not run and Skipped red. The Catch email no longer shows Power Automate's generic *An action failed. No dependent actions succeeded*; it points to the step and the run history. Import over 1.4.1 and re-import the app for the colours in *My requests*.
 

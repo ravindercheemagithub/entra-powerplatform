@@ -65,6 +65,7 @@ For comparison, the Azure Function / App Service variants need no Power Platform
 | 6c | Test ER-03 (read-only sync) | Your tenant | [docs/08-TEST-ER03.md](docs/08-TEST-ER03.md) |
 | 6d | Test ER-04 (add an existing group, no approval) | Your tenant | [docs/10-TEST-ER04.md](docs/10-TEST-ER04.md) |
 | 6e | Test ER-05 (Search) and ER-06 (Owning group) | Your tenant | [docs/11-TEST-ER05-ER06.md](docs/11-TEST-ER05-ER06.md) |
+| 6f | Test API permissions, owner access and delete (1.7) | Your tenant | [docs/12-TEST-PERMISSIONS-ACCESS-DELETE.md](docs/12-TEST-PERMISSIONS-ACCESS-DELETE.md) |
 | 5a | Or import the flows as a solution zip (instead of building them by hand) | Power Automate | [docs/09-SOLUTION-IMPORT.md](docs/09-SOLUTION-IMPORT.md) · `solution/dist/` |
 
 ## What can be imported, and how
@@ -89,6 +90,7 @@ Power Automate's importable formats are a solution `.zip` or a legacy package `.
   5. **Review + submit**.
 - **No group creation and no owners.** Groups are created outside this app; **Add existing group** makes one selectable (by name or Object ID, if you are a member or owner). App registrations get no owners. **Who may change an app is its team tag**: `team:user\<id>` (the creator) or `team:group\<id>` (members of that group). **Owning group** hands a user-owned app to a group.
 - **Expose an API / App roles / Role assignments / Enterprise application**: **Search** by the app's Application (client) ID or Object ID; you can continue only if its team tag names you or a group you are in.
+- **Delete app registration**: delete, permanently delete, disable sign-in, or delete only the enterprise app, for apps you own (approved like any request).
 - **My requests**: approval stages, the IDs that were created, and errors.
 
 ## Folder map

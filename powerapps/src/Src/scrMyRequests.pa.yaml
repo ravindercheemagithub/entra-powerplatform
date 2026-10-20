@@ -597,7 +597,8 @@ Screens:
                                 redirect: Coalesce(Text(j.redirectUrisWeb), Text(j.redirectUrisSpa)),
                                 expose: Boolean(j.exposeApi.enabled), uriTemplate: Text(j.exposeApi.identifierUriTemplate),
                                 idClaims: Text(j.optionalClaimsIdToken), atClaims: Text(j.optionalClaimsAccessToken), groupsClaim: Text(j.groupMembershipClaims),
-                                createSp: Boolean(j.createServicePrincipal), assignReq: Boolean(j.appRoleAssignmentRequired),
+                                createSp: Boolean(j.createServicePrincipal), assignReq: Boolean(j.appRoleAssignmentRequired), graphScopes: Text(j.graphDelegatedScopes),
+                                ownerRole: Text(j.ownerRole),
                                 audience: If(Text(j.signInAudience) = "AzureADMultipleOrgs", "Multitenant", "Single tenant"), tags: Text(j.tags)
                             });
                             Set(varResetNewApp, true);

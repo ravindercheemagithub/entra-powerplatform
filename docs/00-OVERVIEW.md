@@ -37,6 +37,7 @@ What it supports:
   - redirect URIs, optional claims, app roles, Expose an API (App ID URI and scopes);
   - an enterprise app with *Assignment required* chosen in the form;
   - role assignments to existing groups.
+- **Delete app registration:** delete (restorable 30 days), delete permanently, disable sign-in only, or delete only the enterprise app, for an app the requester owns; manager and Entra ID team approve first.
 - **Changes to existing apps:** search by the app's Application (client) ID or Object ID; only its owner can continue. Then add scopes, add app roles, assign groups to roles, or create a missing enterprise app.
 - **Ownership by tag, not by Entra owners:** an app created with an owning group is tagged `team:group\<id>` (all members may change it); without one, `team:user\<id>` (only the creator). **Owning group** hands a user-owned app to a group.
 - **Add an existing group:** a group created elsewhere becomes pickable once the requester proves they are a member or owner.

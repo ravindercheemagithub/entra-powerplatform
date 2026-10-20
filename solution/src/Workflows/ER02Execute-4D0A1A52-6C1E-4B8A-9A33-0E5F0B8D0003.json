@@ -447,12 +447,12 @@
             ]
           }
         },
-        "Init_varDefaultOk": {
+        "Init_varOwnerOk": {
           "type": "InitializeVariable",
           "inputs": {
             "variables": [
               {
-                "name": "varDefaultOk",
+                "name": "varOwnerOk",
                 "type": "string",
                 "value": "no"
               }
@@ -460,6 +460,23 @@
           },
           "runAfter": {
             "Init_varFailMessage": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Init_varPurgeOk": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varPurgeOk",
+                "type": "string",
+                "value": "no"
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varOwnerOk": [
               "Succeeded"
             ]
           }
@@ -476,7 +493,7 @@
             ]
           },
           "runAfter": {
-            "Init_varDefaultOk": [
+            "Init_varPurgeOk": [
               "Succeeded"
             ]
           }
@@ -604,26 +621,26 @@
                         ]
                       }
                     },
-                    "Plan_default_access_wanted": {
+                    "Plan_permissions_wanted": {
                       "type": "If",
                       "expression": {
                         "and": [
                           {
                             "equals": [
-                              "@and(equals(outputs('Payload')?['createServicePrincipal'], true), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), empty(coalesce(outputs('Payload')?['appRoles'], json('[]'))))",
+                              "@not(empty(outputs('Payload')?['graphDelegatedScopes']))",
                               true
                             ]
                           }
                         ]
                       },
                       "actions": {
-                        "Plan_default_access": {
+                        "Plan_permissions": {
                           "type": "AppendToArrayVariable",
                           "inputs": {
                             "name": "varPlan",
                             "value": {
-                              "key": "default",
-                              "label": "Give the owner default access to the enterprise application"
+                              "key": "permissions",
+                              "label": "Add API permissions: @{replace(outputs('Payload')?['graphDelegatedScopes'], ',', ', ')}"
                             }
                           },
                           "runAfter": {}
@@ -634,6 +651,67 @@
                       },
                       "runAfter": {
                         "Plan_SP_wanted": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "Plan_owner_access_wanted": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@equals(outputs('Payload')?['createServicePrincipal'], true)",
+                              true
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "Plan_owner_access": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varPlan",
+                            "value": {
+                              "key": "owner",
+                              "label": "Give the owner (@{coalesce(outputs('Payload')?['owningGroup']?['displayName'], 'the requester')}) @{if(empty(coalesce(outputs('Payload')?['appRoles'], json('[]'))), 'default access', concat('the ', outputs('Payload')?['ownerRole'], ' role'))}"
+                            }
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "else": {
+                        "actions": {}
+                      },
+                      "runAfter": {
+                        "Plan_permissions_wanted": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "Plan_each_default_holder": {
+                      "type": "Foreach",
+                      "foreach": "@coalesce(outputs('Payload')?['defaultAccess'], json('[]'))",
+                      "actions": {
+                        "Plan_default_holder": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varPlan",
+                            "value": {
+                              "key": "assign|@{items('Plan_each_default_holder')?['id']}|Default Access",
+                              "label": "Give @{items('Plan_each_default_holder')?['displayName']} default access"
+                            }
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "runtimeConfiguration": {
+                        "concurrency": {
+                          "repetitions": 1
+                        }
+                      },
+                      "runAfter": {
+                        "Plan_owner_access_wanted": [
                           "Succeeded"
                         ]
                       }
@@ -713,6 +791,56 @@
                         }
                       },
                       "runAfter": {}
+                    }
+                  }
+                },
+                "Case_deleteAppRegistration": {
+                  "case": "deleteAppRegistration",
+                  "actions": {
+                    "Plan_delete": {
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varPlan",
+                        "value": {
+                          "key": "delete",
+                          "label": "@{coalesce(outputs('Payload')?['actionLabel'], 'Delete the app registration')}"
+                        }
+                      },
+                      "runAfter": {}
+                    },
+                    "Plan_purge_wanted": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@equals(outputs('Payload')?['action'], 'permanent')",
+                              true
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "Plan_purge": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varPlan",
+                            "value": {
+                              "key": "purge",
+                              "label": "Remove it from Deleted applications (no restore)"
+                            }
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "else": {
+                        "actions": {}
+                      },
+                      "runAfter": {
+                        "Plan_delete": [
+                          "Succeeded"
+                        ]
+                      }
                     }
                   }
                 }
@@ -1389,6 +1517,122 @@
                             ]
                           }
                         },
+                        "Requested_scope_names": {
+                          "type": "Query",
+                          "inputs": {
+                            "from": "@split(coalesce(outputs('Payload')?['graphDelegatedScopes'], ''), ',')",
+                            "where": "@not(empty(trim(item())))"
+                          },
+                          "runAfter": {
+                            "App_tags": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Requested_scope_keys": {
+                          "type": "Select",
+                          "inputs": {
+                            "from": "@body('Requested_scope_names')",
+                            "select": "@toLower(trim(item()))"
+                          },
+                          "runAfter": {
+                            "Requested_scope_names": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "HTTP_Graph_permissions": {
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                              "connectionName": "shared_webcontents",
+                              "operationId": "InvokeHttp"
+                            },
+                            "parameters": {
+                              "request/method": "GET",
+                              "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals(appId='00000003-0000-0000-c000-000000000000')?$select=oauth2PermissionScopes"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          },
+                          "runAfter": {
+                            "Requested_scope_keys": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Known_graph_scopes": {
+                          "type": "Query",
+                          "inputs": {
+                            "from": "@coalesce(body('HTTP_Graph_permissions')?['oauth2PermissionScopes'], json('[]'))",
+                            "where": "@contains(body('Requested_scope_keys'), toLower(item()?['value']))"
+                          },
+                          "runAfter": {
+                            "HTTP_Graph_permissions": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Known_scope_keys": {
+                          "type": "Select",
+                          "inputs": {
+                            "from": "@body('Known_graph_scopes')",
+                            "select": "@toLower(item()?['value'])"
+                          },
+                          "runAfter": {
+                            "Known_graph_scopes": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Known_scope_names": {
+                          "type": "Select",
+                          "inputs": {
+                            "from": "@body('Known_graph_scopes')",
+                            "select": "@item()?['value']"
+                          },
+                          "runAfter": {
+                            "Known_scope_keys": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Unknown_graph_scopes": {
+                          "type": "Query",
+                          "inputs": {
+                            "from": "@body('Requested_scope_names')",
+                            "where": "@not(contains(body('Known_scope_keys'), toLower(trim(item()))))"
+                          },
+                          "runAfter": {
+                            "Known_scope_names": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Select_graph_permissions": {
+                          "type": "Select",
+                          "inputs": {
+                            "from": "@body('Known_graph_scopes')",
+                            "select": {
+                              "id": "@item()?['id']",
+                              "type": "Scope"
+                            }
+                          },
+                          "runAfter": {
+                            "Unknown_graph_scopes": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Required_resource_access": {
+                          "type": "Compose",
+                          "inputs": "@if(empty(body('Select_graph_permissions')), json('[]'), createArray(setProperty(json('{\"resourceAppId\": \"00000003-0000-0000-c000-000000000000\"}'), 'resourceAccess', body('Select_graph_permissions'))))",
+                          "runAfter": {
+                            "Select_graph_permissions": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
                         "HTTP_Create_application": {
                           "type": "OpenApiConnection",
                           "inputs": {
@@ -1403,12 +1647,12 @@
                               "request/headers": {
                                 "Content-Type": "application/json"
                               },
-                              "request/body": "{\n  \"displayName\": \"@{outputs('Payload')?['displayName']}\",\n  \"description\": @{if(empty(trim(coalesce(outputs('Payload')?['description'], ''))), 'null', concat('\"', take(trim(outputs('Payload')?['description']), 1024), '\"'))},\n  \"signInAudience\": \"@{outputs('Payload')?['signInAudience']}\",\n  \"notes\": \"@{concat('appCatID=', triggerOutputs()?['body/AppCatId'], '; requestId=', triggerOutputs()?['body/Title'], '; createdBy=', outputs('Requester'), '; managedBy=', body('Get_settings')?['ManagedByTag'])}\",\n  \"tags\": @{outputs('App_tags')},\n  \"appRoles\": @{body('Select_app_roles')},\n  \"api\": { \"requestedAccessTokenVersion\": 2 },\n  \"web\": { \"redirectUris\": @{if(empty(outputs('Payload')?['redirectUrisWeb']), json('[]'), split(outputs('Payload')?['redirectUrisWeb'], ';'))} },\n  \"spa\": { \"redirectUris\": @{if(empty(outputs('Payload')?['redirectUrisSpa']), json('[]'), split(outputs('Payload')?['redirectUrisSpa'], ';'))} },\n  \"groupMembershipClaims\": \"@{outputs('Payload')?['groupMembershipClaims']}\",\n  \"optionalClaims\": {\n    \"idToken\": @{body('Select_id_token_claims')},\n    \"accessToken\": @{body('Select_access_token_claims')},\n    \"saml2Token\": []\n  }\n}"
+                              "request/body": "{\n  \"displayName\": \"@{outputs('Payload')?['displayName']}\",\n  \"description\": @{if(empty(trim(coalesce(outputs('Payload')?['description'], ''))), 'null', concat('\"', take(trim(outputs('Payload')?['description']), 1024), '\"'))},\n  \"signInAudience\": \"@{outputs('Payload')?['signInAudience']}\",\n  \"notes\": \"@{concat('appCatID=', triggerOutputs()?['body/AppCatId'], '; requestId=', triggerOutputs()?['body/Title'], '; createdBy=', outputs('Requester'), '; managedBy=', body('Get_settings')?['ManagedByTag'])}\",\n  \"tags\": @{outputs('App_tags')},\n  \"appRoles\": @{body('Select_app_roles')},\n  \"requiredResourceAccess\": @{outputs('Required_resource_access')},\n  \"api\": { \"requestedAccessTokenVersion\": 2 },\n  \"web\": { \"redirectUris\": @{if(empty(outputs('Payload')?['redirectUrisWeb']), json('[]'), split(outputs('Payload')?['redirectUrisWeb'], ';'))} },\n  \"spa\": { \"redirectUris\": @{if(empty(outputs('Payload')?['redirectUrisSpa']), json('[]'), split(outputs('Payload')?['redirectUrisSpa'], ';'))} },\n  \"groupMembershipClaims\": \"@{outputs('Payload')?['groupMembershipClaims']}\",\n  \"optionalClaims\": {\n    \"idToken\": @{body('Select_id_token_claims')},\n    \"accessToken\": @{body('Select_access_token_claims')},\n    \"saml2Token\": []\n  }\n}"
                             },
                             "authentication": "@parameters('$authentication')"
                           },
                           "runAfter": {
-                            "App_tags": [
+                            "Required_resource_access": [
                               "Succeeded"
                             ]
                           }
@@ -1436,7 +1680,7 @@
                           "type": "AppendToArrayVariable",
                           "inputs": {
                             "name": "varLog",
-                            "value": "@concat('Done: app registration ', body('HTTP_Create_application')?['displayName'], ' created (client ID ', body('HTTP_Create_application')?['appId'], ', object ID ', body('HTTP_Create_application')?['id'], '), owner tag ', variables('varTeamTag'), if(greater(length(body('Select_app_roles')), 0), concat(', ', string(length(body('Select_app_roles'))), ' app role(s)'), ''))"
+                            "value": "@concat('Done: app registration ', body('HTTP_Create_application')?['displayName'], ' created (client ID ', body('HTTP_Create_application')?['appId'], ', object ID ', body('HTTP_Create_application')?['id'], '), owner tag ', variables('varTeamTag'), if(greater(length(body('Select_app_roles')), 0), concat(', ', string(length(body('Select_app_roles'))), ' app role(s)'), ''), )"
                           },
                           "runAfter": {
                             "Result_create_app": [
@@ -1456,6 +1700,113 @@
                             ]
                           }
                         },
+                        "Permissions_requested": {
+                          "type": "If",
+                          "expression": {
+                            "and": [
+                              {
+                                "equals": [
+                                  "@empty(body('Requested_scope_names'))",
+                                  false
+                                ]
+                              }
+                            ]
+                          },
+                          "actions": {
+                            "All_permissions_known": {
+                              "type": "If",
+                              "expression": {
+                                "and": [
+                                  {
+                                    "equals": [
+                                      "@empty(body('Unknown_graph_scopes'))",
+                                      true
+                                    ]
+                                  }
+                                ]
+                              },
+                              "actions": {
+                                "Log_permissions_done": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varLog",
+                                    "value": "@concat('Done: API permissions (Microsoft Graph, delegated): ', join(body('Known_scope_names'), ', '))"
+                                  },
+                                  "runAfter": {}
+                                },
+                                "Log_permissions_done_done": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varDone",
+                                    "value": "permissions"
+                                  },
+                                  "runAfter": {
+                                    "Log_permissions_done": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                }
+                              },
+                              "else": {
+                                "actions": {
+                                  "Log_permissions_failed": {
+                                    "type": "AppendToArrayVariable",
+                                    "inputs": {
+                                      "name": "varLog",
+                                      "value": "@concat('Failed: unknown Microsoft Graph permission(s) ', join(body('Unknown_graph_scopes'), ', '), ', not added', if(empty(body('Known_scope_names')), '', concat('; added ', join(body('Known_scope_names'), ', '))), '. Check the names in the Microsoft Graph permissions reference; the Entra ID team can add them in the portal.')"
+                                    },
+                                    "runAfter": {}
+                                  },
+                                  "Log_permissions_failed_failed": {
+                                    "type": "AppendToArrayVariable",
+                                    "inputs": {
+                                      "name": "varFailed",
+                                      "value": "permissions"
+                                    },
+                                    "runAfter": {
+                                      "Log_permissions_failed": [
+                                        "Succeeded"
+                                      ]
+                                    }
+                                  },
+                                  "Log_permissions_failed_flag": {
+                                    "type": "SetVariable",
+                                    "inputs": {
+                                      "name": "varHadErrors",
+                                      "value": "yes"
+                                    },
+                                    "runAfter": {
+                                      "Log_permissions_failed_failed": [
+                                        "Succeeded"
+                                      ]
+                                    }
+                                  }
+                                }
+                              },
+                              "runAfter": {}
+                            },
+                            "Log_consent_note": {
+                              "type": "AppendToArrayVariable",
+                              "inputs": {
+                                "name": "varLog",
+                                "value": "@'Note: API permissions are configured but not consented. Users consent the first time they sign in, or the Entra ID team grants admin consent (App registrations > the app > API permissions > Grant admin consent).'"
+                              },
+                              "runAfter": {
+                                "All_permissions_known": [
+                                  "Succeeded"
+                                ]
+                              }
+                            }
+                          },
+                          "else": {
+                            "actions": {}
+                          },
+                          "runAfter": {
+                            "Log_app_created_done": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
                         "Wait_for_app_replication": {
                           "type": "Wait",
                           "inputs": {
@@ -1465,7 +1816,7 @@
                             }
                           },
                           "runAfter": {
-                            "Log_app_created_done": [
+                            "Permissions_requested": [
                               "Succeeded"
                             ]
                           }
@@ -1926,6 +2277,38 @@
                             ]
                           }
                         },
+                        "For_each_default_holder": {
+                          "type": "Foreach",
+                          "foreach": "@coalesce(outputs('Payload')?['defaultAccess'], json('[]'))",
+                          "actions": {
+                            "Queue_default_holder": {
+                              "type": "AppendToArrayVariable",
+                              "inputs": {
+                                "name": "varAssignTodo",
+                                "value": {
+                                  "roleId": "00000000-0000-0000-0000-000000000000",
+                                  "roleValue": "Default Access",
+                                  "mode": "@{items('For_each_default_holder')?['mode']}",
+                                  "id": "@{items('For_each_default_holder')?['id']}",
+                                  "displayName": "@{items('For_each_default_holder')?['displayName']}",
+                                  "description": "",
+                                  "ownerIds": ""
+                                }
+                              },
+                              "runAfter": {}
+                            }
+                          },
+                          "runtimeConfiguration": {
+                            "concurrency": {
+                              "repetitions": 1
+                            }
+                          },
+                          "runAfter": {
+                            "For_each_new_role": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
                         "Result_create_app_final": {
                           "type": "SetVariable",
                           "inputs": {
@@ -1940,7 +2323,7 @@
                             }
                           },
                           "runAfter": {
-                            "For_each_new_role": [
+                            "For_each_default_holder": [
                               "Succeeded"
                             ]
                           }
@@ -2589,6 +2972,636 @@
                       "runAfter": {}
                     }
                   }
+                },
+                "Case_deleteAppRegistration": {
+                  "case": "deleteAppRegistration",
+                  "actions": {
+                    "Do_deleteAppRegistration": {
+                      "type": "Scope",
+                      "actions": {
+                        "Delete_action": {
+                          "type": "Compose",
+                          "inputs": "@coalesce(outputs('Payload')?['action'], 'soft')",
+                          "runAfter": {}
+                        },
+                        "Delete_the_app": {
+                          "type": "If",
+                          "expression": {
+                            "and": [
+                              {
+                                "equals": [
+                                  "@or(equals(outputs('Delete_action'), 'soft'), equals(outputs('Delete_action'), 'permanent'))",
+                                  true
+                                ]
+                              }
+                            ]
+                          },
+                          "actions": {
+                            "HTTP_Delete_application": {
+                              "type": "OpenApiConnection",
+                              "inputs": {
+                                "host": {
+                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                                  "connectionName": "shared_webcontents",
+                                  "operationId": "InvokeHttp"
+                                },
+                                "parameters": {
+                                  "request/method": "DELETE",
+                                  "request/url": "https://graph.microsoft.com/v1.0/applications/@{triggerOutputs()?['body/TargetObjectId']}"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                              },
+                              "runAfter": {}
+                            },
+                            "Log_delete_done": {
+                              "type": "AppendToArrayVariable",
+                              "inputs": {
+                                "name": "varLog",
+                                "value": "@concat('Done: app registration ', body('HTTP_Get_target_app')?['displayName'], ' deleted together with its enterprise app', if(equals(outputs('Delete_action'), 'permanent'), '', '. It can be restored for 30 days (Entra admin center > App registrations > Deleted applications).'))"
+                              },
+                              "runAfter": {
+                                "HTTP_Delete_application": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Log_delete_done_done": {
+                              "type": "AppendToArrayVariable",
+                              "inputs": {
+                                "name": "varDone",
+                                "value": "delete"
+                              },
+                              "runAfter": {
+                                "Log_delete_done": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Permanent_delete": {
+                              "type": "If",
+                              "expression": {
+                                "and": [
+                                  {
+                                    "equals": [
+                                      "@outputs('Delete_action')",
+                                      "permanent"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "actions": {
+                                "Reset_varPurgeOk": {
+                                  "type": "SetVariable",
+                                  "inputs": {
+                                    "name": "varPurgeOk",
+                                    "value": "no"
+                                  },
+                                  "runAfter": {}
+                                },
+                                "Until_HTTP_Purge_application": {
+                                  "type": "Until",
+                                  "expression": "@equals(variables('varPurgeOk'), 'yes')",
+                                  "limit": {
+                                    "count": 6,
+                                    "timeout": "PT10M"
+                                  },
+                                  "actions": {
+                                    "HTTP_Purge_application": {
+                                      "type": "OpenApiConnection",
+                                      "inputs": {
+                                        "host": {
+                                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                                          "connectionName": "shared_webcontents",
+                                          "operationId": "InvokeHttp"
+                                        },
+                                        "parameters": {
+                                          "request/method": "DELETE",
+                                          "request/url": "https://graph.microsoft.com/v1.0/directory/deletedItems/@{triggerOutputs()?['body/TargetObjectId']}"
+                                        },
+                                        "authentication": "@parameters('$authentication')",
+                                        "retryPolicy": {
+                                          "type": "none"
+                                        }
+                                      },
+                                      "runAfter": {}
+                                    },
+                                    "HTTP_Purge_application_ok": {
+                                      "type": "If",
+                                      "expression": {
+                                        "and": [
+                                          {
+                                            "equals": [
+                                              "@or(equals(outputs('HTTP_Purge_application')?['statusCode'], 204), contains(string(outputs('HTTP_Purge_application')?['body']), 'already exist'))",
+                                              true
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      "actions": {
+                                        "Set_varPurgeOk": {
+                                          "type": "SetVariable",
+                                          "inputs": {
+                                            "name": "varPurgeOk",
+                                            "value": "yes"
+                                          },
+                                          "runAfter": {}
+                                        }
+                                      },
+                                      "else": {
+                                        "actions": {
+                                          "HTTP_Purge_application_retry_delay": {
+                                            "type": "Wait",
+                                            "inputs": {
+                                              "interval": {
+                                                "count": 10,
+                                                "unit": "Second"
+                                              }
+                                            },
+                                            "runAfter": {}
+                                          }
+                                        }
+                                      },
+                                      "runAfter": {
+                                        "HTTP_Purge_application": [
+                                          "Succeeded",
+                                          "Failed"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "runAfter": {
+                                    "Reset_varPurgeOk": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                },
+                                "HTTP_Purge_application_gave_up": {
+                                  "type": "If",
+                                  "expression": {
+                                    "and": [
+                                      {
+                                        "equals": [
+                                          "@variables('varPurgeOk')",
+                                          "no"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "actions": {
+                                    "Log_purge_failed": {
+                                      "type": "AppendToArrayVariable",
+                                      "inputs": {
+                                        "name": "varLog",
+                                        "value": "@concat('Failed: the app is deleted but could not be removed from Deleted applications (', coalesce(body('HTTP_Purge_application')?['error']?['message'], 'no answer after 6 attempts'), '). It will be purged automatically after 30 days, or the Entra ID team can delete it permanently.')"
+                                      },
+                                      "runAfter": {}
+                                    },
+                                    "Log_purge_failed_failed": {
+                                      "type": "AppendToArrayVariable",
+                                      "inputs": {
+                                        "name": "varFailed",
+                                        "value": "purge"
+                                      },
+                                      "runAfter": {
+                                        "Log_purge_failed": [
+                                          "Succeeded"
+                                        ]
+                                      }
+                                    },
+                                    "Log_purge_failed_flag": {
+                                      "type": "SetVariable",
+                                      "inputs": {
+                                        "name": "varHadErrors",
+                                        "value": "yes"
+                                      },
+                                      "runAfter": {
+                                        "Log_purge_failed_failed": [
+                                          "Succeeded"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "else": {
+                                    "actions": {}
+                                  },
+                                  "runAfter": {
+                                    "Until_HTTP_Purge_application": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                },
+                                "Purge_done": {
+                                  "type": "If",
+                                  "expression": {
+                                    "and": [
+                                      {
+                                        "equals": [
+                                          "@variables('varPurgeOk')",
+                                          "yes"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "actions": {
+                                    "Log_purge_done": {
+                                      "type": "AppendToArrayVariable",
+                                      "inputs": {
+                                        "name": "varLog",
+                                        "value": "@'Done: removed from Deleted applications; it cannot be restored'"
+                                      },
+                                      "runAfter": {}
+                                    },
+                                    "Log_purge_done_done": {
+                                      "type": "AppendToArrayVariable",
+                                      "inputs": {
+                                        "name": "varDone",
+                                        "value": "purge"
+                                      },
+                                      "runAfter": {
+                                        "Log_purge_done": [
+                                          "Succeeded"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "else": {
+                                    "actions": {}
+                                  },
+                                  "runAfter": {
+                                    "HTTP_Purge_application_gave_up": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                }
+                              },
+                              "else": {
+                                "actions": {}
+                              },
+                              "runAfter": {
+                                "Log_delete_done_done": [
+                                  "Succeeded"
+                                ]
+                              }
+                            }
+                          },
+                          "else": {
+                            "actions": {
+                              "Disable_only": {
+                                "type": "If",
+                                "expression": {
+                                  "and": [
+                                    {
+                                      "equals": [
+                                        "@outputs('Delete_action')",
+                                        "disable"
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "actions": {
+                                  "SP_to_disable": {
+                                    "type": "If",
+                                    "expression": {
+                                      "and": [
+                                        {
+                                          "equals": [
+                                            "@empty(variables('varSpId'))",
+                                            false
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    "actions": {
+                                      "HTTP_Disable_SP": {
+                                        "type": "OpenApiConnection",
+                                        "inputs": {
+                                          "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                                            "connectionName": "shared_webcontents",
+                                            "operationId": "InvokeHttp"
+                                          },
+                                          "parameters": {
+                                            "request/method": "PATCH",
+                                            "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}",
+                                            "request/headers": {
+                                              "Content-Type": "application/json"
+                                            },
+                                            "request/body": "{\"accountEnabled\": false}"
+                                          },
+                                          "authentication": "@parameters('$authentication')"
+                                        },
+                                        "runAfter": {}
+                                      },
+                                      "Log_delete_done_disable": {
+                                        "type": "AppendToArrayVariable",
+                                        "inputs": {
+                                          "name": "varLog",
+                                          "value": "@concat('Done: sign-in disabled on the enterprise application of ', body('HTTP_Get_target_app')?['displayName'], '. To undo: Enterprise applications > the app > Properties > Enabled for users to sign in = Yes.')"
+                                        },
+                                        "runAfter": {
+                                          "HTTP_Disable_SP": [
+                                            "Succeeded"
+                                          ]
+                                        }
+                                      },
+                                      "Log_delete_done_disable_done": {
+                                        "type": "AppendToArrayVariable",
+                                        "inputs": {
+                                          "name": "varDone",
+                                          "value": "delete"
+                                        },
+                                        "runAfter": {
+                                          "Log_delete_done_disable": [
+                                            "Succeeded"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "else": {
+                                      "actions": {
+                                        "Log_delete_failed_disable": {
+                                          "type": "AppendToArrayVariable",
+                                          "inputs": {
+                                            "name": "varLog",
+                                            "value": "@'Failed: the app has no enterprise application, so there was nothing to change'"
+                                          },
+                                          "runAfter": {}
+                                        },
+                                        "Log_delete_failed_disable_failed": {
+                                          "type": "AppendToArrayVariable",
+                                          "inputs": {
+                                            "name": "varFailed",
+                                            "value": "delete"
+                                          },
+                                          "runAfter": {
+                                            "Log_delete_failed_disable": [
+                                              "Succeeded"
+                                            ]
+                                          }
+                                        },
+                                        "Log_delete_failed_disable_flag": {
+                                          "type": "SetVariable",
+                                          "inputs": {
+                                            "name": "varHadErrors",
+                                            "value": "yes"
+                                          },
+                                          "runAfter": {
+                                            "Log_delete_failed_disable_failed": [
+                                              "Succeeded"
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "runAfter": {}
+                                  }
+                                },
+                                "else": {
+                                  "actions": {
+                                    "SP_to_delete": {
+                                      "type": "If",
+                                      "expression": {
+                                        "and": [
+                                          {
+                                            "equals": [
+                                              "@empty(variables('varSpId'))",
+                                              false
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      "actions": {
+                                        "HTTP_Delete_SP": {
+                                          "type": "OpenApiConnection",
+                                          "inputs": {
+                                            "host": {
+                                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                                              "connectionName": "shared_webcontents",
+                                              "operationId": "InvokeHttp"
+                                            },
+                                            "parameters": {
+                                              "request/method": "DELETE",
+                                              "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}"
+                                            },
+                                            "authentication": "@parameters('$authentication')"
+                                          },
+                                          "runAfter": {}
+                                        },
+                                        "Log_delete_done_sp": {
+                                          "type": "AppendToArrayVariable",
+                                          "inputs": {
+                                            "name": "varLog",
+                                            "value": "@concat('Done: enterprise application of ', body('HTTP_Get_target_app')?['displayName'], ' deleted (with its role assignments); the app registration is kept. Create it again with Enterprise application if needed.')"
+                                          },
+                                          "runAfter": {
+                                            "HTTP_Delete_SP": [
+                                              "Succeeded"
+                                            ]
+                                          }
+                                        },
+                                        "Log_delete_done_sp_done": {
+                                          "type": "AppendToArrayVariable",
+                                          "inputs": {
+                                            "name": "varDone",
+                                            "value": "delete"
+                                          },
+                                          "runAfter": {
+                                            "Log_delete_done_sp": [
+                                              "Succeeded"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      "else": {
+                                        "actions": {
+                                          "Log_delete_failed_sp": {
+                                            "type": "AppendToArrayVariable",
+                                            "inputs": {
+                                              "name": "varLog",
+                                              "value": "@'Failed: the app has no enterprise application, so there was nothing to change'"
+                                            },
+                                            "runAfter": {}
+                                          },
+                                          "Log_delete_failed_sp_failed": {
+                                            "type": "AppendToArrayVariable",
+                                            "inputs": {
+                                              "name": "varFailed",
+                                              "value": "delete"
+                                            },
+                                            "runAfter": {
+                                              "Log_delete_failed_sp": [
+                                                "Succeeded"
+                                              ]
+                                            }
+                                          },
+                                          "Log_delete_failed_sp_flag": {
+                                            "type": "SetVariable",
+                                            "inputs": {
+                                              "name": "varHadErrors",
+                                              "value": "yes"
+                                            },
+                                            "runAfter": {
+                                              "Log_delete_failed_sp_failed": [
+                                                "Succeeded"
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "runAfter": {}
+                                    }
+                                  }
+                                },
+                                "runAfter": {}
+                              }
+                            }
+                          },
+                          "runAfter": {
+                            "Delete_action": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Get_deleted_app_row": {
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                              "connectionName": "shared_sharepointonline",
+                              "operationId": "GetItems"
+                            },
+                            "parameters": {
+                              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                              "table": "EntraCatalogApps",
+                              "$filter": "ObjectId eq '@{triggerOutputs()?['body/TargetObjectId']}'",
+                              "$top": 1
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          },
+                          "runAfter": {
+                            "Delete_the_app": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Catalog_row_exists": {
+                          "type": "If",
+                          "expression": {
+                            "and": [
+                              {
+                                "equals": [
+                                  "@empty(body('Get_deleted_app_row')?['value'])",
+                                  false
+                                ]
+                              }
+                            ]
+                          },
+                          "actions": {
+                            "Row_goes_away": {
+                              "type": "If",
+                              "expression": {
+                                "and": [
+                                  {
+                                    "equals": [
+                                      "@or(equals(outputs('Delete_action'), 'soft'), equals(outputs('Delete_action'), 'permanent'))",
+                                      true
+                                    ]
+                                  }
+                                ]
+                              },
+                              "actions": {
+                                "Delete_catalog_row": {
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                      "connectionName": "shared_sharepointonline",
+                                      "operationId": "DeleteItem"
+                                    },
+                                    "parameters": {
+                                      "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                                      "table": "EntraCatalogApps",
+                                      "id": "@first(body('Get_deleted_app_row')?['value'])?['ID']"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  },
+                                  "runAfter": {}
+                                }
+                              },
+                              "else": {
+                                "actions": {
+                                  "Row_loses_SP": {
+                                    "type": "If",
+                                    "expression": {
+                                      "and": [
+                                        {
+                                          "equals": [
+                                            "@outputs('Delete_action')",
+                                            "spOnly"
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    "actions": {
+                                      "Clear_catalog_SP": {
+                                        "type": "OpenApiConnection",
+                                        "inputs": {
+                                          "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                            "connectionName": "shared_sharepointonline",
+                                            "operationId": "PatchItem"
+                                          },
+                                          "parameters": {
+                                            "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                                            "table": "EntraCatalogApps",
+                                            "id": "@first(body('Get_deleted_app_row')?['value'])?['ID']",
+                                            "item/Title": "@body('HTTP_Get_target_app')?['displayName']",
+                                            "item/ServicePrincipalId": ""
+                                          },
+                                          "authentication": "@parameters('$authentication')"
+                                        },
+                                        "runAfter": {}
+                                      }
+                                    },
+                                    "else": {
+                                      "actions": {}
+                                    },
+                                    "runAfter": {}
+                                  }
+                                }
+                              },
+                              "runAfter": {}
+                            }
+                          },
+                          "else": {
+                            "actions": {}
+                          },
+                          "runAfter": {
+                            "Get_deleted_app_row": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Result_delete": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "varResult",
+                            "value": {
+                              "applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}",
+                              "appId": "@{body('HTTP_Get_target_app')?['appId']}",
+                              "action": "@{outputs('Delete_action')}"
+                            }
+                          },
+                          "runAfter": {
+                            "Catalog_row_exists": [
+                              "Succeeded"
+                            ]
+                          }
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  }
                 }
               },
               "default": {
@@ -2919,202 +3932,293 @@
                 ]
               }
             },
-            "Default_access": {
+            "Owner_access": {
               "type": "If",
               "expression": {
                 "and": [
                   {
                     "equals": [
-                      "@and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId'))), empty(coalesce(outputs('Payload')?['appRoles'], json('[]'))))",
+                      "@and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), not(empty(variables('varSpId'))))",
                       true
                     ]
                   }
                 ]
               },
               "actions": {
-                "Reset_varDefaultOk": {
-                  "type": "SetVariable",
+                "Filter_owner_role": {
+                  "type": "Query",
                   "inputs": {
-                    "name": "varDefaultOk",
-                    "value": "no"
+                    "from": "@coalesce(body('HTTP_Create_application')?['appRoles'], json('[]'))",
+                    "where": "@equals(item()?['value'], outputs('Payload')?['ownerRole'])"
                   },
                   "runAfter": {}
                 },
-                "Until_HTTP_Assign_default_access": {
-                  "type": "Until",
-                  "expression": "@equals(variables('varDefaultOk'), 'yes')",
-                  "limit": {
-                    "count": 6,
-                    "timeout": "PT10M"
+                "Owner_role_id": {
+                  "type": "Compose",
+                  "inputs": "@if(empty(coalesce(body('HTTP_Create_application')?['appRoles'], json('[]'))), '00000000-0000-0000-0000-000000000000', coalesce(first(body('Filter_owner_role'))?['id'], ''))",
+                  "runAfter": {
+                    "Filter_owner_role": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Owner_principal_id": {
+                  "type": "Compose",
+                  "inputs": "@if(empty(variables('varTeamGroupId')), body('HTTP_Get_requester')?['id'], variables('varTeamGroupId'))",
+                  "runAfter": {
+                    "Owner_role_id": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Owner_access_label": {
+                  "type": "Compose",
+                  "inputs": "@if(equals(outputs('Owner_role_id'), '00000000-0000-0000-0000-000000000000'), 'default access', concat('the ', outputs('Payload')?['ownerRole'], ' role'))",
+                  "runAfter": {
+                    "Owner_principal_id": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Owner_role_known": {
+                  "type": "If",
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@empty(outputs('Owner_role_id'))",
+                          false
+                        ]
+                      }
+                    ]
                   },
                   "actions": {
-                    "HTTP_Assign_default_access": {
-                      "type": "OpenApiConnection",
+                    "Reset_varOwnerOk": {
+                      "type": "SetVariable",
                       "inputs": {
-                        "host": {
-                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                          "connectionName": "shared_webcontents",
-                          "operationId": "InvokeHttp"
-                        },
-                        "parameters": {
-                          "request/method": "POST",
-                          "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}/appRoleAssignedTo",
-                          "request/headers": {
-                            "Content-Type": "application/json"
-                          },
-                          "request/body": "{\n  \"principalId\": \"@{if(empty(variables('varTeamGroupId')), body('HTTP_Get_requester')?['id'], variables('varTeamGroupId'))}\",\n  \"resourceId\": \"@{variables('varSpId')}\",\n  \"appRoleId\": \"00000000-0000-0000-0000-000000000000\"\n}"
-                        },
-                        "authentication": "@parameters('$authentication')",
-                        "retryPolicy": {
-                          "type": "none"
-                        }
+                        "name": "varOwnerOk",
+                        "value": "no"
                       },
                       "runAfter": {}
                     },
-                    "HTTP_Assign_default_access_ok": {
+                    "Until_HTTP_Assign_owner_access": {
+                      "type": "Until",
+                      "expression": "@equals(variables('varOwnerOk'), 'yes')",
+                      "limit": {
+                        "count": 6,
+                        "timeout": "PT10M"
+                      },
+                      "actions": {
+                        "HTTP_Assign_owner_access": {
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                              "connectionName": "shared_webcontents",
+                              "operationId": "InvokeHttp"
+                            },
+                            "parameters": {
+                              "request/method": "POST",
+                              "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals/@{variables('varSpId')}/appRoleAssignedTo",
+                              "request/headers": {
+                                "Content-Type": "application/json"
+                              },
+                              "request/body": "{\n  \"principalId\": \"@{outputs('Owner_principal_id')}\",\n  \"resourceId\": \"@{variables('varSpId')}\",\n  \"appRoleId\": \"@{outputs('Owner_role_id')}\"\n}"
+                            },
+                            "authentication": "@parameters('$authentication')",
+                            "retryPolicy": {
+                              "type": "none"
+                            }
+                          },
+                          "runAfter": {}
+                        },
+                        "HTTP_Assign_owner_access_ok": {
+                          "type": "If",
+                          "expression": {
+                            "and": [
+                              {
+                                "equals": [
+                                  "@or(equals(outputs('HTTP_Assign_owner_access')?['statusCode'], 201), contains(string(outputs('HTTP_Assign_owner_access')?['body']), 'already exist'))",
+                                  true
+                                ]
+                              }
+                            ]
+                          },
+                          "actions": {
+                            "Set_varOwnerOk": {
+                              "type": "SetVariable",
+                              "inputs": {
+                                "name": "varOwnerOk",
+                                "value": "yes"
+                              },
+                              "runAfter": {}
+                            }
+                          },
+                          "else": {
+                            "actions": {
+                              "HTTP_Assign_owner_access_retry_delay": {
+                                "type": "Wait",
+                                "inputs": {
+                                  "interval": {
+                                    "count": 10,
+                                    "unit": "Second"
+                                  }
+                                },
+                                "runAfter": {}
+                              }
+                            }
+                          },
+                          "runAfter": {
+                            "HTTP_Assign_owner_access": [
+                              "Succeeded",
+                              "Failed"
+                            ]
+                          }
+                        }
+                      },
+                      "runAfter": {
+                        "Reset_varOwnerOk": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "HTTP_Assign_owner_access_gave_up": {
                       "type": "If",
                       "expression": {
                         "and": [
                           {
                             "equals": [
-                              "@or(equals(outputs('HTTP_Assign_default_access')?['statusCode'], 201), contains(string(outputs('HTTP_Assign_default_access')?['body']), 'already exist'))",
-                              true
+                              "@variables('varOwnerOk')",
+                              "no"
                             ]
                           }
                         ]
                       },
                       "actions": {
-                        "Set_varDefaultOk": {
-                          "type": "SetVariable",
+                        "Log_owner_access_failed": {
+                          "type": "AppendToArrayVariable",
                           "inputs": {
-                            "name": "varDefaultOk",
-                            "value": "yes"
+                            "name": "varLog",
+                            "value": "@concat('Failed: ', outputs('Owner_access_label'), ' for the owner ', variables('varTeamGroupName'), ' (', coalesce(body('HTTP_Assign_owner_access')?['error']?['message'], 'no answer after 6 attempts'), '). Use Role assignments, or assign it in Entra (Enterprise applications > the app > Users and groups).')"
                           },
                           "runAfter": {}
-                        }
-                      },
-                      "else": {
-                        "actions": {
-                          "HTTP_Assign_default_access_retry_delay": {
-                            "type": "Wait",
-                            "inputs": {
-                              "interval": {
-                                "count": 10,
-                                "unit": "Second"
-                              }
-                            },
-                            "runAfter": {}
+                        },
+                        "Log_owner_access_failed_failed": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varFailed",
+                            "value": "owner"
+                          },
+                          "runAfter": {
+                            "Log_owner_access_failed": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Log_owner_access_failed_flag": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "varHadErrors",
+                            "value": "yes"
+                          },
+                          "runAfter": {
+                            "Log_owner_access_failed_failed": [
+                              "Succeeded"
+                            ]
                           }
                         }
                       },
-                      "runAfter": {
-                        "HTTP_Assign_default_access": [
-                          "Succeeded",
-                          "Failed"
-                        ]
-                      }
-                    }
-                  },
-                  "runAfter": {
-                    "Reset_varDefaultOk": [
-                      "Succeeded"
-                    ]
-                  }
-                },
-                "HTTP_Assign_default_access_gave_up": {
-                  "type": "If",
-                  "expression": {
-                    "and": [
-                      {
-                        "equals": [
-                          "@variables('varDefaultOk')",
-                          "no"
-                        ]
-                      }
-                    ]
-                  },
-                  "actions": {
-                    "Log_default_access_failed": {
-                      "type": "AppendToArrayVariable",
-                      "inputs": {
-                        "name": "varLog",
-                        "value": "@concat('Failed: default access for ', variables('varTeamGroupName'), ' (', coalesce(body('HTTP_Assign_default_access')?['error']?['message'], 'no answer after 6 attempts'), '). Use Role assignments, or assign it in Entra (Enterprise applications > the app > Users and groups).')"
-                      },
-                      "runAfter": {}
-                    },
-                    "Log_default_access_failed_failed": {
-                      "type": "AppendToArrayVariable",
-                      "inputs": {
-                        "name": "varFailed",
-                        "value": "default"
+                      "else": {
+                        "actions": {}
                       },
                       "runAfter": {
-                        "Log_default_access_failed": [
+                        "Until_HTTP_Assign_owner_access": [
                           "Succeeded"
                         ]
                       }
                     },
-                    "Log_default_access_failed_flag": {
-                      "type": "SetVariable",
-                      "inputs": {
-                        "name": "varHadErrors",
-                        "value": "yes"
+                    "Owner_access_done": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@variables('varOwnerOk')",
+                              "yes"
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "Log_owner_access": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varLog",
+                            "value": "@concat('Done: the owner ', variables('varTeamGroupName'), ' has ', outputs('Owner_access_label'), ' on the enterprise application')"
+                          },
+                          "runAfter": {}
+                        },
+                        "Log_owner_access_done": {
+                          "type": "AppendToArrayVariable",
+                          "inputs": {
+                            "name": "varDone",
+                            "value": "owner"
+                          },
+                          "runAfter": {
+                            "Log_owner_access": [
+                              "Succeeded"
+                            ]
+                          }
+                        }
+                      },
+                      "else": {
+                        "actions": {}
                       },
                       "runAfter": {
-                        "Log_default_access_failed_failed": [
+                        "HTTP_Assign_owner_access_gave_up": [
                           "Succeeded"
                         ]
                       }
                     }
                   },
                   "else": {
-                    "actions": {}
-                  },
-                  "runAfter": {
-                    "Until_HTTP_Assign_default_access": [
-                      "Succeeded"
-                    ]
-                  }
-                },
-                "Default_access_done": {
-                  "type": "If",
-                  "expression": {
-                    "and": [
-                      {
-                        "equals": [
-                          "@variables('varDefaultOk')",
-                          "yes"
-                        ]
-                      }
-                    ]
-                  },
-                  "actions": {
-                    "Log_default_access": {
-                      "type": "AppendToArrayVariable",
-                      "inputs": {
-                        "name": "varLog",
-                        "value": "@concat('Done: default access to the enterprise application for ', variables('varTeamGroupName'))"
+                    "actions": {
+                      "Log_owner_role_missing": {
+                        "type": "AppendToArrayVariable",
+                        "inputs": {
+                          "name": "varLog",
+                          "value": "@'Failed: the app has roles but no role was chosen for the owner, so the owner was not assigned. Use Role assignments to give the owner a role.'"
+                        },
+                        "runAfter": {}
                       },
-                      "runAfter": {}
-                    },
-                    "Log_default_access_done": {
-                      "type": "AppendToArrayVariable",
-                      "inputs": {
-                        "name": "varDone",
-                        "value": "default"
+                      "Log_owner_role_missing_failed": {
+                        "type": "AppendToArrayVariable",
+                        "inputs": {
+                          "name": "varFailed",
+                          "value": "owner"
+                        },
+                        "runAfter": {
+                          "Log_owner_role_missing": [
+                            "Succeeded"
+                          ]
+                        }
                       },
-                      "runAfter": {
-                        "Log_default_access": [
-                          "Succeeded"
-                        ]
+                      "Log_owner_role_missing_flag": {
+                        "type": "SetVariable",
+                        "inputs": {
+                          "name": "varHadErrors",
+                          "value": "yes"
+                        },
+                        "runAfter": {
+                          "Log_owner_role_missing_failed": [
+                            "Succeeded"
+                          ]
+                        }
                       }
                     }
                   },
-                  "else": {
-                    "actions": {}
-                  },
                   "runAfter": {
-                    "HTTP_Assign_default_access_gave_up": [
+                    "Owner_access_label": [
                       "Succeeded"
                     ]
                   }
@@ -3129,37 +4233,6 @@
                 ]
               }
             },
-            "Roles_without_holders": {
-              "type": "If",
-              "expression": {
-                "and": [
-                  {
-                    "equals": [
-                      "@and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId'))), not(empty(coalesce(outputs('Payload')?['appRoles'], json('[]')))))",
-                      true
-                    ]
-                  }
-                ]
-              },
-              "actions": {
-                "Log_nobody_can_sign_in": {
-                  "type": "AppendToArrayVariable",
-                  "inputs": {
-                    "name": "varLog",
-                    "value": "@'Note: assignment is required and no group holds any of the app roles yet, so nobody can sign in. Give a group a role with Role assignments.'"
-                  },
-                  "runAfter": {}
-                }
-              },
-              "else": {
-                "actions": {}
-              },
-              "runAfter": {
-                "Default_access": [
-                  "Succeeded"
-                ]
-              }
-            },
             "Try_not_run": {
               "type": "Query",
               "inputs": {
@@ -3167,7 +4240,7 @@
                 "where": "@and(not(contains(variables('varDone'), item()?['key'])), not(contains(variables('varFailed'), item()?['key'])))"
               },
               "runAfter": {
-                "Roles_without_holders": [
+                "Owner_access": [
                   "Succeeded"
                 ]
               }
@@ -3361,7 +4434,7 @@
             "Failed_actions": {
               "type": "Query",
               "inputs": {
-                "from": "@union(result('Do_createAppRegistration'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Try'))",
+                "from": "@union(result('Do_createAppRegistration'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Do_deleteAppRegistration'), result('Try'))",
                 "where": "@equals(item()?['status'], 'Failed')"
               },
               "runAfter": {}

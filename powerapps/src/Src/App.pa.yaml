@@ -53,6 +53,7 @@ App:
           { Key: "createSP", Title: "Enterprise application", Subtitle: "Create the service principal for an existing app registration.", Badge: "" },
           { Key: "onboardGroup", Title: "Add existing group", Subtitle: "Make a group you belong to selectable as an owning group or role group. No approval needed.", Badge: "" },
           { Key: "tagOwnerGroup", Title: "Owning group", Subtitle: "Hand an app registration you own to one of your groups: its tag team:user\you becomes team:group\<group>. No approval needed.", Badge: "" },
+          { Key: "deleteApp", Title: "Delete app registration", Subtitle: "Delete, disable or remove the enterprise app of an app registration you own. Manager and Entra ID team approve first.", Badge: "" },
           { Key: "myRequests", Title: "My requests", Subtitle: "Track approvals and see exactly what was created.", Badge: "" }
       );
 
@@ -60,11 +61,12 @@ App:
       gEnvironments = ["P – Production", "Q – QA", "D – Development", "L – Lab", "U – UAT", "F – Performance", "T – Dev integration testing", "S – System integration testing"];
 
       gSteps = Table(
-          { Step: 1, Title: "Basics", Hint: "Name, environment, owning team" },
+          { Step: 1, Title: "Basics", Hint: "Name, environment, owning group" },
           { Step: 2, Title: "Expose an API & claims", Hint: "App ID URI, scopes, token claims" },
-          { Step: 3, Title: "App roles & groups", Hint: "Roles and the existing groups that hold them" },
-          { Step: 4, Title: "Enterprise app & sign-in", Hint: "Service principal, assignment, account types" },
-          { Step: 5, Title: "Review + submit", Hint: "Check and send for approval" }
+          { Step: 3, Title: "API permissions", Hint: "Microsoft Graph sign-in permissions" },
+          { Step: 4, Title: "App roles & access", Hint: "Roles and who holds them" },
+          { Step: 5, Title: "Enterprise app & sign-in", Hint: "Always created, assignment required" },
+          { Step: 6, Title: "Review + submit", Hint: "Check and send for approval" }
       );
     OnStart: |-
       =ClearCollect(colScopes, { Key: "", Value: "", Type: "User", AdminName: "", AdminDesc: "" });
@@ -73,6 +75,8 @@ App:
       Clear(colRoles);
       ClearCollect(colRoleGroups, { RoleKey: "", Mode: "", GroupId: "", DisplayName: "", Description: "", OwnerIds: "" });
       Clear(colRoleGroups);
+      ClearCollect(colPerms, { Value: "" });
+      Clear(colPerms);
       ClearCollect(colAssign, { RoleId: "", RoleValue: "", Mode: "", GroupId: "", DisplayName: "", Description: "", OwnerIds: "" });
       Clear(colAssign);
 
@@ -86,6 +90,11 @@ App:
       Set(varLookupMsg, "");
       Set(varTagBusy, false);
       Set(varTagPolls, 0);
+      Set(varDelBusy, false);
+      Set(varDelPolls, 0);
+      Set(varDelMsg, "");
+      Set(varDelConfirm, false);
+      Set(varDelApp, Blank());
       Set(varOp, "exposeApi");
       Set(varReqId, "");
       Set(varSelectedReqId, Blank());

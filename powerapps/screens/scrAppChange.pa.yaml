@@ -826,7 +826,7 @@
                         Y: =58
                         Width: =Parent.Width
                         Height: =Parent.Height - 58
-                        TemplateSize: =136
+                        TemplateSize: =172
                         TemplatePadding: =0
                         WrapCount: =1
                         ShowScrollbar: =true
@@ -838,7 +838,7 @@
                               X: =0
                               Y: =4
                               Width: =Parent.TemplateWidth
-                              Height: =126
+                              Height: =162
                               Fill: =RGBA(250, 249, 248, 1)
                               BorderColor: =gTheme.Border
                               BorderThickness: =1
@@ -956,7 +956,7 @@
                         - lblRoleGroupsCap_Change:
                             Control: Label
                             Properties:
-                              Text: ="Groups:"
+                              Text: ="Held by:"
                               X: =12
                               Y: =98
                               Width: =60
@@ -981,6 +981,7 @@
                               FontWeight: =FontWeight.Normal
                               PaddingLeft: =0
                               PaddingRight: =0
+                              Wrap: =true
                         - cmbRoleGroup_Change:
                             Control: Classic/DropDown
                             Properties:
@@ -1035,7 +1036,101 @@
                               PaddingRight: =2
                               OnSelect: =RemoveIf(colRoleGroups, RoleKey = ThisItem.Key)
                               Visible: =CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key)) > 0
-                              Tooltip: ="Remove all groups from this role"
+                              Tooltip: ="Remove everyone from this role"
+                        - lblRoleUserCap_Change:
+                            Control: Label
+                            Properties:
+                              Text: ="Add a user:"
+                              X: =12
+                              Y: =134
+                              Width: =80
+                              Height: =28
+                              Size: =10
+                              Font: =Font.'Segoe UI'
+                              Color: =gTheme.Text
+                              FontWeight: =FontWeight.Semibold
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              Visible: =ThisItem.Members <> "Applications"
+                        - txtRoleUser_Change:
+                            Control: Classic/TextInput
+                            Properties:
+                              Default: =""
+                              HintText: ="user@contoso.com"
+                              X: =96
+                              Y: =130
+                              Width: =260
+                              Height: =32
+                              Size: =11
+                              Font: =Font.'Segoe UI'
+                              Color: =gTheme.Text
+                              Fill: =gTheme.Card
+                              BorderColor: =gTheme.Border
+                              BorderThickness: =1
+                              HoverBorderColor: =gTheme.Primary
+                              FocusedBorderColor: =gTheme.Primary
+                              FocusedBorderThickness: =2
+                              PaddingLeft: =10
+                              RadiusTopLeft: =4
+                              RadiusTopRight: =4
+                              RadiusBottomLeft: =4
+                              RadiusBottomRight: =4
+                              Visible: =ThisItem.Members <> "Applications"
+                        - btnRoleUser_Change:
+                            Control: Classic/Button
+                            Properties:
+                              Text: ="Add user"
+                              OnSelect: |-
+                                =With({e: Trim(txtRoleUser_Change.Text)},
+                                    If(!IsMatch(e, Match.Email),
+                                        Notify("Enter the user's email address or UPN.", NotificationType.Warning),
+                                        IfError(
+                                            With({u: Office365Users.UserProfileV2(e)},
+                                                If(CountRows(Filter(colRoleGroups, RoleKey = ThisItem.Key && GroupId = u.id)) > 0,
+                                                    Notify(u.displayName & " is already added.", NotificationType.Information),
+                                                    Collect(colRoleGroups, {RoleKey: ThisItem.Key, Mode: "user", GroupId: u.id, DisplayName: u.displayName & " (user)", Description: "", OwnerIds: ""});
+                                                    Reset(txtRoleUser_Change)
+                                                )
+                                            ),
+                                            Notify("No user found for " & e & ".", NotificationType.Error)
+                                        )
+                                    )
+                                )
+                              X: =364
+                              Y: =130
+                              Width: =100
+                              Height: =32
+                              Size: =11
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              RadiusTopLeft: =4
+                              RadiusTopRight: =4
+                              RadiusBottomLeft: =4
+                              RadiusBottomRight: =4
+                              Fill: =RGBA(0, 0, 0, 0)
+                              Color: =gTheme.Text
+                              HoverFill: =gTheme.Bg
+                              PressedFill: =gTheme.Bg
+                              BorderColor: =gTheme.Border
+                              BorderThickness: =1
+                              HoverColor: =gTheme.Text
+                              HoverBorderColor: =gTheme.Muted
+                              Visible: =ThisItem.Members <> "Applications"
+                        - hntRoleApps_Change:
+                            Control: Label
+                            Properties:
+                              Text: ="Only applications can hold this role (Allowed members = Applications)."
+                              X: =12
+                              Y: =136
+                              Width: =500
+                              Height: =20
+                              Size: =9
+                              Font: =Font.'Segoe UI'
+                              Color: =gTheme.Muted
+                              FontWeight: =FontWeight.Normal
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              Visible: =ThisItem.Members = "Applications"
             - cntAssign_Change:
                 Control: GroupContainer
                 Variant: ManualLayout
@@ -1067,7 +1162,7 @@
                       Control: Classic/DropDown
                       Properties:
                         Items: |-
-                          =ForAll(Table(ParseJSON(Coalesce(varApp.AppRolesJson, "[]"))), {Id: Text(ThisRecord.Value.id), Value: Text(ThisRecord.Value.value)})
+                          =With({r: ForAll(Table(ParseJSON(Coalesce(varApp.AppRolesJson, "[]"))), {Id: Text(ThisRecord.Value.id), Value: Text(ThisRecord.Value.value)})}, If(CountRows(r) = 0, Table({Id: "00000000-0000-0000-0000-000000000000", Value: "Default Access"}), r))
                         Default: =""
                         X: =0
                         Y: =22
@@ -1158,15 +1253,89 @@
                         PaddingLeft: =0
                         PaddingRight: =0
                         OnSelect: =Navigate(scrAddGroup, ScreenTransition.Fade)
+                  - lblAUser_Change:
+                      Control: Label
+                      Properties:
+                        Text: ="or a user:"
+                        X: =160
+                        Y: =66
+                        Width: =86
+                        Height: =32
+                        Size: =10
+                        Font: =Font.'Segoe UI'
+                        Color: =gTheme.Muted
+                        FontWeight: =FontWeight.Normal
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                  - txtAssignUser_Change:
+                      Control: Classic/TextInput
+                      Properties:
+                        Default: =""
+                        HintText: ="user@contoso.com"
+                        X: =250
+                        Y: =64
+                        Width: =300
+                        Height: =34
+                        Size: =11
+                        Font: =Font.'Segoe UI'
+                        Color: =gTheme.Text
+                        Fill: =gTheme.Card
+                        BorderColor: =gTheme.Border
+                        BorderThickness: =1
+                        HoverBorderColor: =gTheme.Primary
+                        FocusedBorderColor: =gTheme.Primary
+                        FocusedBorderThickness: =2
+                        PaddingLeft: =10
+                        RadiusTopLeft: =4
+                        RadiusTopRight: =4
+                        RadiusBottomLeft: =4
+                        RadiusBottomRight: =4
+                  - btnAssignUser_Change:
+                      Control: Classic/Button
+                      Properties:
+                        Text: ="Add user"
+                        OnSelect: |-
+                          =If(IsBlank(ddRole_Change.Selected.Id),
+                              Notify("Pick the app role first.", NotificationType.Warning),
+                              With({e: Trim(txtAssignUser_Change.Text)},
+                                  IfError(
+                                      With({u: Office365Users.UserProfileV2(e)},
+                                          Collect(colAssign, {RoleId: ddRole_Change.Selected.Id, RoleValue: ddRole_Change.Selected.Value, Mode: "user", GroupId: u.id,
+                                              DisplayName: u.displayName & " (user)", Description: "", OwnerIds: ""});
+                                          Reset(txtAssignUser_Change)
+                                      ),
+                                      Notify("No user found for " & e & ".", NotificationType.Error)
+                                  )
+                              )
+                          )
+                        X: =560
+                        Y: =64
+                        Width: =100
+                        Height: =34
+                        Size: =11
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        RadiusTopLeft: =4
+                        RadiusTopRight: =4
+                        RadiusBottomLeft: =4
+                        RadiusBottomRight: =4
+                        Fill: =RGBA(0, 0, 0, 0)
+                        Color: =gTheme.Text
+                        HoverFill: =gTheme.Bg
+                        PressedFill: =gTheme.Bg
+                        BorderColor: =gTheme.Border
+                        BorderThickness: =1
+                        HoverColor: =gTheme.Text
+                        HoverBorderColor: =gTheme.Muted
                   - galAssign_Change:
                       Control: Gallery
                       Variant: Vertical
                       Properties:
                         Items: =colAssign
                         X: =0
-                        Y: =72
+                        Y: =112
                         Width: =Parent.Width
-                        Height: =Parent.Height - 72
+                        Height: =Parent.Height - 112
                         TemplateSize: =44
                         TemplatePadding: =0
                         WrapCount: =1
@@ -1214,9 +1383,9 @@
                   - lblNoAssign_Change:
                       Control: Label
                       Properties:
-                        Text: ="No assignments yet. Pick a role and a group, then Add."
+                        Text: ="No assignments yet. Pick a role, then a group (Add) or a user (Add user). Apps without roles offer Default Access."
                         X: =0
-                        Y: =80
+                        Y: =120
                         Width: =Parent.Width
                         Height: =20
                         Size: =9
@@ -1256,46 +1425,19 @@
                   - lblSpAssign_Change:
                       Control: Label
                       Properties:
-                        Text: ="Assignment required"
+                        Text: |-
+                          ="Assignment required: Yes (always). Only assigned users and groups can sign in or get tokens; use Role assignments afterwards."
                         X: =0
                         Y: =40
-                        Width: =300
-                        Height: =20
-                        Size: =10
-                        Font: =Font.'Segoe UI'
-                        Color: =gTheme.Text
-                        FontWeight: =FontWeight.Semibold
-                        PaddingLeft: =0
-                        PaddingRight: =0
-                  - tglAssign_Change:
-                      Control: Classic/Toggle
-                      Properties:
-                        Default: =Coalesce(varCloneChange.assignReq, true)
-                        X: =0
-                        Y: =62
-                        Width: =220
-                        Height: =32
+                        Width: =Parent.Width
+                        Height: =48
                         Size: =11
                         Font: =Font.'Segoe UI'
                         Color: =gTheme.Text
-                        TrueFill: =gTheme.Primary
-                        FalseFill: =gTheme.Border
-                        TrueText: ="Yes"
-                        FalseText: ="No"
-                  - hntSpAssign_Change:
-                      Control: Label
-                      Properties:
-                        Text: ="Only users in an assigned group can sign in or get tokens. Recommended."
-                        X: =0
-                        Y: =98
-                        Width: =Parent.Width
-                        Height: =20
-                        Size: =9
-                        Font: =Font.'Segoe UI'
-                        Color: =gTheme.Muted
                         FontWeight: =FontWeight.Normal
                         PaddingLeft: =0
                         PaddingRight: =0
+                        Wrap: =true
             - lblJust_Change:
                 Control: Label
                 Properties:
@@ -1444,7 +1586,7 @@
                               "exposeApi", JSON({applicationObjectId: varApp.ObjectId, applicationDisplayName: varApp.Title, identifierUriTemplate: If(radUri_Change.Selected.Value = "Custom", Trim(txtCustomUri_Change.Text), "api://{appId}"), scopes: ForAll(colScopes, {value: ThisRecord.Value, type: ThisRecord.Type, adminConsentDisplayName: ThisRecord.AdminName, adminConsentDescription: ThisRecord.AdminDesc})}, JSONFormat.Compact),
                               "addAppRoles", JSON({applicationObjectId: varApp.ObjectId, applicationDisplayName: varApp.Title, appRoles: ForAll(colRoles As r, {value: r.Value, displayName: r.DisplayName, description: r.Description, allowedMemberTypes: Switch(r.Members, "Applications", "Application", "Both", "User,Application", "User"), assignGroups: ForAll(Filter(colRoleGroups, RoleKey = r.Key) As g, {mode: g.Mode, id: g.GroupId, displayName: g.DisplayName, description: g.Description, ownerIds: g.OwnerIds})})}, JSONFormat.Compact),
                               "assignGroups", JSON({applicationObjectId: varApp.ObjectId, applicationDisplayName: varApp.Title, assignments: ForAll(colAssign, {appRoleId: ThisRecord.RoleId, appRoleValue: ThisRecord.RoleValue, mode: ThisRecord.Mode, id: ThisRecord.GroupId, displayName: ThisRecord.DisplayName, description: ThisRecord.Description, ownerIds: ThisRecord.OwnerIds})}, JSONFormat.Compact),
-                              JSON({applicationObjectId: varApp.ObjectId, applicationDisplayName: varApp.Title, appRoleAssignmentRequired: tglAssign_Change.Value}, JSONFormat.Compact)
+                              JSON({applicationObjectId: varApp.ObjectId, applicationDisplayName: varApp.Title, appRoleAssignmentRequired: true}, JSONFormat.Compact)
                           )
                       },
                           IfError(

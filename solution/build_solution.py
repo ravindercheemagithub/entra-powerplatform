@@ -34,7 +34,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.5.0.0"
+VERSION = "1.7.0.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -129,6 +129,9 @@ class Seq:
         p = {"dataset": SITE, "table": table, "id": id_}
         p.update({f"item/{k}": v for k, v in fields.items()})
         return self.op(name, "shared_sharepointonline", "PatchItem", p, run_after=run_after)
+
+    def sp_delete(self, name, table, id_):
+        return self.op(name, "shared_sharepointonline", "DeleteItem", {"dataset": SITE, "table": table, "id": id_})
 
     def sp_post(self, name, table, fields):
         p = {"dataset": SITE, "table": table}
@@ -320,6 +323,9 @@ SUMMARY = ("@concat('**', triggerOutputs()?['body/RequestType/Value'], '** – '
            "if(empty(outputs('Payload')?['owningGroup']), '', concat('Owning team: ', outputs('Payload')?['owningGroup']?['displayName'], if(equals(outputs('Payload')?['owningGroup']?['mode'], 'new'), ' (new group)', ''), decodeUriComponent('%0A%0A'))), "
            "if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), concat('Expose API: ', outputs('Payload')?['exposeApi']?['identifierUriTemplate'], ', ', string(length(coalesce(outputs('Payload')?['exposeApi']?['scopes'], json('[]')))), ' scope(s)', decodeUriComponent('%0A%0A')), ''), "
            "if(empty(body('Select_roles_text')), '', concat(join(body('Select_roles_text'), decodeUriComponent('%0A')), decodeUriComponent('%0A%0A'))), "
+           "if(empty(outputs('Payload')?['graphDelegatedScopes']), '', concat('API permissions (Microsoft Graph, delegated): ', replace(outputs('Payload')?['graphDelegatedScopes'], ',', ', '), decodeUriComponent('%0A%0A'))), "
+           "if(empty(outputs('Payload')?['ownerRole']), '', concat('Owner gets role: ', outputs('Payload')?['ownerRole'], decodeUriComponent('%0A%0A'))), "
+           "if(equals(triggerOutputs()?['body/RequestType/Value'], 'deleteAppRegistration'), concat('**DELETE: ', coalesce(outputs('Payload')?['actionLabel'], outputs('Payload')?['action']), '**', decodeUriComponent('%0A%0A')), ''), "
            "'Justification: ', triggerOutputs()?['body/Justification'])")
 
 
@@ -499,7 +505,9 @@ STEP_KEYS = {
     "Log app created": "app", "Log expose done": "expose", "Log expose failed": "expose", "Log expose added": "expose",
     "Log SP done": "sp", "Log SP failed": "sp", "Log SP created": "sp", "Log roles added": "roles",
     "Log assign done": ASSIGN_KEY, "Log assign failed": ASSIGN_KEY, "Log no group id": ASSIGN_KEY,
-    "Log default access": "default", "Log default access failed": "default",
+    "Log owner access": "owner", "Log owner access failed": "owner", "Log permissions done": "permissions", "Log permissions failed": "permissions",
+    "Log delete done": "delete", "Log delete done disable": "delete", "Log delete done sp": "delete",
+    "Log delete failed disable": "delete", "Log delete failed sp": "delete", "Log owner role missing": "owner", "Log purge done": "purge", "Log purge failed": "purge",
 }
 
 
@@ -535,8 +543,14 @@ def build_plan(t: "Seq") -> None:
                           f"Set the Application ID URI and @{{length(coalesce({P}?['exposeApi']?['scopes'], json('[]')))}} scope(s)"))
     c1.cond("Plan SP wanted", is_true(f"@equals({P}?['createServicePrincipal'], true)"),
             yes=plan_step(Seq(), "Plan SP", "sp", "Create the enterprise application"))
-    c1.cond("Plan default access wanted", is_true(f"@and(equals({P}?['createServicePrincipal'], true), not(equals({P}?['appRoleAssignmentRequired'], false)), empty(coalesce({P}?['appRoles'], json('[]'))))"),
-            yes=plan_step(Seq(), "Plan default access", "default", "Give the owner default access to the enterprise application"))
+    c1.cond("Plan permissions wanted", is_true(f"@not(empty({P}?['graphDelegatedScopes']))"),
+            yes=plan_step(Seq(), "Plan permissions", "permissions", f"Add API permissions: @{{replace({P}?['graphDelegatedScopes'], ',', ', ')}}"))
+    c1.cond("Plan owner access wanted", is_true(f"@equals({P}?['createServicePrincipal'], true)"),
+            yes=plan_step(Seq(), "Plan owner access", "owner",
+                          f"Give the owner (@{{coalesce({P}?['owningGroup']?['displayName'], 'the requester')}}) @{{if(empty(coalesce({P}?['appRoles'], json('[]'))), 'default access', concat('the ', {P}?['ownerRole'], ' role'))}}"))
+    D = "items('Plan_each_default_holder')"
+    c1.foreach("Plan each default holder", f"@coalesce({P}?['defaultAccess'], json('[]'))",
+               plan_step(Seq(), "Plan default holder", f"assign|@{{{D}?['id']}}|Default Access", f"Give @{{{D}?['displayName']}} default access"))
     c3 = plan_step(Seq(), "Plan expose add", "expose", f"Add the Application ID URI and @{{length(coalesce({P}?['scopes'], json('[]')))}} scope(s)")
     c4 = plan_step(Seq(), "Plan roles", "roles", f"Add @{{length(coalesce({P}?['appRoles'], json('[]')))}} app role(s)")
     A = "items('Plan_each_assignment')"
@@ -544,8 +558,13 @@ def build_plan(t: "Seq") -> None:
                        plan_step(Seq(), "Plan assignment", f"assign|@{{{A}?['id']}}|@{{{A}?['appRoleValue']}}",
                                  f"Assign @{{{A}?['displayName']}} to role @{{{A}?['appRoleValue']}}"))
     c6 = plan_step(Seq(), "Plan SP only", "sp", "Create the enterprise application")
+    c7 = plan_step(Seq(), "Plan delete", "delete",
+                   f"@{{coalesce({P}?['actionLabel'], 'Delete the app registration')}}")
+    c7.cond("Plan purge wanted", is_true(f"@equals({P}?['action'], 'permanent')"),
+            yes=plan_step(Seq(), "Plan purge", "purge", "Remove it from Deleted applications (no restore)"))
     t.switch("Plan by request type", "@triggerOutputs()?['body/RequestType/Value']",
-             {"createAppRegistration": c1, "exposeApi": c3, "addAppRoles": c4, "assignGroupsToAppRoles": c5, "createServicePrincipal": c6})
+             {"createAppRegistration": c1, "exposeApi": c3, "addAppRoles": c4, "assignGroupsToAppRoles": c5, "createServicePrincipal": c6,
+              "deleteAppRegistration": c7})
     R, G = "items('Plan_each_role')", "items('Plan_each_role_group')"
     groups = Seq().foreach("Plan each role group", f"@coalesce({R}?['assignGroups'], json('[]'))",
                            plan_step(Seq(), "Plan role group", f"assign|@{{{G}?['id']}}|@{{{R}?['value']}}",
@@ -600,7 +619,7 @@ def er02() -> dict:
                           ("varExposeOk", "string", "no"), ("varAssignOk", "string", "no"),
                           ("varTeamTag", "string", ""), ("varGroupOwner", "string", "no"),
                           ("varLog", "array", []), ("varHadErrors", "string", "no"), ("varFailMessage", "string", ""),
-                          ("varDefaultOk", "string", "no"), ("varPlan", "array", []), ("varDone", "array", []),
+                          ("varOwnerOk", "string", "no"), ("varPurgeOk", "string", "no"), ("varPlan", "array", []), ("varDone", "array", []),
                           ("varFailed", "array", [])]:
         s.init_var(f"Init {var}", var, typ, val)
 
@@ -648,13 +667,33 @@ def er02() -> dict:
     c1.filter("Filter optional tags", "@split(coalesce(outputs('Payload')?['tags'], ''), ';')", "@and(contains(item(), '='), greater(length(trim(item())), 2))")
     c1.select("Select optional tags", "@body('Filter_optional_tags')", "@concat(trim(first(split(item(), '='))), ':', trim(last(split(item(), '='))))")
     c1.compose("App tags", "@union(outputs('Base_tags'), createArray(variables('varTeamTag'), concat('teamName:', variables('varTeamGroupName'))), if(empty(outputs('Payload')?['appEnv']), json('[]'), createArray(concat('appEnv:', outputs('Payload')?['appEnv']))), if(empty(outputs('Payload')?['borShortName']), json('[]'), createArray(concat('borShortName:', outputs('Payload')?['borShortName']))), body('Select_optional_tags'))")
+    # API permissions: any Microsoft Graph delegated permission, by name (openid, email, profile, User.Read are added by
+    # the app by default). Names are looked up in Graph's own service principal; unknown names are logged, not added.
+    # Consent is not granted here (that needs DelegatedPermissionGrant.ReadWrite.All): users consent at first sign-in,
+    # or the Entra ID team grants admin consent in the portal.
+    c1.filter("Requested scope names", "@split(coalesce(outputs('Payload')?['graphDelegatedScopes'], ''), ',')", "@not(empty(trim(item())))")
+    c1.select("Requested scope keys", "@body('Requested_scope_names')", "@toLower(trim(item()))")
+    c1.graph("HTTP Graph permissions", "GET", f"{GRAPH}/servicePrincipals(appId='00000003-0000-0000-c000-000000000000')?$select=oauth2PermissionScopes")
+    c1.filter("Known graph scopes", "@coalesce(body('HTTP_Graph_permissions')?['oauth2PermissionScopes'], json('[]'))",
+              "@contains(body('Requested_scope_keys'), toLower(item()?['value']))")
+    c1.select("Known scope keys", "@body('Known_graph_scopes')", "@toLower(item()?['value'])")
+    c1.select("Known scope names", "@body('Known_graph_scopes')", "@item()?['value']")
+    c1.filter("Unknown graph scopes", "@body('Requested_scope_names')", "@not(contains(body('Known_scope_keys'), toLower(trim(item()))))")
+    c1.select("Select graph permissions", "@body('Known_graph_scopes')", {"id": "@item()?['id']", "type": "Scope"})
+    c1.compose("Required resource access", "@if(empty(body('Select_graph_permissions')), json('[]'), createArray(setProperty(json('{\"resourceAppId\": \"00000003-0000-0000-c000-000000000000\"}'), 'resourceAccess', body('Select_graph_permissions'))))")
     c1.graph("HTTP Create application", "POST", f"{GRAPH}/applications", body_file("HTTP_Create_application"))
     c1.set_var("Result create app", "varResult", {
         "applicationObjectId": "@{body('HTTP_Create_application')?['id']}",
         "appId": "@{body('HTTP_Create_application')?['appId']}",
         "identifierUri": "",
         "servicePrincipalId": "", "teamGroupId": "@{variables('varTeamGroupId')}", "team": "@{variables('varTeamTag')}"})
-    log(c1, "Log app created", "concat('Done: app registration ', body('HTTP_Create_application')?['displayName'], ' created (client ID ', body('HTTP_Create_application')?['appId'], ', object ID ', body('HTTP_Create_application')?['id'], '), owner tag ', variables('varTeamTag'), if(greater(length(body('Select_app_roles')), 0), concat(', ', string(length(body('Select_app_roles'))), ' app role(s)'), ''))")
+    log(c1, "Log app created", "concat('Done: app registration ', body('HTTP_Create_application')?['displayName'], ' created (client ID ', body('HTTP_Create_application')?['appId'], ', object ID ', body('HTTP_Create_application')?['id'], '), owner tag ', variables('varTeamTag'), if(greater(length(body('Select_app_roles')), 0), concat(', ', string(length(body('Select_app_roles'))), ' app role(s)'), ''), )")
+    perms = Seq()
+    perms.cond("All permissions known", eq("@empty(body('Unknown_graph_scopes'))", True),
+               yes=log(Seq(), "Log permissions done", "concat('Done: API permissions (Microsoft Graph, delegated): ', join(body('Known_scope_names'), ', '))"),
+               no=log_failed(Seq(), "Log permissions failed", "concat('Failed: unknown Microsoft Graph permission(s) ', join(body('Unknown_graph_scopes'), ', '), ', not added', if(empty(body('Known_scope_names')), '', concat('; added ', join(body('Known_scope_names'), ', '))), '. Check the names in the Microsoft Graph permissions reference; the Entra ID team can add them in the portal.')"))
+    log(perms, "Log consent note", "'Note: API permissions are configured but not consented. Users consent the first time they sign in, or the Entra ID team grants admin consent (App registrations > the app > API permissions > Grant admin consent).'")
+    c1.cond("Permissions requested", eq("@empty(body('Requested_scope_names'))", False), yes=perms)
     c1.delay("Wait for app replication", 15)
     expose = graph_until_ok(Seq(), "HTTP Expose API", "PATCH", f"{GRAPH}/applications/@{{body('HTTP_Create_application')?['id']}}",
                             body_file("HTTP_Expose_API"), 204, "varExposeOk", "", "", "",
@@ -680,6 +719,11 @@ def er02() -> dict:
     roles.filter("Filter created role", "@body('HTTP_Create_application')?['appRoles']", "@equals(item()?['value'], items('For_each_new_role')?['value'])")
     roles.foreach("For each new role group", "@coalesce(items('For_each_new_role')?['assignGroups'], json('[]'))", groups)
     c1.foreach("For each new role", "@coalesce(outputs('Payload')?['appRoles'], json('[]'))", roles)
+    H = "items('For_each_default_holder')"
+    c1.foreach("For each default holder", "@coalesce(outputs('Payload')?['defaultAccess'], json('[]'))",
+               Seq().append_var("Queue default holder", "varAssignTodo", {
+                   "roleId": "00000000-0000-0000-0000-000000000000", "roleValue": "Default Access", "mode": f"@{{{H}?['mode']}}",
+                   "id": f"@{{{H}?['id']}}", "displayName": f"@{{{H}?['displayName']}}", "description": "", "ownerIds": ""}))
     c1.set_var("Result create app final", "varResult", {
         "applicationObjectId": "@{body('HTTP_Create_application')?['id']}",
         "appId": "@{body('HTTP_Create_application')?['appId']}",
@@ -748,9 +792,43 @@ def er02() -> dict:
     c6.set_var("Result sp", "varResult", {"applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}",
                                           "servicePrincipalId": "@{body('HTTP_Create_SP_existing')?['id']}"})
 
+    # -- deleteAppRegistration (owner check done in Has target app). Deleting an app registration also deletes its
+    # enterprise app in this tenant; soft-deleted apps can be restored for 30 days.
+    c7 = Seq()
+    c7.compose("Delete action", "@coalesce(outputs('Payload')?['action'], 'soft')")
+    APP = "body('HTTP_Get_target_app')?['displayName']"
+    soft = Seq().graph("HTTP Delete application", "DELETE", target)
+    log(soft, "Log delete done", f"concat('Done: app registration ', {APP}, ' deleted together with its enterprise app', if(equals(outputs('Delete_action'), 'permanent'), '', '. It can be restored for 30 days (Entra admin center > App registrations > Deleted applications).'))")
+    purge = Seq()
+    graph_until_ok(purge, "HTTP Purge application", "DELETE", f"{GRAPH}/directory/deletedItems/@{{triggerOutputs()?['body/TargetObjectId']}}", None, 204, "varPurgeOk", "", "", "",
+                   on_give_up=log_failed(Seq(), "Log purge failed", "concat('Failed: the app is deleted but could not be removed from Deleted applications (', coalesce(body('HTTP_Purge_application')?['error']?['message'], 'no answer after 6 attempts'), '). It will be purged automatically after 30 days, or the Entra ID team can delete it permanently.')"))
+    purge.cond("Purge done", eq("@variables('varPurgeOk')", "yes"), yes=log(Seq(), "Log purge done", "'Done: removed from Deleted applications; it cannot be restored'"))
+    soft.cond("Permanent delete", eq("@outputs('Delete_action')", "permanent"), yes=purge)
+    no_sp = "'Failed: the app has no enterprise application, so there was nothing to change'"
+    disable = Seq().cond("SP to disable", eq("@empty(variables('varSpId'))", False),
+                         yes=log(Seq().graph("HTTP Disable SP", "PATCH", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}", "{\"accountEnabled\": false}"),
+                                 "Log delete done disable", f"concat('Done: sign-in disabled on the enterprise application of ', {APP}, '. To undo: Enterprise applications > the app > Properties > Enabled for users to sign in = Yes.')"),
+                         no=log_failed(Seq(), "Log delete failed disable", no_sp))
+    sp_only = Seq().cond("SP to delete", eq("@empty(variables('varSpId'))", False),
+                         yes=log(Seq().graph("HTTP Delete SP", "DELETE", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}"),
+                                 "Log delete done sp", f"concat('Done: enterprise application of ', {APP}, ' deleted (with its role assignments); the app registration is kept. Create it again with Enterprise application if needed.')"),
+                         no=log_failed(Seq(), "Log delete failed sp", no_sp))
+    c7.cond("Delete the app", is_true("@or(equals(outputs('Delete_action'), 'soft'), equals(outputs('Delete_action'), 'permanent'))"), yes=soft,
+            no=Seq().cond("Disable only", eq("@outputs('Delete_action')", "disable"), yes=disable, no=sp_only))
+    c7.sp_get_items("Get deleted app row", "EntraCatalogApps", "ObjectId eq '@{triggerOutputs()?['body/TargetObjectId']}'", 1)
+    row = "first(body('Get_deleted_app_row')?['value'])?['ID']"
+    rowfix = Seq()
+    rowfix.cond("Row goes away", is_true("@or(equals(outputs('Delete_action'), 'soft'), equals(outputs('Delete_action'), 'permanent'))"),
+                yes=Seq().sp_delete("Delete catalog row", "EntraCatalogApps", f"@{row}"),
+                no=Seq().cond("Row loses SP", eq("@outputs('Delete_action')", "spOnly"),
+                              yes=Seq().sp_patch("Clear catalog SP", "EntraCatalogApps", f"@{row}", {"Title": f"@{APP}", "ServicePrincipalId": ""})))
+    c7.cond("Catalog row exists", eq("@empty(body('Get_deleted_app_row')?['value'])", False), yes=rowfix)
+    c7.set_var("Result delete", "varResult", {"applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}",
+                                              "appId": "@{body('HTTP_Get_target_app')?['appId']}", "action": "@{outputs('Delete_action')}"})
+
     cases = {}
     for name, seq in [("createAppRegistration", c1), ("exposeApi", c3), ("addAppRoles", c4),
-                      ("assignGroupsToAppRoles", c5), ("createServicePrincipal", c6)]:
+                      ("assignGroupsToAppRoles", c5), ("createServicePrincipal", c6), ("deleteAppRegistration", c7)]:
         cases[name] = Seq().scope(f"Do {name}", seq)
     t.switch("Request type", "@triggerOutputs()?['body/RequestType/Value']", cases)
 
@@ -775,22 +853,25 @@ def er02() -> dict:
     t.cond("Assignments skipped", is_true("@and(greater(length(variables('varAssignTodo')), 0), empty(variables('varSpId')))"),
            yes=log_failed(Seq(), "Log assignments skipped", "concat('Skipped: ', string(length(variables('varAssignTodo'))), ' role assignment(s), because there is no enterprise application to assign them on')"),
            no=loop)
-    # Default access (appRoleId 0000…) lets the owner sign in when assignment is required and nobody holds a role.
-    # Graph accepts it only for an app WITHOUT app roles, and the new enterprise app may not have replicated yet
-    # (404 Request_ResourceNotFound), so it uses the retry pattern and a failure is logged, not fatal.
-    default = Seq()
-    graph_until_ok(default, "HTTP Assign default access", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo",
-                   body_file("HTTP_Assign_default_access"), 201, "varDefaultOk", "", "", "",
-                   on_give_up=log_failed(Seq(), "Log default access failed",
-                                         "concat('Failed: default access for ', variables('varTeamGroupName'), ' (', coalesce(body('HTTP_Assign_default_access')?['error']?['message'], 'no answer after 6 attempts'), '). Use Role assignments, or assign it in Entra (Enterprise applications > the app > Users and groups).')"))
-    default.cond("Default access done", eq("@variables('varDefaultOk')", "yes"),
-                 yes=log(Seq(), "Log default access", "concat('Done: default access to the enterprise application for ', variables('varTeamGroupName'))"))
-    needs_access = ("equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), empty(variables('varAssignments')), "
-                    "not(equals(outputs('Payload')?['appRoleAssignmentRequired'], false)), not(empty(variables('varSpId')))")
-    t.cond("Default access", is_true(f"@and({needs_access}, empty(coalesce(outputs('Payload')?['appRoles'], json('[]'))))"), yes=default)
-    t.cond("Roles without holders", is_true(f"@and({needs_access}, not(empty(coalesce(outputs('Payload')?['appRoles'], json('[]')))))"),
-           yes=log(Seq(), "Log nobody can sign in",
-                   "'Note: assignment is required and no group holds any of the app roles yet, so nobody can sign in. Give a group a role with Role assignments.'"))
+    # Owner access: the enterprise app always requires assignment, so the owner (owning group, or the requester) is
+    # assigned so someone can sign in: Default Access when the app has no roles (Graph accepts it only then),
+    # otherwise the role the requester picked for the owner. Retries while the new enterprise app replicates.
+    owner = Seq()
+    owner.filter("Filter owner role", "@coalesce(body('HTTP_Create_application')?['appRoles'], json('[]'))",
+                 "@equals(item()?['value'], outputs('Payload')?['ownerRole'])")
+    owner.compose("Owner role id", "@if(empty(coalesce(body('HTTP_Create_application')?['appRoles'], json('[]'))), '00000000-0000-0000-0000-000000000000', coalesce(first(body('Filter_owner_role'))?['id'], ''))")
+    owner.compose("Owner principal id", "@if(empty(variables('varTeamGroupId')), body('HTTP_Get_requester')?['id'], variables('varTeamGroupId'))")
+    owner.compose("Owner access label", "@if(equals(outputs('Owner_role_id'), '00000000-0000-0000-0000-000000000000'), 'default access', concat('the ', outputs('Payload')?['ownerRole'], ' role'))")
+    assign_owner = Seq()
+    graph_until_ok(assign_owner, "HTTP Assign owner access", "POST", f"{GRAPH}/servicePrincipals/@{{variables('varSpId')}}/appRoleAssignedTo",
+                   body_file("HTTP_Assign_owner_access"), 201, "varOwnerOk", "", "", "",
+                   on_give_up=log_failed(Seq(), "Log owner access failed",
+                                         "concat('Failed: ', outputs('Owner_access_label'), ' for the owner ', variables('varTeamGroupName'), ' (', coalesce(body('HTTP_Assign_owner_access')?['error']?['message'], 'no answer after 6 attempts'), '). Use Role assignments, or assign it in Entra (Enterprise applications > the app > Users and groups).')"))
+    assign_owner.cond("Owner access done", eq("@variables('varOwnerOk')", "yes"),
+                      yes=log(Seq(), "Log owner access", "concat('Done: the owner ', variables('varTeamGroupName'), ' has ', outputs('Owner_access_label'), ' on the enterprise application')"))
+    owner.cond("Owner role known", eq("@empty(outputs('Owner_role_id'))", False), yes=assign_owner,
+               no=log_failed(Seq(), "Log owner role missing", "'Failed: the app has roles but no role was chosen for the owner, so the owner was not assigned. Use Role assignments to give the owner a role.'"))
+    t.cond("Owner access", is_true("@and(equals(triggerOutputs()?['body/RequestType/Value'], 'createAppRegistration'), not(empty(variables('varSpId'))))"), yes=owner)
 
     done_sum = summarize(t, "Try", "variables('varLog')")
     t.compose("Result json", "@string(setProperty(variables('varResult'), 'assignmentsText', join(variables('varAssignments'), '; ')))")
@@ -816,7 +897,7 @@ def er02() -> dict:
     s.scope("Try", t)
 
     c = Seq()
-    c.filter("Failed actions", "@union(result('Do_createAppRegistration'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Try'))",
+    c.filter("Failed actions", "@union(result('Do_createAppRegistration'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Do_deleteAppRegistration'), result('Try'))",
              "@equals(item()?['status'], 'Failed')")
     # 'ActionFailed' is Power Automate's generic text for a container whose inner step failed: say so plainly.
     c.compose("Error text", "@if(empty(variables('varFailMessage')), concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], if(equals(first(body('Failed_actions'))?['error']?['code'], 'ActionFailed'), 'a step inside it failed; the ER-02 run history shows which one and why', first(body('Failed_actions'))?['error']?['message']), 'see the ER-02 run history')), variables('varFailMessage'))")

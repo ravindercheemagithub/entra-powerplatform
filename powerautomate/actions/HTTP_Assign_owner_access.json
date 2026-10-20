@@ -1,0 +1,5 @@
+{
+  "principalId": "@{outputs('Owner_principal_id')}",
+  "resourceId": "@{variables('varSpId')}",
+  "appRoleId": "@{outputs('Owner_role_id')}"
+}
