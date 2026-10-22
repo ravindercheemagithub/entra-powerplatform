@@ -53,6 +53,7 @@ gOperations = Table(
     { Key: "createSP", Title: "Enterprise application", Subtitle: "Create the service principal for an existing app registration.", Badge: "" },
     { Key: "onboardGroup", Title: "Add existing group", Subtitle: "Make a group you belong to selectable as an owning group or role group. No approval needed.", Badge: "" },
     { Key: "tagOwnerGroup", Title: "Owning group", Subtitle: "Hand an app registration you own to one of your groups: its tag team:user\you becomes team:group\<group>. No approval needed.", Badge: "" },
+    { Key: "grantAccess", Title: "Request app access", Subtitle: "Get Default Access (or a role) on an enterprise app for yourself or a group. Manager and Entra ID team approve.", Badge: "" },
     { Key: "deleteApp", Title: "Delete app registration", Subtitle: "Delete, disable or remove the enterprise app of an app registration you own. Manager and Entra ID team approve first.", Badge: "" },
     { Key: "myRequests", Title: "My requests", Subtitle: "Track approvals and see exactly what was created.", Badge: "" }
 );

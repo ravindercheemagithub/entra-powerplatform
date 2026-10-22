@@ -28,3 +28,20 @@ Use a test app you own (created in 12.2).
 | 4 | *Delete the app registration…* (soft) | The app registration and enterprise app are gone; they're listed under App registrations → **Deleted applications** (restorable for 30 days); the catalog row is removed. |
 | 5 | *Delete permanently*: the confirmation's **Yes** stays disabled until you type `DELETE` | After approval: not under Deleted applications either. If the purge can't run yet, the notes say it will be purged after 30 days. |
 | 6 | Change the app's `team:` tag to someone else after submitting but before approval | ER-02 stops with *Not an authorized owner…*; nothing is deleted; the Catch email lists the steps. |
+
+## 12.4 App type and permissions (1.8)
+| # | Do this | Expected |
+|---|---|---|
+| 1 | Basics: App type **Client**, free text `portal` | Name preview ends with `portal-client`. Step 2: *Expose an API* and the access-token claims are greyed out. The app gets tag `appType:client`. |
+| 2 | App type **API** | Name ends with `-api`; *Expose an API* is ticked; ID-token claims and the redirect URI fields are greyed out. |
+| 3 | Step 3, no token claims | Only `User.Read` ticked. **＋ Add additional delegated permissions** → add `Mail.Read`: it appears in red; the review shows it in red. |
+| 4 | Submit (3) | The manager first gets *Please review before approving…* with *Additional delegated permissions to review: Mail.Read* in red, then the approval card starting with 🔴 **Additional delegated permissions…** |
+
+## 12.5 Request app access (1.8)
+| # | Do this | Expected |
+|---|---|---|
+| 1 | **Request app access** → Search a third-party enterprise app's Object ID | Found, even though there is no app registration in the tenant. *Access* offers Default Access, or the app's roles if it has any. |
+| 2 | *A group* you are **not** a member of → Submit | The approvers' heads-up email shows the group name in red with *Note: the requester is not a member of this group*; the card shows 🔴. |
+| 3 | A group you are a member of | Green group name / 🟢. After both approvals the group is listed under the enterprise app's **Users and groups** with the chosen access. |
+| 4 | A group name that matches no group | The request fails before any approval: *No group named … was found.* |
+| 5 | *Me* | After approval, you are listed under Users and groups. |

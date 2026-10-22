@@ -74,6 +74,7 @@ def home() -> None:
     "onboardGroup", Navigate(scrAddGroup, ScreenTransition.Fade),
     "tagOwnerGroup", Navigate(scrTagGroup, ScreenTransition.Fade),
     "deleteApp", Set(varDelApp, Blank()); Navigate(scrDeleteApp, ScreenTransition.Fade),
+    "grantAccess", Set(varAccApp, Blank()); Navigate(scrGrantAccess, ScreenTransition.Fade),
     "myRequests", Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade),
     Set(varCloneChange, Blank()); Set(varOp, ThisItem.Key); Set(varResetChange, true); Navigate(scrAppChange, ScreenTransition.Fade)
 )""",
@@ -83,7 +84,7 @@ def home() -> None:
             rect("recCardAccent_Home", 8, 8, 4, "Parent.TemplateHeight - 16", fill="gTheme.Primary", thickness=0, OnSelect="Select(Parent)"),
             icon("icoCard_Home",
                  'Switch(ThisItem.Key, "newApp", Icon.AddDocument, "exposeApi", Icon.Settings, "addAppRoles", Icon.Lock, '
-                 '"assignGroups", Icon.People, "createSP", Icon.Waffle, "onboardGroup", Icon.AddUser, "tagOwnerGroup", Icon.Edit, "deleteApp", Icon.Trash, Icon.DetailList)',
+                 '"assignGroups", Icon.People, "createSP", Icon.Waffle, "onboardGroup", Icon.AddUser, "tagOwnerGroup", Icon.Edit, "deleteApp", Icon.Trash, "grantAccess", Icon.Person, Icon.DetailList)',
                  28, 28, 44, 44, color="gTheme.Primary", on_select="Select(Parent)", Fill="gTheme.PrimaryLight",
                  PaddingTop=10, PaddingBottom=10, PaddingLeft=10, PaddingRight=10),
             label("lblCardTitle_Home", "ThisItem.Title", 84, 26, "Parent.TemplateWidth - 140", 26, size=13, bold=True, OnSelect="Select(Parent)"),
@@ -236,6 +237,11 @@ def roles_editor(s: str, top: int) -> list:
 def new_app() -> None:
     s = "NewApp"
     claims_on = f'lblClaimsOn_{s}.Text = "yes"'   # any optional token claim chosen on step 2
+    # App type: Client apps don't expose an API or get access-token claims; APIs don't sign users in (no ID-token
+    # claims, no redirect URIs); Others allows everything. The type adds -client / -api to the display name.
+    app_type = f"ddType_{s}.Selected.Value"
+    expose = f'(chkExpose_{s}.Value && {app_type} <> "Client")'
+    suffix = f'Switch({app_type}, "API", "-api", "Client", "-client", "")'
     team = (f'{{Mode: "existing", GroupId: cmbTeam_{s}.Selected.GroupId, DisplayName: cmbTeam_{s}.Selected.Title, Description: "", OwnerIds: ""}}')
     # Naming convention: <App BoR ID = appCatID>-<App Env>-<App BoR short name>-<free text>. The prefix is built from
     # the three fields above it and cannot be edited in the name box; lblFullName_NewApp holds the full display name.
@@ -246,8 +252,12 @@ def new_app() -> None:
         field_label(f"lblAppCat_{s}", "App BoR ID (appCatID)", COL1_X, 64, COL_W, required=True),
         text_input(f"txtAppCatId_{s}", 'If(!IsBlank(varClone), varClone.appCatId, Coalesce(First(Filter(gMyGroups, !IsBlank(AppCatId))).AppCatId, ""))', q("APPCAT-001"), COL1_X, 86, COL_W),
         hint(f"hntAppCat_{s}", q("Book of record id of the application. Stamped on every object this request creates."), COL1_X, 124, COL_W),
-        field_label(f"lblEnv_{s}", "App environment", COL2_X, 64, COL_W, required=True),
-        dropdown(f"ddEnv_{s}", "gEnvironments", 'Coalesce(LookUp(gEnvironments, Left(Value, 1) = varClone.env).Value, "D – Development")', COL2_X, 86, COL_W),
+        field_label(f"lblEnv_{s}", "App environment", COL2_X, 64, f"({COL_W} - 12) / 2", required=True),
+        dropdown(f"ddEnv_{s}", "gEnvironments", 'Coalesce(LookUp(gEnvironments, Left(Value, 1) = varClone.env).Value, "D – Development")', COL2_X, 86, f"({COL_W} - 12) / 2"),
+        field_label(f"lblType_{s}", "App type", f"{COL2_X} + ({COL_W} + 12) / 2", 64, f"({COL_W} - 12) / 2", required=True),
+        dropdown(f"ddType_{s}", '["Client", "API", "Others"]', 'Switch(Coalesce(varClone.appType, ""), "api", "API", "client", "Client", "Others")',
+                 f"{COL2_X} + ({COL_W} + 12) / 2", 86, f"({COL_W} - 12) / 2",
+                 Tooltip=q("Client: signs users in and calls APIs. API: is called by other apps. Others: both or neither.")),
         hint(f"hntEnv_{s}", q("P production · Q QA · D development · L lab · U UAT · F performance · T dev integration · S system integration"), COL2_X, 124, COL_W),
 
         field_label(f"lblBorShort_{s}", "App BoR short name", COL1_X, 154, COL_W, required=True),
@@ -261,7 +271,9 @@ def new_app() -> None:
         field_label(f"lblName_{s}", "Display name", COL1_X, 248, "Parent.Width", required=True),
         label(f"lblNamePrefix_{s}", prefix, COL1_X, 270, 300, 36, size=11, bold=True, color="gTheme.Muted", Fill="gTheme.Bg",
               BorderColor="gTheme.Border", BorderThickness=1, PaddingLeft=10, Tooltip=q("Built from the fields above; it can't be edited here.")),
-        text_input(f"txtAppName_{s}", 'Coalesce(varClone.name, "")', q("free text, e.g. orders-api"), 308, 270, "Parent.Width - 308"),
+        text_input(f"txtAppName_{s}", 'Coalesce(varClone.name, "")', q("free text, e.g. orders"), 308, 270, "Parent.Width - 308 - 92"),
+        label(f"lblNameSuffix_{s}", suffix, "Parent.Width - 84", 270, 84, 36, size=11, bold=True, color="gTheme.Muted", Fill="gTheme.Bg",
+              BorderColor="gTheme.Border", BorderThickness=1, PaddingLeft=10, Tooltip=q("Added from the App type; it can't be edited here.")),
         hint(f"hntName_{s}", f'"Full name: " & {full} & "   ·   shown in the Entra admin center and on consent screens"', COL1_X, 308, "Parent.Width"),
 
         field_label(f"lblJust_{s}", "Business justification", COL1_X, 338, COL_W, required=True),
@@ -271,31 +283,35 @@ def new_app() -> None:
         text_input(f"txtDescription_{s}", 'Coalesce(varClone.description, "")', q("Optional"), COL2_X, 360, COL_W, 64, multiline=True),
 
         field_label(f"lblPlatform_{s}", "Redirect URI platform", COL1_X, 436, COL_W),
-        dropdown(f"ddPlatform_{s}", '["None", "Web", "Single-page app"]', 'Coalesce(varClone.platform, "None")', COL1_X, 458, COL_W),
+        dropdown(f"ddPlatform_{s}", '["None", "Web", "Single-page app"]', 'Coalesce(varClone.platform, "None")', COL1_X, 458, COL_W,
+                 DisplayMode=f'If({app_type} = "API", DisplayMode.Disabled, DisplayMode.Edit)', Tooltip=q("APIs don't sign users in, so they have no redirect URIs. Choose Others if it also has a UI.")),
         field_label(f"lblRedirect_{s}", "Redirect URI(s)", COL2_X, 436, COL_W),
         text_input(f"txtRedirect_{s}", 'Coalesce(varClone.redirect, "")', q("https://app.contoso.com/signin-oidc   (separate several with ;)"), COL2_X, 458, COL_W,
-                   DisplayMode=f'If(ddPlatform_{s}.Selected.Value = "None", DisplayMode.Disabled, DisplayMode.Edit)'),
+                   DisplayMode=f'If(ddPlatform_{s}.Selected.Value = "None" || {app_type} = "API", DisplayMode.Disabled, DisplayMode.Edit)'),
     ])
 
     step2 = step_container(s, 2, section_head(f"S2_{s}", "Expose an API & token claims",
                                               "Let other applications request tokens for this app, and choose extra claims in the tokens it receives.") + [
-        checkbox(f"chkExpose_{s}", q("Expose an API (set an Application ID URI so other apps can call this one)"), "Coalesce(varClone.expose, false)", 0, 60, "Parent.Width"),
+        checkbox(f"chkExpose_{s}", q("Expose an API (set an Application ID URI so other apps can call this one)"), f'Coalesce(varClone.expose, {app_type} = "API")', 0, 60, 640,
+                 DisplayMode=f'If({app_type} = "Client", DisplayMode.Disabled, DisplayMode.Edit)'),
+        hint(f"hntClientExpose_{s}", q("Client apps don't expose an API. Choose API or Others on Basics to expose one."), 650, 66, "Parent.Width - 650",
+             Visible=f'{app_type} = "Client"'),
         field_label(f"lblUri_{s}", "Application ID URI", 0, 100, 300),
         radio(f"radUri_{s}", '["api://{appId} (recommended)", "Custom"]', 'If(IsBlank(varClone.uriTemplate) || varClone.uriTemplate = "api://{appId}", "api://{appId} (recommended)", "Custom")', 0, 122, 420, 36,
-              DisplayMode=f"If(chkExpose_{s}.Value, DisplayMode.Edit, DisplayMode.Disabled)"),
+              DisplayMode=f"If({expose}, DisplayMode.Edit, DisplayMode.Disabled)"),
         text_input(f"txtCustomUri_{s}", 'If(IsBlank(varClone.uriTemplate), "api://{appId}", varClone.uriTemplate)', q("api://{tenantId}/orders  or  api://orders/{appId}"), 440, 122, 380,
-                   Visible=f'chkExpose_{s}.Value && radUri_{s}.Selected.Value = "Custom"'),
-        *scopes_editor(s, 176, f"chkExpose_{s}.Value"),
+                   Visible=f'{expose} && radUri_{s}.Selected.Value = "Custom"'),
+        *scopes_editor(s, 176, f"{expose}"),
         label(f"lblClaims_{s}", q("Token claims"), 0, 362, 300, 24, size=11, bold=True),
         label(f"lblIdClaims_{s}", q("Optional claims in the ID token:"), 0, 392, 230, 30, size=10),
-        checkbox(f"chkIdEmail_{s}", q("email"), '",email," in "," & Coalesce(varClone.idClaims, "") & ","', 230, 390, 100),
-        checkbox(f"chkIdUpn_{s}", q("upn"), '",upn," in "," & Coalesce(varClone.idClaims, "") & ","', 330, 390, 90),
-        checkbox(f"chkIdGiven_{s}", q("given_name"), '",given_name," in "," & Coalesce(varClone.idClaims, "") & ","', 420, 390, 130),
-        checkbox(f"chkIdFamily_{s}", q("family_name"), '",family_name," in "," & Coalesce(varClone.idClaims, "") & ","', 550, 390, 140),
+        checkbox(f"chkIdEmail_{s}", q("email"), '",email," in "," & Coalesce(varClone.idClaims, "") & ","', 230, 390, 100, DisplayMode=f'If({app_type} = "API", DisplayMode.Disabled, DisplayMode.Edit)'),
+        checkbox(f"chkIdUpn_{s}", q("upn"), '",upn," in "," & Coalesce(varClone.idClaims, "") & ","', 330, 390, 90, DisplayMode=f'If({app_type} = "API", DisplayMode.Disabled, DisplayMode.Edit)'),
+        checkbox(f"chkIdGiven_{s}", q("given_name"), '",given_name," in "," & Coalesce(varClone.idClaims, "") & ","', 420, 390, 130, DisplayMode=f'If({app_type} = "API", DisplayMode.Disabled, DisplayMode.Edit)'),
+        checkbox(f"chkIdFamily_{s}", q("family_name"), '",family_name," in "," & Coalesce(varClone.idClaims, "") & ","', 550, 390, 140, DisplayMode=f'If({app_type} = "API", DisplayMode.Disabled, DisplayMode.Edit)'),
         label(f"lblAtClaims_{s}", q("Optional claims in the access token:"), 0, 426, 230, 30, size=10),
-        checkbox(f"chkAtEmail_{s}", q("email"), '",email," in "," & Coalesce(varClone.atClaims, "") & ","', 230, 424, 100),
-        checkbox(f"chkAtUpn_{s}", q("upn"), '",upn," in "," & Coalesce(varClone.atClaims, "") & ","', 330, 424, 90),
-        checkbox(f"chkAtIdtyp_{s}", q("idtyp (app or user token)"), '",idtyp," in "," & Coalesce(varClone.atClaims, "") & ","', 420, 424, 240),
+        checkbox(f"chkAtEmail_{s}", q("email"), '",email," in "," & Coalesce(varClone.atClaims, "") & ","', 230, 424, 100, DisplayMode=f'If({app_type} = "Client", DisplayMode.Disabled, DisplayMode.Edit)'),
+        checkbox(f"chkAtUpn_{s}", q("upn"), '",upn," in "," & Coalesce(varClone.atClaims, "") & ","', 330, 424, 90, DisplayMode=f'If({app_type} = "Client", DisplayMode.Disabled, DisplayMode.Edit)'),
+        checkbox(f"chkAtIdtyp_{s}", q("idtyp (app or user token)"), '",idtyp," in "," & Coalesce(varClone.atClaims, "") & ","', 420, 424, 240, DisplayMode=f'If({app_type} = "Client", DisplayMode.Disabled, DisplayMode.Edit)'),
         label(f"lblGroupsClaim_{s}", q("Groups claim:"), 0, 462, 230, 30, size=10),
         dropdown(f"ddGroupsClaim_{s}", '["None", "SecurityGroup", "ApplicationGroup", "All"]', 'Coalesce(varClone.groupsClaim, "None")', 230, 458, 220, 34),
         hint(f"hntGroupsClaim_{s}", q("ApplicationGroup = only groups assigned to this app. Prefer app roles over group claims."), 460, 464, "Parent.Width - 460"),
@@ -303,50 +319,43 @@ def new_app() -> None:
 
     step_perm = step_container(s, 3, section_head(f"S3_{s}", "API permissions",
                                                   "Microsoft Graph permissions the app asks for when a user signs in (delegated). Granted by user consent or by the Entra ID team.") + [
-        field_label(f"lblPDefault_{s}", "Sign-in permissions", 0, 64, 400),
-        checkbox(f"chkPOpenid_{s}", q("openid"), 'If(IsBlank(varClone), true, ",openid," in "," & Coalesce(varClone.graphScopes, "") & ",")', 0, 92, 130,
-                 Visible=f'!(lblClaimsOn_{s}.Text = "yes")'),
-        checkbox(f"chkPLOpenid_{s}", q("openid"), "true", 0, 92, 130, DisplayMode="DisplayMode.Disabled", Visible=f'lblClaimsOn_{s}.Text = "yes"'),
-        checkbox(f"chkPEmail_{s}", q("email"), 'If(IsBlank(varClone), true, ",email," in "," & Coalesce(varClone.graphScopes, "") & ",")', 140, 92, 130,
-                 Visible=f'!(lblClaimsOn_{s}.Text = "yes")'),
-        checkbox(f"chkPLEmail_{s}", q("email"), "true", 140, 92, 130, DisplayMode="DisplayMode.Disabled", Visible=f'lblClaimsOn_{s}.Text = "yes"'),
-        checkbox(f"chkPProfile_{s}", q("profile"), 'If(IsBlank(varClone), true, ",profile," in "," & Coalesce(varClone.graphScopes, "") & ",")', 280, 92, 130,
-                 Visible=f'!(lblClaimsOn_{s}.Text = "yes")'),
-        checkbox(f"chkPLProfile_{s}", q("profile"), "true", 280, 92, 130, DisplayMode="DisplayMode.Disabled", Visible=f'lblClaimsOn_{s}.Text = "yes"'),
-        checkbox(f"chkPUserRead_{s}", q("User.Read"), 'If(IsBlank(varClone), true, ",User.Read," in "," & Coalesce(varClone.graphScopes, "") & ",")', 420, 92, 130,
-                 Visible=f'!(lblClaimsOn_{s}.Text = "yes")'),
-        checkbox(f"chkPLUserRead_{s}", q("User.Read"), "true", 420, 92, 130, DisplayMode="DisplayMode.Disabled", Visible=f'lblClaimsOn_{s}.Text = "yes"'),
-        hint(f"hntPDefault_{s}", f'If({claims_on}, "Always added: the token claims you chose on the previous step need them.", "Selected by default. They are locked once you choose token claims on the previous step.")',
+        field_label(f"lblPDefault_{s}", "Basic sign-in permissions", 0, 64, 400),
+        checkbox(f"chkPUserRead_{s}", q("User.Read"), 'If(IsBlank(varClone), true, ",User.Read," in "," & Coalesce(varClone.graphScopes, "") & ",")', 0, 92, 140, Visible=f'!({claims_on})'),
+        checkbox(f"chkPLUserRead_{s}", q("User.Read"), "true", 0, 92, 140, DisplayMode="DisplayMode.Disabled", Visible=f'{claims_on}'),
+        checkbox(f"chkPOpenid_{s}", q("openid"), 'If(IsBlank(varClone), false, ",openid," in "," & Coalesce(varClone.graphScopes, "") & ",")', 150, 92, 140, Visible=f'!({claims_on})'),
+        checkbox(f"chkPLOpenid_{s}", q("openid"), "true", 150, 92, 140, DisplayMode="DisplayMode.Disabled", Visible=f'{claims_on}'),
+        checkbox(f"chkPEmail_{s}", q("email"), 'If(IsBlank(varClone), false, ",email," in "," & Coalesce(varClone.graphScopes, "") & ",")', 300, 92, 140, Visible=f'!({claims_on})'),
+        checkbox(f"chkPLEmail_{s}", q("email"), "true", 300, 92, 140, DisplayMode="DisplayMode.Disabled", Visible=f'{claims_on}'),
+        checkbox(f"chkPProfile_{s}", q("profile"), 'If(IsBlank(varClone), false, ",profile," in "," & Coalesce(varClone.graphScopes, "") & ",")', 450, 92, 140, Visible=f'!({claims_on})'),
+        checkbox(f"chkPLProfile_{s}", q("profile"), "true", 450, 92, 140, DisplayMode="DisplayMode.Disabled", Visible=f'{claims_on}'),
+        checkbox(f"chkPOffline_{s}", q("offline_access"), 'If(IsBlank(varClone), false, ",offline_access," in "," & Coalesce(varClone.graphScopes, "") & ",")', 600, 92, 160),
+        hint(f"hntPDefault_{s}", f'If({claims_on}, "openid, email, profile and User.Read are always added: the token claims chosen on the previous step need them.", "User.Read is selected by default. Tick the others if the app needs them.")',
              0, 128, "Parent.Width"),
-        field_label(f"lblPMore_{s}", "Other Microsoft Graph permissions (delegated)", 0, 168, 500),
-        text_input(f"txtPerm_{s}", '""', q("Permission name, e.g. Mail.Read"), 0, 190, 300),
+        button(f"btnMorePerms_{s}", q("＋ Add additional delegated permissions"), "Set(varMorePerms, true)", 0, 170, 320, 36, kind="secondary",
+               Visible="!varMorePerms && CountRows(colPerms) = 0"),
+        label(f"lblPMore_{s}", q("Additional Microsoft Graph delegated permissions"), 0, 166, 500, 22, size=11, bold=True, Visible="varMorePerms || CountRows(colPerms) > 0"),
+        text_input(f"txtPerm_{s}", '""', q("Permission name, e.g. Mail.Read"), 0, 190, 300, Visible="varMorePerms || CountRows(colPerms) > 0"),
         button(f"btnAddPerm_{s}", q("Add"), f"""With({{v: Trim(txtPerm_{s}.Text)}},
     If(!IsMatch(v, "^[A-Za-z][A-Za-z0-9._-]{{1,99}}$"),
         Notify("Enter a Microsoft Graph delegated permission name, for example Mail.Read or Calendars.Read.", NotificationType.Warning),
-        Lower(v) in ["openid", "email", "profile", "user.read"],
-        Notify("openid, email, profile and User.Read are listed above.", NotificationType.Information),
+        Lower(v) in ["openid", "email", "profile", "user.read", "offline_access"],
+        Notify(v & " is one of the basic permissions above: tick it there.", NotificationType.Information),
         CountRows(Filter(colPerms, Lower(Value) = Lower(v))) > 0,
         Notify(v & " is already added.", NotificationType.Information),
         Collect(colPerms, {{Value: v}}); Reset(txtPerm_{s})
     )
-)""", 310, 190, 90, 36),
-        label(f"lblPCommon_{s}", q("Common:"), 420, 196, 70, 24, size=10, color="gTheme.Muted"),
-        link(f"lnkPOffline_{s}", q("offline_access"), 'If(CountRows(Filter(colPerms, Value = "offline_access")) = 0, Collect(colPerms, {Value: "offline_access"}))', 490, 196, 110),
-        link(f"lnkPMail_{s}", q("Mail.Read"), 'If(CountRows(Filter(colPerms, Value = "Mail.Read")) = 0, Collect(colPerms, {Value: "Mail.Read"}))', 605, 196, 90),
-        link(f"lnkPCal_{s}", q("Calendars.Read"), 'If(CountRows(Filter(colPerms, Value = "Calendars.Read")) = 0, Collect(colPerms, {Value: "Calendars.Read"}))', 700, 196, 120),
-        link(f"lnkPFiles_{s}", q("Files.Read"), 'If(CountRows(Filter(colPerms, Value = "Files.Read")) = 0, Collect(colPerms, {Value: "Files.Read"}))', 825, 196, 90),
-        gallery(f"galPerms_{s}", "colPerms", 0, 236, 520, "Parent.Height - 300", 40, children=[
-            label(f"lblPermRow_{s}", "ThisItem.Value", 8, 4, "Parent.TemplateWidth - 56", 32, size=11),
+)""", 310, 190, 90, 36, Visible="varMorePerms || CountRows(colPerms) > 0"),
+        gallery(f"galPerms_{s}", "colPerms", 0, 236, 520, "Parent.Height - 300", 40, Visible="varMorePerms || CountRows(colPerms) > 0", children=[
+            label(f"lblPermRow_{s}", "ThisItem.Value", 8, 4, "Parent.TemplateWidth - 56", 32, size=11, color="gTheme.Danger", bold=True),
             icon(f"icoPermRemove_{s}", "Icon.Trash", "Parent.TemplateWidth - 36", 8, 24, 24, color="gTheme.Danger", on_select="Remove(colPerms, ThisItem)"),
             rect(f"recPermSep_{s}", 8, 39, "Parent.TemplateWidth - 16", 1, fill="gTheme.Border", thickness=0),
         ]),
-        hint(f"lblNoPerms_{s}", q("None added. Most apps need only the sign-in permissions above."), 0, 244, 520, Visible="CountRows(colPerms) = 0"),
-        rect(f"recPInfo_{s}", 560, 236, "Parent.Width - 560", 150, fill="gTheme.PrimaryLight", border="gTheme.PrimaryLight"),
-        label(f"lblPInfo_{s}", q("Names are checked against Microsoft Graph when the request runs; unknown names are reported and not added. "
-                                  "The platform doesn't grant consent: users consent the first time they sign in, or the Entra ID team grants admin consent. "
-                                  "Permissions that need admin consent (e.g. Directory.Read.All) are reviewed in the Entra ID team's approval."),
-              574, 244, "Parent.Width - 588", 136, size=10, Wrap="true", VerticalAlign="VerticalAlign.Top"),
-        label(f"lblClaimsOn_{s}", f'If(chkIdEmail_{s}.Value || chkIdUpn_{s}.Value || chkIdGiven_{s}.Value || chkIdFamily_{s}.Value || chkAtEmail_{s}.Value || chkAtUpn_{s}.Value || chkAtIdtyp_{s}.Value, "yes", "")',
+        rect(f"recPInfo_{s}", 560, 168, "Parent.Width - 560", 170, fill="gTheme.PrimaryLight", border="gTheme.PrimaryLight"),
+        label(f"lblPInfo_{s}", q("Additional permissions are highlighted in red for your manager and the Entra ID team. Names are checked against "
+                                  "Microsoft Graph when the request runs; unknown names are reported and not added. The platform doesn't grant consent: "
+                                  "users consent the first time they sign in, or the Entra ID team grants admin consent."),
+              574, 176, "Parent.Width - 588", 156, size=10, Wrap="true", VerticalAlign="VerticalAlign.Top"),
+        label(f"lblClaimsOn_{s}", f'If(({app_type} <> "API" && (chkIdEmail_{s}.Value || chkIdUpn_{s}.Value || chkIdGiven_{s}.Value || chkIdFamily_{s}.Value)) || ({app_type} <> "Client" && (chkAtEmail_{s}.Value || chkAtUpn_{s}.Value || chkAtIdtyp_{s}.Value)), "yes", "")',
               0, 0, 10, 10, Visible="false"),
     ])
 
@@ -412,9 +421,11 @@ def new_app() -> None:
 "<tr><td style='color:#605e5c; padding:4px 0'>Owning group</td><td>" & If(IsBlank(team.GroupId), "none: you own it (tag team:user\\&lt;your id&gt;). You can hand it to a group later with <i>Owning group</i>.", team.DisplayName & " (tag team:group\\&lt;group id&gt;)") & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Account types</td><td>" & radAudience_{s}.Selected.Value & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Redirect URIs</td><td>" & If(ddPlatform_{s}.Selected.Value = "None", "none", ddPlatform_{s}.Selected.Value & ": " & txtRedirect_{s}.Text) & "</td></tr>" &
-"<tr><td style='color:#605e5c; padding:4px 0'>Expose an API</td><td>" & If(chkExpose_{s}.Value, If(radUri_{s}.Selected.Value = "Custom", txtCustomUri_{s}.Text, "api://{{appId}}") & If(CountRows(colScopes) > 0, " — scopes: " & Concat(colScopes, Value, ", "), ""), "no") & "</td></tr>" &
+"<tr><td style='color:#605e5c; padding:4px 0'>Expose an API</td><td>" & If({expose}, If(radUri_{s}.Selected.Value = "Custom", txtCustomUri_{s}.Text, "api://{{appId}}") & If(CountRows(colScopes) > 0, " — scopes: " & Concat(colScopes, Value, ", "), ""), "no") & "</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0'>Groups claim</td><td>" & ddGroupsClaim_{s}.Selected.Value & "</td></tr>" &
-"<tr><td style='color:#605e5c; padding:4px 0'>API permissions</td><td>" & Coalesce(Substitute(With({{raw: Concat(Filter(Table({{n: "openid", on: chkPOpenid_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "email", on: chkPEmail_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "profile", on: chkPProfile_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "User.Read", on: chkPUserRead_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}), on), n & ",") & Concat(colPerms, Value & ",")}}, If(Len(raw) > 0, Left(raw, Len(raw) - 1), "")), ",", ", "), "none") & " (Microsoft Graph, delegated)</td></tr>" &
+"<tr><td style='color:#605e5c; padding:4px 0'>App type</td><td>" & {app_type} & "</td></tr>" &
+"<tr><td style='color:#605e5c; padding:4px 0'>API permissions</td><td>" & Coalesce(Substitute(Concat(Filter(Table({{n: "User.Read", on: chkPUserRead_{s}.Value || {claims_on}}}, {{n: "openid", on: chkPOpenid_{s}.Value || {claims_on}}}, {{n: "email", on: chkPEmail_{s}.Value || {claims_on}}}, {{n: "profile", on: chkPProfile_{s}.Value || {claims_on}}}, {{n: "offline_access", on: chkPOffline_{s}.Value}}), on), n, ","), ",", ", "), "none") &
+    If(CountRows(colPerms) > 0, "<br><span style='color:#a4262c'><b>Additional: " & Concat(colPerms, Value, ", ") & "</b></span>", "") & " (Microsoft Graph, delegated)</td></tr>" &
 "<tr><td style='color:#605e5c; padding:4px 0; vertical-align:top'>App roles</td><td>" &
     If(CountRows(colRoles) = 0, "none", "<ul style='margin:0; padding-left:18px'>" &
         Concat(ForAll(colRoles As r, {{t: "<li><b>" & r.Value & "</b> → " & Coalesce(Concat(Filter(colRoleGroups, RoleKey = r.Key), DisplayName, ", "), "<i>nobody</i>") & "</li>"}}), t) & "</ul>") & "</td></tr>" &
@@ -438,10 +449,10 @@ If(CountRows(colRoles) = 0 && CountRows(Filter(colRoleGroups, RoleKey = "default
     If(Len({full}) > 120, "The full display name is longer than 120 characters; shorten the free-text part."),
     If(Len(Trim(txtJustification_{s}.Text)) < 10, "Business justification is required (10+ characters)."),
     If(Len(Trim(txtDescription_{s}.Text)) > 1024, "Description: at most 1024 characters (Entra's limit)."),
-    If(ddPlatform_{s}.Selected.Value <> "None" && !IsMatch(Trim(txtRedirect_{s}.Text), "^\\S+$"), "Redirect URIs: no spaces; separate several with ;")
+    If({app_type} <> "API" && ddPlatform_{s}.Selected.Value <> "None" && !IsMatch(Trim(txtRedirect_{s}.Text), "^\\S+$"), "Redirect URIs: no spaces; separate several with ;")
 )"""
     err2 = f"""Coalesce(
-    If(chkExpose_{s}.Value && radUri_{s}.Selected.Value = "Custom" && !IsMatch(Trim(txtCustomUri_{s}.Text), "^(api://|https://)\\S+$"), "The custom Application ID URI must start with api:// or https://"),
+    If({expose} && radUri_{s}.Selected.Value = "Custom" && !IsMatch(Trim(txtCustomUri_{s}.Text), "^(api://|https://)\\S+$"), "The custom Application ID URI must start with api:// or https://"),
     If(CountRows(Filter(colScopes, !IsMatch(Value, gValuePattern) || IsBlank(Trim(AdminName)) || IsBlank(Trim(AdminDesc)))) > 0, "Each scope needs a name (letters, digits, . _ -), an admin consent display name and a description."),
     If(CountRows(colScopes) <> CountRows(Distinct(colScopes, Value)), "Scope names must be unique.")
 )"""
@@ -461,17 +472,19 @@ JSON({{
     description: {clean(f"txtDescription_{s}.Text")},
     signInAudience: If(radAudience_{s}.Selected.Value = "Multitenant", "AzureADMultipleOrgs", "AzureADMyOrg"),
     owningGroup: If(IsBlank(team.GroupId), Blank(), {{mode: "existing", id: team.GroupId, displayName: team.DisplayName}}),
-    redirectUrisWeb: If(ddPlatform_{s}.Selected.Value = "Web", Trim(txtRedirect_{s}.Text), ""),
-    redirectUrisSpa: If(ddPlatform_{s}.Selected.Value = "Single-page app", Trim(txtRedirect_{s}.Text), ""),
+    redirectUrisWeb: If({app_type} <> "API" && ddPlatform_{s}.Selected.Value = "Web", Trim(txtRedirect_{s}.Text), ""),
+    redirectUrisSpa: If({app_type} <> "API" && ddPlatform_{s}.Selected.Value = "Single-page app", Trim(txtRedirect_{s}.Text), ""),
     exposeApi: {{
-        enabled: chkExpose_{s}.Value,
+        enabled: {expose},
         identifierUriTemplate: If(radUri_{s}.Selected.Value = "Custom", Trim(txtCustomUri_{s}.Text), "api://{{appId}}"),
-        scopes: If(chkExpose_{s}.Value, ForAll(colScopes, {{value: ThisRecord.Value, type: ThisRecord.Type, adminConsentDisplayName: ThisRecord.AdminName, adminConsentDescription: ThisRecord.AdminDesc}}), Filter(ForAll(colScopes, {{value: ThisRecord.Value, type: ThisRecord.Type, adminConsentDisplayName: ThisRecord.AdminName, adminConsentDescription: ThisRecord.AdminDesc}}), false))
+        scopes: If({expose}, ForAll(colScopes, {{value: ThisRecord.Value, type: ThisRecord.Type, adminConsentDisplayName: ThisRecord.AdminName, adminConsentDescription: ThisRecord.AdminDesc}}), Filter(ForAll(colScopes, {{value: ThisRecord.Value, type: ThisRecord.Type, adminConsentDisplayName: ThisRecord.AdminName, adminConsentDescription: ThisRecord.AdminDesc}}), false))
     }},
-    optionalClaimsIdToken: Concat(Filter(Table({{n: "email", on: chkIdEmail_{s}.Value}}, {{n: "upn", on: chkIdUpn_{s}.Value}}, {{n: "given_name", on: chkIdGiven_{s}.Value}}, {{n: "family_name", on: chkIdFamily_{s}.Value}}), on), n, ","),
-    optionalClaimsAccessToken: Concat(Filter(Table({{n: "email", on: chkAtEmail_{s}.Value}}, {{n: "upn", on: chkAtUpn_{s}.Value}}, {{n: "idtyp", on: chkAtIdtyp_{s}.Value}}), on), n, ","),
+    optionalClaimsIdToken: If({app_type} = "API", "", Concat(Filter(Table({{n: "email", on: chkIdEmail_{s}.Value}}, {{n: "upn", on: chkIdUpn_{s}.Value}}, {{n: "given_name", on: chkIdGiven_{s}.Value}}, {{n: "family_name", on: chkIdFamily_{s}.Value}}), on), n, ",")),
+    optionalClaimsAccessToken: If({app_type} = "Client", "", Concat(Filter(Table({{n: "email", on: chkAtEmail_{s}.Value}}, {{n: "upn", on: chkAtUpn_{s}.Value}}, {{n: "idtyp", on: chkAtIdtyp_{s}.Value}}), on), n, ",")),
     groupMembershipClaims: ddGroupsClaim_{s}.Selected.Value,
-    graphDelegatedScopes: With({{raw: Concat(Filter(Table({{n: "openid", on: chkPOpenid_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "email", on: chkPEmail_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "profile", on: chkPProfile_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "User.Read", on: chkPUserRead_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}), on), n & ",") & Concat(colPerms, Value & ",")}}, If(Len(raw) > 0, Left(raw, Len(raw) - 1), "")),
+    graphDelegatedScopes: With({{raw: Concat(Filter(Table({{n: "User.Read", on: chkPUserRead_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "openid", on: chkPOpenid_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "email", on: chkPEmail_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "profile", on: chkPProfile_{s}.Value || lblClaimsOn_{s}.Text = "yes"}}, {{n: "offline_access", on: chkPOffline_{s}.Value}}), on), n & ",") & Concat(colPerms, Value & ",")}}, If(Len(raw) > 0, Left(raw, Len(raw) - 1), "")),
+    graphAdditionalScopes: Concat(colPerms, Value, ","),
+    appType: Switch({app_type}, "API", "api", "Client", "client", "other"),
     ownerRole: If(CountRows(colRoles) > 0, ddOwnerRole_{s}.Selected.Value, ""),
     defaultAccess: ForAll(Filter(colRoleGroups, RoleKey = "default" && CountRows(colRoles) = 0) As g, {{mode: g.Mode, id: g.GroupId, displayName: g.DisplayName}}),
     appRoles: ForAll(colRoles As r, {{
@@ -532,7 +545,7 @@ JSON({{
         label(f"lblStepOf_{s}", '"Step " & Coalesce(varStep, 1) & " of 6"', 24, bar_y, 200, 36, size=10, color="gTheme.Muted"),
         label(f"lblStepError_{s}", "varStepError", 764, "Parent.Height - 58", "Parent.Width - 764 - 160", 52, size=10, bold=True,
               color="gTheme.Danger", Wrap="true", VerticalAlign="VerticalAlign.Middle", Visible="!IsBlank(varStepError)"),
-        label(f"lblFullName_{s}", f'{prefix} & Trim(txtAppName_{s}.Text)', 0, 0, 10, 10, Visible="false"),
+        label(f"lblFullName_{s}", f'{prefix} & Trim(txtAppName_{s}.Text) & {suffix}', 0, 0, 10, 10, Visible="false"),
         label(f"lblErr1_{s}", err1, 0, 0, 10, 10, Visible="false"),
         label(f"lblErr2_{s}", err2, 0, 0, 10, 10, Visible="false"),
         label(f"lblErr3_{s}", err3, 0, 0, 10, 10, Visible="false"),
@@ -1054,6 +1067,120 @@ IfError(
     write("scrDeleteApp", root(s, children), "Delete or disable an app registration you own (request type deleteAppRegistration: ER-01 approvals, then ER-02)")
 
 
+# ============================================================================ scrGrantAccess
+def grant_access() -> None:
+    """Ask for access to an enterprise app for yourself or for any group. Search (ER-05, purpose access) needs no
+    ownership. ER-01 resolves the group and tells the approvers whether the requester is a member (green / red);
+    ER-02 assigns Default Access, or the chosen role when the app has roles."""
+    s = "Grant"
+    a_in = f"Lower(Trim(txtAppId_{s}.Text))"
+    find = f"""If(
+    !IsMatch({a_in}, {GUID_RX}),
+        Notify("Enter the Application (client) ID, enterprise app Object ID or app registration Object ID (a GUID).", NotificationType.Warning),
+    varAccBusy,
+        Notify("Still searching, one moment.", NotificationType.Information),
+    {NEW_REQ_ID};
+    Set(varAccApp, Blank()); Set(varAccMsg, "");
+    IfError(
+        Set(varAccRec, Patch(EntraRequests, Defaults(EntraRequests), {{
+            Title: varReqId, RequestType: {{Value: "lookupApp"}}, Status: {{Value: "Submitted"}},
+            TargetDisplayName: {a_in}, TargetObjectId: {a_in}, Justification: "Find an enterprise app to request access to",
+            PayloadJson: JSON({{purpose: "access"}}, JSONFormat.Compact)
+        }})),
+        Notify("The search could not start: " & FirstError.Message, NotificationType.Error),
+        Set(varAccPolls, 0); Set(varAccBusy, true)
+    )
+)"""
+    poll = f"""Set(varAccPolls, varAccPolls + 1);
+Refresh(EntraRequests);
+With({{r: LookUp(EntraRequests, ID = varAccRec.ID)}},
+    If(
+        r.Status.Value = "Completed",
+            With({{j: ParseJSON(r.ResultJson)}},
+                Set(varAccApp, {{Title: Text(j.displayName), SpId: Text(j.servicePrincipalId), AppId: Text(j.appId), RolesJson: Text(j.appRolesJson),
+                    AssignmentRequired: Text(j.assignmentRequired)}})
+            );
+            Set(varAccBusy, false); Reset(ddAccRole_{s}),
+        r.Status.Value = "Failed",
+            Set(varAccBusy, false);
+            Set(varAccMsg, Coalesce(r.ErrorMessage, "No enterprise application found with that ID."));
+            Notify(varAccMsg, NotificationType.Error),
+        varAccPolls >= 40,
+            Set(varAccBusy, false); Set(varAccMsg, "No answer yet. Search again in a minute.")
+    )
+)"""
+    roles = ('With({r: ForAll(Table(ParseJSON(Coalesce(varAccApp.RolesJson, "[]"))), {Id: Text(ThisRecord.Value.id), Value: Text(ThisRecord.Value.value)})}, '
+             'If(CountRows(r) = 0, Table({Id: "00000000-0000-0000-0000-000000000000", Value: "Default Access"}), r))')
+    is_group = f'radWho_{s}.Selected.Value = "A group"'
+    submit = f"""With({{err: Coalesce(
+        If(IsBlank(varAccApp), "Search for the app first."),
+        If({is_group} && Len(Trim(txtAccGroup_{s}.Text)) < 2, "Enter the group's name or Object ID."),
+        If(IsBlank(ddAccRole_{s}.Selected.Id), "Choose the access to give."),
+        If(Len(Trim(txtJust_{s}.Text)) < 10, "Business justification is required (10+ characters).")
+    )}},
+    If(!IsBlank(err),
+        Notify(err, NotificationType.Warning),
+        {NEW_REQ_ID};
+        IfError(
+            Patch(EntraRequests, Defaults(EntraRequests), {{
+                Title: varReqId,
+                RequestType: {{Value: "grantAccess"}},
+                Status: {{Value: "Submitted"}},
+                TargetDisplayName: varAccApp.Title,
+                TargetObjectId: varAccApp.SpId,
+                Justification: Trim(txtJust_{s}.Text),
+                TicketReference: Trim(txtTicket_{s}.Text),
+                PayloadJson: JSON({{servicePrincipalId: varAccApp.SpId, appId: varAccApp.AppId, appDisplayName: varAccApp.Title,
+                    principalType: If({is_group}, "group", "user"), groupQuery: If({is_group}, Trim(txtAccGroup_{s}.Text), ""),
+                    roleId: If(ddAccRole_{s}.Selected.Value = "Default Access", "", ddAccRole_{s}.Selected.Id), roleValue: ddAccRole_{s}.Selected.Value}}, JSONFormat.Compact)
+            }}),
+            Notify("The request could not be submitted: " & FirstError.Message, NotificationType.Error),
+            Notify("Request " & varReqId & " submitted. Your manager and the Entra ID team approve it.", NotificationType.Success);
+            Set(varAccApp, Blank()); Reset(txtAppId_{s}); Reset(txtAccGroup_{s}); Reset(txtJust_{s}); Reset(txtTicket_{s}); Reset(radWho_{s});
+            Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade)
+        )
+    )
+)"""
+    detail = container(f"cntDetail_{s}", 376, 160, "Parent.Width - 416", "Parent.Height - 160 - 92", [
+        label(f"lblAppTitle_{s}", "varAccApp.Title", 0, 0, "Parent.Width", 30, size=15, bold=True),
+        hint(f"lblAppInfo_{s}", '"App ID " & varAccApp.AppId & "    ·    Enterprise app " & varAccApp.SpId & If(Lower(varAccApp.AssignmentRequired) = "true", "    ·    assignment required", "    ·    assignment not required")',
+             0, 32, "Parent.Width"),
+        field_label(f"lblWho_{s}", "Who needs access?", 0, 72, 300, required=True),
+        radio(f"radWho_{s}", '["Me", "A group"]', q("Me"), 0, 94, 300, 36),
+        text_input(f"txtAccGroup_{s}", f'Coalesce(ddAccMyGroup_{s}.Selected.GroupId, "")', q("Group name or Object ID"), 0, 140, 330, 36, Visible=is_group),
+        group_dropdown(f"ddAccMyGroup_{s}", "gMyGroups", "Title", 340, 140, 280, 36, hint="or pick one of your groups", Visible=is_group),
+        hint(f"hntAccGroup_{s}", q("Any security group can be requested. Your manager and the Entra ID team see whether you are a member of it."), 0, 182, "Parent.Width",
+             Visible=is_group),
+        field_label(f"lblAccRole_{s}", "Access", 0, 214, 300, required=True),
+        dropdown(f"ddAccRole_{s}", roles, '""', 0, 236, 330, 36, AllowEmptySelection="true"),
+        hint(f"hntAccRole_{s}", q("Default Access when the app has no roles; otherwise pick one of its roles."), 340, 244, "Parent.Width - 340"),
+        field_label(f"lblJust_{s}", "Business justification", COL1_X, "Parent.Height - 140", COL_W, required=True),
+        text_input(f"txtJust_{s}", '""', q("Why is this access needed?"), COL1_X, "Parent.Height - 118", COL_W, 72, multiline=True),
+        field_label(f"lblTicket_{s}", "Change ticket", COL2_X, "Parent.Height - 140", COL_W),
+        text_input(f"txtTicket_{s}", '""', q("Optional"), COL2_X, "Parent.Height - 118", COL_W),
+    ], Visible="!IsBlank(varAccApp)")
+    children = frame(s, q("Request app access"), q("Ask for access to an enterprise app for yourself or for a group. Manager and Entra ID team approve."),
+                     q("Home  ›  Access  ›  Request app access")) + [
+        rect(f"recApps_{s}", 24, 146, 320, "Parent.Height - 146 - 80"),
+        label(f"lblAppsHead_{s}", q("Find the application"), 40, 156, 288, 26, size=12, bold=True),
+        field_label(f"lblAppId_{s}", "Client ID or enterprise app / app Object ID", 40, 190, 288, required=True),
+        text_input(f"txtAppId_{s}", '""', q("00000000-0000-0000-0000-000000000000"), 40, 212, 288, 34, DisplayMode="If(varAccBusy, DisplayMode.Disabled, DisplayMode.Edit)"),
+        button(f"btnFind_{s}", q("Search"), find, 40, 256, 120, 34, DisplayMode="If(varAccBusy, DisplayMode.Disabled, DisplayMode.Edit)"),
+        label(f"lblLookupBusy_{s}", q("Searching Entra…"), 170, 256, 158, 34, size=10, bold=True, color="gTheme.Primary", Visible="varAccBusy"),
+        label(f"lblLookupMsg_{s}", "varAccMsg", 40, 300, 288, 96, size=10, bold=True, color="gTheme.Danger", Wrap="true", VerticalAlign="VerticalAlign.Top", Visible="!IsBlank(varAccMsg)"),
+        label(f"lblLookupInfo_{s}", q("Any enterprise application in the tenant can be found. Access is added under the app's Users and groups once approved."),
+              40, 404, 288, 80, size=9, color="gTheme.Muted", Wrap="true", VerticalAlign="VerticalAlign.Top"),
+        timer(f"tmrLookup_{s}", poll, "varAccBusy"),
+        rect(f"recDetail_{s}", 360, 146, "Parent.Width - 384", "Parent.Height - 146 - 80"),
+        label(f"lblPick_{s}", q("Search for the application on the left."), 376, 170, 500, 30, size=11, color="gTheme.Muted", Visible="IsBlank(varAccApp)"),
+        detail,
+        rect(f"recCmd_{s}", 0, "Parent.Height - 64", "Parent.Width", 64),
+        button(f"btnSubmit_{s}", q("Submit request"), submit, 360, "Parent.Height - 50", 170, 36, DisplayMode="If(IsBlank(varAccApp), DisplayMode.Disabled, DisplayMode.Edit)"),
+        button(f"btnCancel_{s}", q("Cancel"), "Set(varAccApp, Blank()); Navigate(scrHome, ScreenTransition.Fade)", 540, "Parent.Height - 50", 120, 36, kind="subtle"),
+    ]
+    write("scrGrantAccess", root(s, children), "Request access to an enterprise app for yourself or a group (request type grantAccess)")
+
+
 # ============================================================================ scrMyRequests
 def my_requests() -> None:
     s = "My"
@@ -1111,7 +1238,8 @@ If(!IsBlank({sel}.RequestSummary), "<p style='margin-top:10px; color:#605e5c'><b
     clone = f"""With({{r: {sel}, j: ParseJSON(Coalesce({sel}.PayloadJson, "{{}}"))}},
     If(r.RequestType.Value = "createAppRegistration",
         Set(varClone, {{
-            source: r.Title, payload: r.PayloadJson, appCatId: r.AppCatId, justification: r.Justification, ticket: r.TicketReference,
+            source: r.Title, payload: r.PayloadJson, appCatId: r.AppCatId, justification: Trim(PlainText(r.Justification)), ticket: r.TicketReference,
+            appType: Text(j.appType),
             env: Text(j.appEnv), bor: Text(j.borShortName), name: Text(j.nameText), description: Text(j.description),
             teamId: Text(j.owningGroup.id),
             platform: If(!IsBlank(Text(j.redirectUrisWeb)), "Web", !IsBlank(Text(j.redirectUrisSpa)), "Single-page app", "None"),
@@ -1127,7 +1255,7 @@ If(!IsBlank({sel}.RequestSummary), "<p style='margin-top:10px; color:#605e5c'><b
         Navigate(scrNewApp, ScreenTransition.Fade),
         Set(varCloneChange, {{
             source: r.Title, payload: r.PayloadJson, appId: Lower(Coalesce(Text(j.applicationObjectId), r.TargetObjectId)),
-            justification: r.Justification, ticket: r.TicketReference,
+            justification: Trim(PlainText(r.Justification)), ticket: r.TicketReference,
             uriTemplate: Text(j.identifierUriTemplate), assignReq: Boolean(j.appRoleAssignmentRequired)
         }});
         Set(varOp, Switch(r.RequestType.Value, "exposeApi", "exposeApi", "addAppRoles", "addAppRoles", "assignGroupsToAppRoles", "assignGroups", "createSP"));
@@ -1191,5 +1319,6 @@ if __name__ == "__main__":
     app_change()
     tag_group()
     delete_app()
+    grant_access()
     my_requests()
     print("generated:", ", ".join(sorted(p.name for p in OUT.glob("*.pa.yaml"))))

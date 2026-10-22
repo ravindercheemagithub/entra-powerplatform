@@ -90,6 +90,7 @@ Power Automate's importable formats are a solution `.zip` or a legacy package `.
   5. **Review + submit**.
 - **No group creation and no owners.** Groups are created outside this app; **Add existing group** makes one selectable (by name or Object ID, if you are a member or owner). App registrations get no owners. **Who may change an app is its team tag**: `team:user\<id>` (the creator) or `team:group\<id>` (members of that group). **Owning group** hands a user-owned app to a group.
 - **Expose an API / App roles / Role assignments / Enterprise application**: **Search** by the app's Application (client) ID or Object ID; you can continue only if its team tag names you or a group you are in.
+- **Request app access**: Default Access (or a role) on any enterprise app for yourself or a group; approvers see group membership in green / red.
 - **Delete app registration**: delete, permanently delete, disable sign-in, or delete only the enterprise app, for apps you own (approved like any request).
 - **My requests**: approval stages, the IDs that were created, and errors.
 

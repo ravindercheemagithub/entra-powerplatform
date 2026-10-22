@@ -19,13 +19,14 @@ If(varResetNewApp,
     Set(varMaxStep, 1);
     Set(varStepError, "");
     Clear(colScopes); Clear(colRoles); Clear(colRoleGroups); Clear(colPerms);
-    Reset(txtAppName_NewApp); Reset(txtAppCatId_NewApp); Reset(ddEnv_NewApp); Reset(txtBorShort_NewApp); Reset(cmbTeam_NewApp);
+    Set(varMorePerms, false);
+    Reset(txtAppName_NewApp); Reset(txtAppCatId_NewApp); Reset(ddEnv_NewApp); Reset(ddType_NewApp); Reset(txtBorShort_NewApp); Reset(cmbTeam_NewApp);
     Reset(txtJustification_NewApp); Reset(txtDescription_NewApp); Reset(ddPlatform_NewApp); Reset(txtRedirect_NewApp);
     Reset(chkExpose_NewApp); Reset(radUri_NewApp); Reset(txtCustomUri_NewApp);
     Reset(chkIdEmail_NewApp); Reset(chkIdUpn_NewApp); Reset(chkIdGiven_NewApp); Reset(chkIdFamily_NewApp);
     Reset(chkAtEmail_NewApp); Reset(chkAtUpn_NewApp); Reset(chkAtIdtyp_NewApp); Reset(ddGroupsClaim_NewApp);
     Reset(radAudience_NewApp); Reset(txtTags_NewApp); Reset(txtTicket_NewApp);
-    Reset(chkPOpenid_NewApp); Reset(chkPEmail_NewApp); Reset(chkPProfile_NewApp); Reset(chkPUserRead_NewApp); Reset(txtPerm_NewApp);
+    Reset(chkPOpenid_NewApp); Reset(chkPEmail_NewApp); Reset(chkPProfile_NewApp); Reset(chkPUserRead_NewApp); Reset(chkPOffline_NewApp); Reset(txtPerm_NewApp);
     Reset(ddOwnerRole_NewApp); Reset(txtDefUser_NewApp); Reset(cmbDefGroup_NewApp);
     // Clone: the fields above take their defaults from varClone; the scopes, roles and role groups come from its payload.
     If(!IsBlank(varClone),
@@ -87,6 +88,10 @@ Refresh(EntraRequests)
 // ===== scrDeleteApp.OnVisible
 Set(varDelBusy, false); Set(varDelMsg, ""); Set(varDelConfirm, false);
 Reset(txtAppId_Delete); Reset(radDelAction_Delete); Reset(txtJust_Delete); Reset(txtTicket_Delete)
+
+// ===== scrGrantAccess.OnVisible
+Set(varAccBusy, false); Set(varAccMsg, "");
+Reset(txtAppId_Grant); Reset(radWho_Grant); Reset(txtAccGroup_Grant); Reset(txtJust_Grant); Reset(txtTicket_Grant)
 
 // ===== scrMyRequests.OnVisible
 Refresh(EntraRequests)

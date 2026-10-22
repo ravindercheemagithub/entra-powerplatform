@@ -1,6 +1,6 @@
 # 9. Import the flows as a solution
 
-Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_7_0_0.zip`](../solution/dist/EntraSelfService_1_7_0_0.zip) (version 1.7) is an **unmanaged** solution containing:
+Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_8_0_0.zip`](../solution/dist/EntraSelfService_1_8_0_0.zip) (version 1.8) is an **unmanaged** solution containing:
 
 | Component | What it is |
 |---|---|
@@ -38,7 +38,7 @@ Import **as the account that should own the flows** (your account while testing,
 
 ## 9.2 Download the zip
 
-On GitHub open [`solution/dist/EntraSelfService_1_7_0_0.zip`](../solution/dist/EntraSelfService_1_7_0_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
+On GitHub open [`solution/dist/EntraSelfService_1_8_0_0.zip`](../solution/dist/EntraSelfService_1_8_0_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
 
 ## 9.3 Import
 
@@ -90,6 +90,19 @@ Open each flow once in the designer and check it has no errors before turning it
 | SharePoint actions fail with *List not found* | The site URL variable is wrong, or SP-00 hasn't created the lists yet |
 
 ## 9.6 Updating
+
+**1.8:** app type, simpler permissions, highlights for approvers, and a new *Request app access* card.
+- **App type** on Basics: *Client*, *API* or *Others*. *Client* adds `-client` to the name and disables Expose an API and access-token claims; *API* adds `-api`, ticks Expose an API, and disables ID-token claims and redirect URIs. ER-02 tags the app `appType:client|api|other`.
+- **API permissions:** only `User.Read` is ticked by default; `openid`, `email`, `profile`, `offline_access` are optional checkboxes (the first three plus `User.Read` are still locked on when token claims are chosen). Any other delegated permission is added behind **＋ Add additional delegated permissions**.
+- **Highlights for approvers:** additional permissions, and for access requests whether the requester is a member of the group, are shown with 🔴 / 🟢 markers in the approval card (it can't show colours) and in red / green in a separate HTML email sent to each approver before their approval.
+- **Request app access** card (ER-01 → ER-02, request type `grantAccess`): anyone can search any enterprise app (client ID, enterprise app Object ID or app Object ID) and ask for Default Access, or one of the app's roles, for themselves or any security group. ER-01 now uses the HTTP with Microsoft Entra ID connection to resolve the group and check membership.
+- **Clone** strips HTML from the business justification.
+
+To upgrade:
+1. EntraRequests → **List settings → RequestType** → add the choice `grantAccess`.
+2. If cloned justifications showed `<div class="ExternalClass…">`, the **Justification** column is rich text: **List settings → Justification → Specify the type of text to allow → Plain text** (the clone fix handles old items either way; the approval cards need the plain-text column).
+3. Import the 1.8 zip over the existing solution. ER-01 now asks for the **HTTP with Microsoft Entra ID** connection too (the same one ER-02 uses).
+4. Re-import the app (`EntraSelfService.msapp`), add the data sources, Save and Publish.
 
 **1.7:** API permissions, users as role holders, owner access, always an enterprise app, and deleting app registrations.
 - **API permissions** step in the wizard: `openid`, `email`, `profile`, `User.Read` selected by default (locked on when token claims are chosen), plus any Microsoft Graph delegated permission by name. ER-02 looks the names up in Graph and adds them as the app's API permissions; consent is not granted by the platform.

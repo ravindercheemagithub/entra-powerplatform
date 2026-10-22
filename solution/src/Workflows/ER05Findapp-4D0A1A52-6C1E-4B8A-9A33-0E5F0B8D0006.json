@@ -140,6 +140,32 @@
             ]
           }
         },
+        "Init_varSp": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varSp",
+                "type": "object",
+                "value": {}
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varGroupOwner": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Purpose": {
+          "type": "Compose",
+          "inputs": "@coalesce(json(coalesce(triggerOutputs()?['body/PayloadJson'], '{}'))?['purpose'], 'change')",
+          "runAfter": {
+            "Init_varSp": [
+              "Succeeded"
+            ]
+          }
+        },
         "Try": {
           "type": "Scope",
           "actions": {
@@ -217,51 +243,348 @@
                 ]
               }
             },
-            "HTTP_App_by_appId": {
-              "type": "OpenApiConnection",
-              "inputs": {
-                "host": {
-                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                  "connectionName": "shared_webcontents",
-                  "operationId": "InvokeHttp"
-                },
-                "parameters": {
-                  "request/method": "GET",
-                  "request/url": "https://graph.microsoft.com/v1.0/applications?$filter=appId eq '@{outputs('App_query')}'&$select=id,appId,displayName,tags,identifierUris,appRoles,api"
-                },
-                "authentication": "@parameters('$authentication')"
-              },
-              "runAfter": {
-                "HTTP_Get_requester": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "App_found_by_appId": {
+            "Lookup_for_access": {
               "type": "If",
               "expression": {
                 "and": [
                   {
                     "equals": [
-                      "@empty(body('HTTP_App_by_appId')?['value'])",
-                      false
+                      "@outputs('Purpose')",
+                      "access"
                     ]
                   }
                 ]
               },
               "actions": {
-                "Set_App_from_appId": {
-                  "type": "SetVariable",
+                "HTTP_SP_by_appId": {
+                  "type": "OpenApiConnection",
                   "inputs": {
-                    "name": "varApp",
-                    "value": "@first(body('HTTP_App_by_appId')?['value'])"
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                      "connectionName": "shared_webcontents",
+                      "operationId": "InvokeHttp"
+                    },
+                    "parameters": {
+                      "request/method": "GET",
+                      "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals?$filter=appId eq '@{outputs('App_query')}'&$select=id,appId,displayName,appRoles,appRoleAssignmentRequired"
+                    },
+                    "authentication": "@parameters('$authentication')"
                   },
                   "runAfter": {}
+                },
+                "SP_found_by_appId": {
+                  "type": "If",
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@empty(body('HTTP_SP_by_appId')?['value'])",
+                          false
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Set_SP_from_appId": {
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "varSp",
+                        "value": "@first(body('HTTP_SP_by_appId')?['value'])"
+                      },
+                      "runAfter": {}
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "HTTP_SP_by_id": {
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                            "connectionName": "shared_webcontents",
+                            "operationId": "InvokeHttp"
+                          },
+                          "parameters": {
+                            "request/method": "GET",
+                            "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals?$filter=id eq '@{outputs('App_query')}'&$select=id,appId,displayName,appRoles,appRoleAssignmentRequired"
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        },
+                        "runAfter": {}
+                      },
+                      "SP_found_by_id": {
+                        "type": "If",
+                        "expression": {
+                          "and": [
+                            {
+                              "equals": [
+                                "@empty(body('HTTP_SP_by_id')?['value'])",
+                                false
+                              ]
+                            }
+                          ]
+                        },
+                        "actions": {
+                          "Set_SP_from_id": {
+                            "type": "SetVariable",
+                            "inputs": {
+                              "name": "varSp",
+                              "value": "@first(body('HTTP_SP_by_id')?['value'])"
+                            },
+                            "runAfter": {}
+                          }
+                        },
+                        "else": {
+                          "actions": {
+                            "HTTP_App_of_query": {
+                              "type": "OpenApiConnection",
+                              "inputs": {
+                                "host": {
+                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                                  "connectionName": "shared_webcontents",
+                                  "operationId": "InvokeHttp"
+                                },
+                                "parameters": {
+                                  "request/method": "GET",
+                                  "request/url": "https://graph.microsoft.com/v1.0/applications?$filter=id eq '@{outputs('App_query')}'&$select=appId"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                              },
+                              "runAfter": {}
+                            },
+                            "App_of_query_found": {
+                              "type": "If",
+                              "expression": {
+                                "and": [
+                                  {
+                                    "equals": [
+                                      "@empty(body('HTTP_App_of_query')?['value'])",
+                                      false
+                                    ]
+                                  }
+                                ]
+                              },
+                              "actions": {
+                                "HTTP_SP_of_app": {
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                                      "connectionName": "shared_webcontents",
+                                      "operationId": "InvokeHttp"
+                                    },
+                                    "parameters": {
+                                      "request/method": "GET",
+                                      "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals?$filter=appId eq '@{first(body('HTTP_App_of_query')?['value'])?['appId']}'&$select=id,appId,displayName,appRoles,appRoleAssignmentRequired"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  },
+                                  "runAfter": {}
+                                },
+                                "SP_of_app_found": {
+                                  "type": "If",
+                                  "expression": {
+                                    "and": [
+                                      {
+                                        "equals": [
+                                          "@empty(body('HTTP_SP_of_app')?['value'])",
+                                          false
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "actions": {
+                                    "Set_SP_from_app": {
+                                      "type": "SetVariable",
+                                      "inputs": {
+                                        "name": "varSp",
+                                        "value": "@first(body('HTTP_SP_of_app')?['value'])"
+                                      },
+                                      "runAfter": {}
+                                    }
+                                  },
+                                  "else": {
+                                    "actions": {
+                                      "Fail_no_SP": {
+                                        "type": "OpenApiConnection",
+                                        "inputs": {
+                                          "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                            "connectionName": "shared_sharepointonline",
+                                            "operationId": "PatchItem"
+                                          },
+                                          "parameters": {
+                                            "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                                            "table": "EntraRequests",
+                                            "id": "@int(triggerOutputs()?['body/ID'])",
+                                            "item/Title": "@triggerOutputs()?['body/Title']",
+                                            "item/Status/Value": "Failed",
+                                            "item/ErrorMessage": "This app registration has no enterprise application yet, so nobody can be given access. Its owner can create one with the Enterprise application card."
+                                          },
+                                          "authentication": "@parameters('$authentication')"
+                                        },
+                                        "runAfter": {}
+                                      },
+                                      "Stop_no_SP": {
+                                        "type": "Terminate",
+                                        "inputs": {
+                                          "runStatus": "Failed",
+                                          "runError": {
+                                            "code": "NoEnterpriseApp",
+                                            "message": "This app registration has no enterprise application yet, so nobody can be given access. Its owner can create one with the Enterprise application card."
+                                          }
+                                        },
+                                        "runAfter": {
+                                          "Fail_no_SP": [
+                                            "Succeeded"
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "runAfter": {
+                                    "HTTP_SP_of_app": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                }
+                              },
+                              "else": {
+                                "actions": {
+                                  "Fail_access_not_found": {
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                      "host": {
+                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                        "connectionName": "shared_sharepointonline",
+                                        "operationId": "PatchItem"
+                                      },
+                                      "parameters": {
+                                        "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                                        "table": "EntraRequests",
+                                        "id": "@int(triggerOutputs()?['body/ID'])",
+                                        "item/Title": "@triggerOutputs()?['body/Title']",
+                                        "item/Status/Value": "Failed",
+                                        "item/ErrorMessage": "@concat('No enterprise application or app registration has the ID ', outputs('App_query'), '.')"
+                                      },
+                                      "authentication": "@parameters('$authentication')"
+                                    },
+                                    "runAfter": {}
+                                  },
+                                  "Stop_access_not_found": {
+                                    "type": "Terminate",
+                                    "inputs": {
+                                      "runStatus": "Failed",
+                                      "runError": {
+                                        "code": "AppNotFound",
+                                        "message": "@concat('No enterprise application or app registration has the ID ', outputs('App_query'), '.')"
+                                      }
+                                    },
+                                    "runAfter": {
+                                      "Fail_access_not_found": [
+                                        "Succeeded"
+                                      ]
+                                    }
+                                  }
+                                }
+                              },
+                              "runAfter": {
+                                "HTTP_App_of_query": [
+                                  "Succeeded"
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        "runAfter": {
+                          "HTTP_SP_by_id": [
+                            "Succeeded"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "HTTP_SP_by_appId": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "User_roles": {
+                  "type": "Query",
+                  "inputs": {
+                    "from": "@coalesce(variables('varSp')?['appRoles'], json('[]'))",
+                    "where": "@and(contains(item()?['allowedMemberTypes'], 'User'), equals(item()?['isEnabled'], true))"
+                  },
+                  "runAfter": {
+                    "SP_found_by_appId": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Select_user_roles": {
+                  "type": "Select",
+                  "inputs": {
+                    "from": "@body('User_roles')",
+                    "select": {
+                      "id": "@item()?['id']",
+                      "value": "@item()?['value']",
+                      "displayName": "@item()?['displayName']"
+                    }
+                  },
+                  "runAfter": {
+                    "User_roles": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Access_result": {
+                  "type": "Compose",
+                  "inputs": {
+                    "purpose": "access",
+                    "servicePrincipalId": "@{variables('varSp')?['id']}",
+                    "appId": "@{variables('varSp')?['appId']}",
+                    "displayName": "@{variables('varSp')?['displayName']}",
+                    "appRolesJson": "@{string(body('Select_user_roles'))}",
+                    "assignmentRequired": "@{variables('varSp')?['appRoleAssignmentRequired']}"
+                  },
+                  "runAfter": {
+                    "Select_user_roles": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Mark_access_found": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "connectionName": "shared_sharepointonline",
+                      "operationId": "PatchItem"
+                    },
+                    "parameters": {
+                      "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                      "table": "EntraRequests",
+                      "id": "@int(triggerOutputs()?['body/ID'])",
+                      "item/Title": "@triggerOutputs()?['body/Title']",
+                      "item/Status/Value": "Completed",
+                      "item/CompletedAt": "@utcNow()",
+                      "item/TargetDisplayName": "@variables('varSp')?['displayName']",
+                      "item/TargetObjectId": "@variables('varSp')?['id']",
+                      "item/ResultJson": "@string(outputs('Access_result'))"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "runAfter": {
+                    "Access_result": [
+                      "Succeeded"
+                    ]
+                  }
                 }
               },
               "else": {
                 "actions": {
-                  "HTTP_App_by_object_id": {
+                  "HTTP_App_by_appId": {
                     "type": "OpenApiConnection",
                     "inputs": {
                       "host": {
@@ -271,37 +594,265 @@
                       },
                       "parameters": {
                         "request/method": "GET",
-                        "request/url": "https://graph.microsoft.com/v1.0/applications?$filter=id eq '@{outputs('App_query')}'&$select=id,appId,displayName,tags,identifierUris,appRoles,api"
+                        "request/url": "https://graph.microsoft.com/v1.0/applications?$filter=appId eq '@{outputs('App_query')}'&$select=id,appId,displayName,tags,identifierUris,appRoles,api"
                       },
                       "authentication": "@parameters('$authentication')"
                     },
                     "runAfter": {}
                   },
-                  "App_found_by_object_id": {
+                  "App_found_by_appId": {
                     "type": "If",
                     "expression": {
                       "and": [
                         {
                           "equals": [
-                            "@empty(body('HTTP_App_by_object_id')?['value'])",
+                            "@empty(body('HTTP_App_by_appId')?['value'])",
                             false
                           ]
                         }
                       ]
                     },
                     "actions": {
-                      "Set_App_from_object_id": {
+                      "Set_App_from_appId": {
                         "type": "SetVariable",
                         "inputs": {
                           "name": "varApp",
-                          "value": "@first(body('HTTP_App_by_object_id')?['value'])"
+                          "value": "@first(body('HTTP_App_by_appId')?['value'])"
                         },
                         "runAfter": {}
                       }
                     },
                     "else": {
                       "actions": {
-                        "Fail_app_not_found": {
+                        "HTTP_App_by_object_id": {
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                              "connectionName": "shared_webcontents",
+                              "operationId": "InvokeHttp"
+                            },
+                            "parameters": {
+                              "request/method": "GET",
+                              "request/url": "https://graph.microsoft.com/v1.0/applications?$filter=id eq '@{outputs('App_query')}'&$select=id,appId,displayName,tags,identifierUris,appRoles,api"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          },
+                          "runAfter": {}
+                        },
+                        "App_found_by_object_id": {
+                          "type": "If",
+                          "expression": {
+                            "and": [
+                              {
+                                "equals": [
+                                  "@empty(body('HTTP_App_by_object_id')?['value'])",
+                                  false
+                                ]
+                              }
+                            ]
+                          },
+                          "actions": {
+                            "Set_App_from_object_id": {
+                              "type": "SetVariable",
+                              "inputs": {
+                                "name": "varApp",
+                                "value": "@first(body('HTTP_App_by_object_id')?['value'])"
+                              },
+                              "runAfter": {}
+                            }
+                          },
+                          "else": {
+                            "actions": {
+                              "Fail_app_not_found": {
+                                "type": "OpenApiConnection",
+                                "inputs": {
+                                  "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                    "connectionName": "shared_sharepointonline",
+                                    "operationId": "PatchItem"
+                                  },
+                                  "parameters": {
+                                    "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                                    "table": "EntraRequests",
+                                    "id": "@int(triggerOutputs()?['body/ID'])",
+                                    "item/Title": "@triggerOutputs()?['body/Title']",
+                                    "item/Status/Value": "Failed",
+                                    "item/ErrorMessage": "@concat('No app registration has the Application (client) ID or Object ID ', outputs('App_query'), '.')"
+                                  },
+                                  "authentication": "@parameters('$authentication')"
+                                },
+                                "runAfter": {}
+                              },
+                              "Stop_app_not_found": {
+                                "type": "Terminate",
+                                "inputs": {
+                                  "runStatus": "Failed",
+                                  "runError": {
+                                    "code": "AppNotFound",
+                                    "message": "@concat('No app registration has the Application (client) ID or Object ID ', outputs('App_query'), '.')"
+                                  }
+                                },
+                                "runAfter": {
+                                  "Fail_app_not_found": [
+                                    "Succeeded"
+                                  ]
+                                }
+                              }
+                            }
+                          },
+                          "runAfter": {
+                            "HTTP_App_by_object_id": [
+                              "Succeeded"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "runAfter": {
+                      "HTTP_App_by_appId": [
+                        "Succeeded"
+                      ]
+                    }
+                  },
+                  "App_team_tags": {
+                    "type": "Query",
+                    "inputs": {
+                      "from": "@coalesce(variables('varApp')?['tags'], json('[]'))",
+                      "where": "@startsWith(item(), 'team:')"
+                    },
+                    "runAfter": {
+                      "App_found_by_appId": [
+                        "Succeeded"
+                      ]
+                    }
+                  },
+                  "App_group_values": {
+                    "type": "Select",
+                    "inputs": {
+                      "from": "@body('App_team_tags')",
+                      "select": "@if(startsWith(item(), 'team:group\\'), substring(item(), 11), if(startsWith(item(), 'team:user\\'), '', substring(item(), 5)))"
+                    },
+                    "runAfter": {
+                      "App_team_tags": [
+                        "Succeeded"
+                      ]
+                    }
+                  },
+                  "App_group_ids": {
+                    "type": "Query",
+                    "inputs": {
+                      "from": "@body('App_group_values')",
+                      "where": "@not(empty(item()))"
+                    },
+                    "runAfter": {
+                      "App_group_values": [
+                        "Succeeded"
+                      ]
+                    }
+                  },
+                  "Reset_varGroupOwner_App": {
+                    "type": "SetVariable",
+                    "inputs": {
+                      "name": "varGroupOwner",
+                      "value": "no"
+                    },
+                    "runAfter": {
+                      "App_group_ids": [
+                        "Succeeded"
+                      ]
+                    }
+                  },
+                  "App_has_team_groups": {
+                    "type": "If",
+                    "expression": {
+                      "and": [
+                        {
+                          "greater": [
+                            "@length(body('App_group_ids'))",
+                            0
+                          ]
+                        }
+                      ]
+                    },
+                    "actions": {
+                      "HTTP_App_check_groups": {
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                            "connectionName": "shared_webcontents",
+                            "operationId": "InvokeHttp"
+                          },
+                          "parameters": {
+                            "request/method": "POST",
+                            "request/url": "https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups",
+                            "request/headers": {
+                              "Content-Type": "application/json"
+                            },
+                            "request/body": "{\"groupIds\": @{take(body('App_group_ids'), 20)}}"
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        },
+                        "runAfter": {}
+                      },
+                      "App_member_of_a_team_group": {
+                        "type": "If",
+                        "expression": {
+                          "and": [
+                            {
+                              "greater": [
+                                "@length(body('HTTP_App_check_groups')?['value'])",
+                                0
+                              ]
+                            }
+                          ]
+                        },
+                        "actions": {
+                          "Set_varGroupOwner_App": {
+                            "type": "SetVariable",
+                            "inputs": {
+                              "name": "varGroupOwner",
+                              "value": "yes"
+                            },
+                            "runAfter": {}
+                          }
+                        },
+                        "else": {
+                          "actions": {}
+                        },
+                        "runAfter": {
+                          "HTTP_App_check_groups": [
+                            "Succeeded"
+                          ]
+                        }
+                      }
+                    },
+                    "else": {
+                      "actions": {}
+                    },
+                    "runAfter": {
+                      "Reset_varGroupOwner_App": [
+                        "Succeeded"
+                      ]
+                    }
+                  },
+                  "Requester_is_owner": {
+                    "type": "If",
+                    "expression": {
+                      "and": [
+                        {
+                          "equals": [
+                            "@or(contains(body('App_team_tags'), concat('team:user\\', toLower(body('HTTP_Get_requester')?['id']))), equals(variables('varGroupOwner'), 'yes'))",
+                            true
+                          ]
+                        }
+                      ]
+                    },
+                    "actions": {},
+                    "else": {
+                      "actions": {
+                        "Fail_not_owner": {
                           "type": "OpenApiConnection",
                           "inputs": {
                             "host": {
@@ -315,23 +866,23 @@
                               "id": "@int(triggerOutputs()?['body/ID'])",
                               "item/Title": "@triggerOutputs()?['body/Title']",
                               "item/Status/Value": "Failed",
-                              "item/ErrorMessage": "@concat('No app registration has the Application (client) ID or Object ID ', outputs('App_query'), '.')"
+                              "item/ErrorMessage": "@concat('Not authorized owner: ', variables('varApp')?['displayName'], ' is tagged ', coalesce(first(body('App_team_tags')), 'with no team'), '. Only that user, or a member of that group, can use it here.')"
                             },
                             "authentication": "@parameters('$authentication')"
                           },
                           "runAfter": {}
                         },
-                        "Stop_app_not_found": {
+                        "Stop_not_owner": {
                           "type": "Terminate",
                           "inputs": {
                             "runStatus": "Failed",
                             "runError": {
-                              "code": "AppNotFound",
-                              "message": "@concat('No app registration has the Application (client) ID or Object ID ', outputs('App_query'), '.')"
+                              "code": "NotAuthorizedOwner",
+                              "message": "@concat('Not authorized owner: ', variables('varApp')?['displayName'], ' is tagged ', coalesce(first(body('App_team_tags')), 'with no team'), '. Only that user, or a member of that group, can use it here.')"
                             }
                           },
                           "runAfter": {
-                            "Fail_app_not_found": [
+                            "Fail_not_owner": [
                               "Succeeded"
                             ]
                           }
@@ -339,157 +890,85 @@
                       }
                     },
                     "runAfter": {
-                      "HTTP_App_by_object_id": [
+                      "App_has_team_groups": [
                         "Succeeded"
                       ]
                     }
-                  }
-                }
-              },
-              "runAfter": {
-                "HTTP_App_by_appId": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "App_team_tags": {
-              "type": "Query",
-              "inputs": {
-                "from": "@coalesce(variables('varApp')?['tags'], json('[]'))",
-                "where": "@startsWith(item(), 'team:')"
-              },
-              "runAfter": {
-                "App_found_by_appId": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "App_group_values": {
-              "type": "Select",
-              "inputs": {
-                "from": "@body('App_team_tags')",
-                "select": "@if(startsWith(item(), 'team:group\\'), substring(item(), 11), if(startsWith(item(), 'team:user\\'), '', substring(item(), 5)))"
-              },
-              "runAfter": {
-                "App_team_tags": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "App_group_ids": {
-              "type": "Query",
-              "inputs": {
-                "from": "@body('App_group_values')",
-                "where": "@not(empty(item()))"
-              },
-              "runAfter": {
-                "App_group_values": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "Reset_varGroupOwner_App": {
-              "type": "SetVariable",
-              "inputs": {
-                "name": "varGroupOwner",
-                "value": "no"
-              },
-              "runAfter": {
-                "App_group_ids": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "App_has_team_groups": {
-              "type": "If",
-              "expression": {
-                "and": [
-                  {
-                    "greater": [
-                      "@length(body('App_group_ids'))",
-                      0
-                    ]
-                  }
-                ]
-              },
-              "actions": {
-                "HTTP_App_check_groups": {
-                  "type": "OpenApiConnection",
-                  "inputs": {
-                    "host": {
-                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                      "connectionName": "shared_webcontents",
-                      "operationId": "InvokeHttp"
-                    },
-                    "parameters": {
-                      "request/method": "POST",
-                      "request/url": "https://graph.microsoft.com/v1.0/users/@{body('HTTP_Get_requester')?['id']}/checkMemberGroups",
-                      "request/headers": {
-                        "Content-Type": "application/json"
-                      },
-                      "request/body": "{\"groupIds\": @{take(body('App_group_ids'), 20)}}"
-                    },
-                    "authentication": "@parameters('$authentication')"
                   },
-                  "runAfter": {}
-                },
-                "App_member_of_a_team_group": {
-                  "type": "If",
-                  "expression": {
-                    "and": [
-                      {
-                        "greater": [
-                          "@length(body('HTTP_App_check_groups')?['value'])",
-                          0
-                        ]
-                      }
-                    ]
-                  },
-                  "actions": {
-                    "Set_varGroupOwner_App": {
-                      "type": "SetVariable",
-                      "inputs": {
-                        "name": "varGroupOwner",
-                        "value": "yes"
+                  "HTTP_Find_SP": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                        "connectionName": "shared_webcontents",
+                        "operationId": "InvokeHttp"
                       },
-                      "runAfter": {}
+                      "parameters": {
+                        "request/method": "GET",
+                        "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals?$filter=appId eq '@{variables('varApp')?['appId']}'&$select=id"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    },
+                    "runAfter": {
+                      "Requester_is_owner": [
+                        "Succeeded"
+                      ]
                     }
                   },
-                  "else": {
-                    "actions": {}
+                  "Filter_appcat_tag": {
+                    "type": "Query",
+                    "inputs": {
+                      "from": "@coalesce(variables('varApp')?['tags'], json('[]'))",
+                      "where": "@startsWith(item(), 'appCatID:')"
+                    },
+                    "runAfter": {
+                      "HTTP_Find_SP": [
+                        "Succeeded"
+                      ]
+                    }
                   },
-                  "runAfter": {
-                    "HTTP_App_check_groups": [
-                      "Succeeded"
-                    ]
-                  }
-                }
-              },
-              "else": {
-                "actions": {}
-              },
-              "runAfter": {
-                "Reset_varGroupOwner_App": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "Requester_is_owner": {
-              "type": "If",
-              "expression": {
-                "and": [
-                  {
-                    "equals": [
-                      "@or(contains(body('App_team_tags'), concat('team:user\\', toLower(body('HTTP_Get_requester')?['id']))), equals(variables('varGroupOwner'), 'yes'))",
-                      true
-                    ]
-                  }
-                ]
-              },
-              "actions": {},
-              "else": {
-                "actions": {
-                  "Fail_not_owner": {
+                  "Filter_team_name_tag": {
+                    "type": "Query",
+                    "inputs": {
+                      "from": "@coalesce(variables('varApp')?['tags'], json('[]'))",
+                      "where": "@startsWith(item(), 'teamName:')"
+                    },
+                    "runAfter": {
+                      "Filter_appcat_tag": [
+                        "Succeeded"
+                      ]
+                    }
+                  },
+                  "App_catid": {
+                    "type": "Compose",
+                    "inputs": "@if(empty(body('Filter_appcat_tag')), '', substring(first(body('Filter_appcat_tag')), 9))",
+                    "runAfter": {
+                      "Filter_team_name_tag": [
+                        "Succeeded"
+                      ]
+                    }
+                  },
+                  "Result": {
+                    "type": "Compose",
+                    "inputs": {
+                      "objectId": "@{variables('varApp')?['id']}",
+                      "appId": "@{variables('varApp')?['appId']}",
+                      "displayName": "@{variables('varApp')?['displayName']}",
+                      "appCatId": "@{outputs('App_catid')}",
+                      "team": "@{coalesce(first(body('App_team_tags')), '')}",
+                      "teamName": "@{if(empty(body('Filter_team_name_tag')), '', substring(first(body('Filter_team_name_tag')), 9))}",
+                      "identifierUri": "@{coalesce(first(variables('varApp')?['identifierUris']), '')}",
+                      "servicePrincipalId": "@{coalesce(first(body('HTTP_Find_SP')?['value'])?['id'], '')}",
+                      "appRolesJson": "@{string(coalesce(variables('varApp')?['appRoles'], json('[]')))}",
+                      "scopesJson": "@{string(coalesce(variables('varApp')?['api']?['oauth2PermissionScopes'], json('[]')))}"
+                    },
+                    "runAfter": {
+                      "App_catid": [
+                        "Succeeded"
+                      ]
+                    }
+                  },
+                  "Mark_completed": {
                     "type": "OpenApiConnection",
                     "inputs": {
                       "host": {
@@ -502,24 +981,17 @@
                         "table": "EntraRequests",
                         "id": "@int(triggerOutputs()?['body/ID'])",
                         "item/Title": "@triggerOutputs()?['body/Title']",
-                        "item/Status/Value": "Failed",
-                        "item/ErrorMessage": "@concat('Not authorized owner: ', variables('varApp')?['displayName'], ' is tagged ', coalesce(first(body('App_team_tags')), 'with no team'), '. Only that user, or a member of that group, can use it here.')"
+                        "item/Status/Value": "Completed",
+                        "item/CompletedAt": "@utcNow()",
+                        "item/TargetDisplayName": "@variables('varApp')?['displayName']",
+                        "item/TargetObjectId": "@variables('varApp')?['id']",
+                        "item/AppCatId": "@outputs('App_catid')",
+                        "item/ResultJson": "@string(outputs('Result'))"
                       },
                       "authentication": "@parameters('$authentication')"
                     },
-                    "runAfter": {}
-                  },
-                  "Stop_not_owner": {
-                    "type": "Terminate",
-                    "inputs": {
-                      "runStatus": "Failed",
-                      "runError": {
-                        "code": "NotAuthorizedOwner",
-                        "message": "@concat('Not authorized owner: ', variables('varApp')?['displayName'], ' is tagged ', coalesce(first(body('App_team_tags')), 'with no team'), '. Only that user, or a member of that group, can use it here.')"
-                      }
-                    },
                     "runAfter": {
-                      "Fail_not_owner": [
+                      "Result": [
                         "Succeeded"
                       ]
                     }
@@ -527,115 +999,14 @@
                 }
               },
               "runAfter": {
-                "App_has_team_groups": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "HTTP_Find_SP": {
-              "type": "OpenApiConnection",
-              "inputs": {
-                "host": {
-                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-                  "connectionName": "shared_webcontents",
-                  "operationId": "InvokeHttp"
-                },
-                "parameters": {
-                  "request/method": "GET",
-                  "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals?$filter=appId eq '@{variables('varApp')?['appId']}'&$select=id"
-                },
-                "authentication": "@parameters('$authentication')"
-              },
-              "runAfter": {
-                "Requester_is_owner": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "Filter_appcat_tag": {
-              "type": "Query",
-              "inputs": {
-                "from": "@coalesce(variables('varApp')?['tags'], json('[]'))",
-                "where": "@startsWith(item(), 'appCatID:')"
-              },
-              "runAfter": {
-                "HTTP_Find_SP": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "Filter_team_name_tag": {
-              "type": "Query",
-              "inputs": {
-                "from": "@coalesce(variables('varApp')?['tags'], json('[]'))",
-                "where": "@startsWith(item(), 'teamName:')"
-              },
-              "runAfter": {
-                "Filter_appcat_tag": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "App_catid": {
-              "type": "Compose",
-              "inputs": "@if(empty(body('Filter_appcat_tag')), '', substring(first(body('Filter_appcat_tag')), 9))",
-              "runAfter": {
-                "Filter_team_name_tag": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "Result": {
-              "type": "Compose",
-              "inputs": {
-                "objectId": "@{variables('varApp')?['id']}",
-                "appId": "@{variables('varApp')?['appId']}",
-                "displayName": "@{variables('varApp')?['displayName']}",
-                "appCatId": "@{outputs('App_catid')}",
-                "team": "@{coalesce(first(body('App_team_tags')), '')}",
-                "teamName": "@{if(empty(body('Filter_team_name_tag')), '', substring(first(body('Filter_team_name_tag')), 9))}",
-                "identifierUri": "@{coalesce(first(variables('varApp')?['identifierUris']), '')}",
-                "servicePrincipalId": "@{coalesce(first(body('HTTP_Find_SP')?['value'])?['id'], '')}",
-                "appRolesJson": "@{string(coalesce(variables('varApp')?['appRoles'], json('[]')))}",
-                "scopesJson": "@{string(coalesce(variables('varApp')?['api']?['oauth2PermissionScopes'], json('[]')))}"
-              },
-              "runAfter": {
-                "App_catid": [
-                  "Succeeded"
-                ]
-              }
-            },
-            "Mark_completed": {
-              "type": "OpenApiConnection",
-              "inputs": {
-                "host": {
-                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
-                  "connectionName": "shared_sharepointonline",
-                  "operationId": "PatchItem"
-                },
-                "parameters": {
-                  "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
-                  "table": "EntraRequests",
-                  "id": "@int(triggerOutputs()?['body/ID'])",
-                  "item/Title": "@triggerOutputs()?['body/Title']",
-                  "item/Status/Value": "Completed",
-                  "item/CompletedAt": "@utcNow()",
-                  "item/TargetDisplayName": "@variables('varApp')?['displayName']",
-                  "item/TargetObjectId": "@variables('varApp')?['id']",
-                  "item/AppCatId": "@outputs('App_catid')",
-                  "item/ResultJson": "@string(outputs('Result'))"
-                },
-                "authentication": "@parameters('$authentication')"
-              },
-              "runAfter": {
-                "Result": [
+                "HTTP_Get_requester": [
                   "Succeeded"
                 ]
               }
             }
           },
           "runAfter": {
-            "Init_varGroupOwner": [
+            "Purpose": [
               "Succeeded"
             ]
           }

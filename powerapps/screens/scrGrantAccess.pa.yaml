@@ -1,0 +1,647 @@
+# Request access to an enterprise app for yourself or a group (request type grantAccess)
+# Paste into screen scrGrantAccess: copy all, select the screen in the Tree view, Ctrl+V.
+- cntRoot_Grant:
+    Control: GroupContainer
+    Variant: ManualLayout
+    Properties:
+      X: =0
+      Y: =0
+      Width: =Parent.Width
+      Height: =Parent.Height
+      Fill: =gTheme.Bg
+      BorderThickness: =0
+      DropShadow: =DropShadow.None
+    Children:
+      - recTopBar_Grant:
+          Control: Rectangle
+          Properties:
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =48
+            Fill: =gTheme.TopBar
+            BorderColor: =gTheme.Border
+            BorderThickness: =0
+      - lblBrand_Grant:
+          Control: Label
+          Properties:
+            Text: ="Entra Self-Service"
+            X: =20
+            Y: =0
+            Width: =300
+            Height: =48
+            Size: =13
+            Font: =Font.'Segoe UI'
+            Color: =RGBA(255, 255, 255, 1)
+            FontWeight: =FontWeight.Semibold
+            PaddingLeft: =0
+            PaddingRight: =0
+            OnSelect: =Navigate(scrHome, ScreenTransition.Fade)
+      - lblUser_Grant:
+          Control: Label
+          Properties:
+            Text: =gMe.Name
+            X: =Parent.Width - 340
+            Y: =0
+            Width: =320
+            Height: =48
+            Size: =10
+            Font: =Font.'Segoe UI'
+            Color: =RGBA(255, 255, 255, 1)
+            FontWeight: =FontWeight.Normal
+            PaddingLeft: =0
+            PaddingRight: =0
+            Align: =Align.Right
+      - lblCrumb_Grant:
+          Control: Label
+          Properties:
+            Text: ="Home  ›  Access  ›  Request app access"
+            X: =24
+            Y: =58
+            Width: =Parent.Width - 48
+            Height: =22
+            Size: =9
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Primary
+            FontWeight: =FontWeight.Normal
+            PaddingLeft: =0
+            PaddingRight: =0
+            OnSelect: =Navigate(scrHome, ScreenTransition.Fade)
+      - lblTitle_Grant:
+          Control: Label
+          Properties:
+            Text: ="Request app access"
+            X: =24
+            Y: =80
+            Width: =Parent.Width - 48
+            Height: =34
+            Size: =18
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Text
+            FontWeight: =FontWeight.Semibold
+            PaddingLeft: =0
+            PaddingRight: =0
+      - lblSubtitle_Grant:
+          Control: Label
+          Properties:
+            Text: ="Ask for access to an enterprise app for yourself or for a group. Manager and Entra ID team approve."
+            X: =24
+            Y: =112
+            Width: =Parent.Width - 48
+            Height: =22
+            Size: =10
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Muted
+            FontWeight: =FontWeight.Normal
+            PaddingLeft: =0
+            PaddingRight: =0
+      - recApps_Grant:
+          Control: Rectangle
+          Properties:
+            X: =24
+            Y: =146
+            Width: =320
+            Height: =Parent.Height - 146 - 80
+            Fill: =gTheme.Card
+            BorderColor: =gTheme.Border
+            BorderThickness: =1
+      - lblAppsHead_Grant:
+          Control: Label
+          Properties:
+            Text: ="Find the application"
+            X: =40
+            Y: =156
+            Width: =288
+            Height: =26
+            Size: =12
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Text
+            FontWeight: =FontWeight.Semibold
+            PaddingLeft: =0
+            PaddingRight: =0
+      - lblAppId_Grant:
+          Control: Label
+          Properties:
+            Text: ="Client ID or enterprise app / app Object ID *"
+            X: =40
+            Y: =190
+            Width: =288
+            Height: =20
+            Size: =10
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Text
+            FontWeight: =FontWeight.Semibold
+            PaddingLeft: =0
+            PaddingRight: =0
+      - txtAppId_Grant:
+          Control: Classic/TextInput
+          Properties:
+            Default: =""
+            HintText: ="00000000-0000-0000-0000-000000000000"
+            X: =40
+            Y: =212
+            Width: =288
+            Height: =34
+            Size: =11
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Text
+            Fill: =gTheme.Card
+            BorderColor: =gTheme.Border
+            BorderThickness: =1
+            HoverBorderColor: =gTheme.Primary
+            FocusedBorderColor: =gTheme.Primary
+            FocusedBorderThickness: =2
+            PaddingLeft: =10
+            RadiusTopLeft: =4
+            RadiusTopRight: =4
+            RadiusBottomLeft: =4
+            RadiusBottomRight: =4
+            DisplayMode: =If(varAccBusy, DisplayMode.Disabled, DisplayMode.Edit)
+      - btnFind_Grant:
+          Control: Classic/Button
+          Properties:
+            Text: ="Search"
+            OnSelect: |-
+              =If(
+                  !IsMatch(Lower(Trim(txtAppId_Grant.Text)), "^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$"),
+                      Notify("Enter the Application (client) ID, enterprise app Object ID or app registration Object ID (a GUID).", NotificationType.Warning),
+                  varAccBusy,
+                      Notify("Still searching, one moment.", NotificationType.Information),
+                  Set(varReqId, "REQ-" & Text(Now(), "yymm") & "-" & Upper(Left(Substitute(Text(GUID()), "-", ""), 6)));
+                  Set(varAccApp, Blank()); Set(varAccMsg, "");
+                  IfError(
+                      Set(varAccRec, Patch(EntraRequests, Defaults(EntraRequests), {
+                          Title: varReqId, RequestType: {Value: "lookupApp"}, Status: {Value: "Submitted"},
+                          TargetDisplayName: Lower(Trim(txtAppId_Grant.Text)), TargetObjectId: Lower(Trim(txtAppId_Grant.Text)), Justification: "Find an enterprise app to request access to",
+                          PayloadJson: JSON({purpose: "access"}, JSONFormat.Compact)
+                      })),
+                      Notify("The search could not start: " & FirstError.Message, NotificationType.Error),
+                      Set(varAccPolls, 0); Set(varAccBusy, true)
+                  )
+              )
+            X: =40
+            Y: =256
+            Width: =120
+            Height: =34
+            Size: =11
+            Font: =Font.'Segoe UI'
+            FontWeight: =FontWeight.Semibold
+            RadiusTopLeft: =4
+            RadiusTopRight: =4
+            RadiusBottomLeft: =4
+            RadiusBottomRight: =4
+            Fill: =gTheme.Primary
+            Color: =RGBA(255, 255, 255, 1)
+            HoverFill: =gTheme.PrimaryHover
+            PressedFill: =gTheme.PrimaryHover
+            BorderThickness: =0
+            HoverColor: =RGBA(255, 255, 255, 1)
+            DisplayMode: =If(varAccBusy, DisplayMode.Disabled, DisplayMode.Edit)
+      - lblLookupBusy_Grant:
+          Control: Label
+          Properties:
+            Text: ="Searching Entra…"
+            X: =170
+            Y: =256
+            Width: =158
+            Height: =34
+            Size: =10
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Primary
+            FontWeight: =FontWeight.Semibold
+            PaddingLeft: =0
+            PaddingRight: =0
+            Visible: =varAccBusy
+      - lblLookupMsg_Grant:
+          Control: Label
+          Properties:
+            Text: =varAccMsg
+            X: =40
+            Y: =300
+            Width: =288
+            Height: =96
+            Size: =10
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Danger
+            FontWeight: =FontWeight.Semibold
+            PaddingLeft: =0
+            PaddingRight: =0
+            Wrap: =true
+            VerticalAlign: =VerticalAlign.Top
+            Visible: =!IsBlank(varAccMsg)
+      - lblLookupInfo_Grant:
+          Control: Label
+          Properties:
+            Text: ="Any enterprise application in the tenant can be found. Access is added under the app's Users and groups once approved."
+            X: =40
+            Y: =404
+            Width: =288
+            Height: =80
+            Size: =9
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Muted
+            FontWeight: =FontWeight.Normal
+            PaddingLeft: =0
+            PaddingRight: =0
+            Wrap: =true
+            VerticalAlign: =VerticalAlign.Top
+      - tmrLookup_Grant:
+          Control: Timer
+          Properties:
+            Duration: =3000
+            Repeat: =true
+            AutoStart: =false
+            Start: =varAccBusy
+            OnTimerEnd: |-
+              =Set(varAccPolls, varAccPolls + 1);
+              Refresh(EntraRequests);
+              With({r: LookUp(EntraRequests, ID = varAccRec.ID)},
+                  If(
+                      r.Status.Value = "Completed",
+                          With({j: ParseJSON(r.ResultJson)},
+                              Set(varAccApp, {Title: Text(j.displayName), SpId: Text(j.servicePrincipalId), AppId: Text(j.appId), RolesJson: Text(j.appRolesJson),
+                                  AssignmentRequired: Text(j.assignmentRequired)})
+                          );
+                          Set(varAccBusy, false); Reset(ddAccRole_Grant),
+                      r.Status.Value = "Failed",
+                          Set(varAccBusy, false);
+                          Set(varAccMsg, Coalesce(r.ErrorMessage, "No enterprise application found with that ID."));
+                          Notify(varAccMsg, NotificationType.Error),
+                      varAccPolls >= 40,
+                          Set(varAccBusy, false); Set(varAccMsg, "No answer yet. Search again in a minute.")
+                  )
+              )
+            Visible: =false
+            X: =0
+            Y: =0
+            Width: =10
+            Height: =10
+      - recDetail_Grant:
+          Control: Rectangle
+          Properties:
+            X: =360
+            Y: =146
+            Width: =Parent.Width - 384
+            Height: =Parent.Height - 146 - 80
+            Fill: =gTheme.Card
+            BorderColor: =gTheme.Border
+            BorderThickness: =1
+      - lblPick_Grant:
+          Control: Label
+          Properties:
+            Text: ="Search for the application on the left."
+            X: =376
+            Y: =170
+            Width: =500
+            Height: =30
+            Size: =11
+            Font: =Font.'Segoe UI'
+            Color: =gTheme.Muted
+            FontWeight: =FontWeight.Normal
+            PaddingLeft: =0
+            PaddingRight: =0
+            Visible: =IsBlank(varAccApp)
+      - cntDetail_Grant:
+          Control: GroupContainer
+          Variant: ManualLayout
+          Properties:
+            X: =376
+            Y: =160
+            Width: =Parent.Width - 416
+            Height: =Parent.Height - 160 - 92
+            Fill: =RGBA(0, 0, 0, 0)
+            BorderThickness: =0
+            DropShadow: =DropShadow.None
+            Visible: =!IsBlank(varAccApp)
+          Children:
+            - lblAppTitle_Grant:
+                Control: Label
+                Properties:
+                  Text: =varAccApp.Title
+                  X: =0
+                  Y: =0
+                  Width: =Parent.Width
+                  Height: =30
+                  Size: =15
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - lblAppInfo_Grant:
+                Control: Label
+                Properties:
+                  Text: ="App ID " & varAccApp.AppId & "    ·    Enterprise app " & varAccApp.SpId & If(Lower(varAccApp.AssignmentRequired) = "true", "    ·    assignment required", "    ·    assignment not required")
+                  X: =0
+                  Y: =32
+                  Width: =Parent.Width
+                  Height: =20
+                  Size: =9
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - lblWho_Grant:
+                Control: Label
+                Properties:
+                  Text: ="Who needs access? *"
+                  X: =0
+                  Y: =72
+                  Width: =300
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - radWho_Grant:
+                Control: Classic/Radio
+                Properties:
+                  Items: =["Me", "A group"]
+                  Default: ="Me"
+                  X: =0
+                  Y: =94
+                  Width: =300
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  RadioSize: =18
+                  RadioSelectionFill: =gTheme.Primary
+                  RadioBorderColor: =gTheme.Muted
+                  Layout: =Layout.Horizontal
+            - txtAccGroup_Grant:
+                Control: Classic/TextInput
+                Properties:
+                  Default: =Coalesce(ddAccMyGroup_Grant.Selected.GroupId, "")
+                  HintText: ="Group name or Object ID"
+                  X: =0
+                  Y: =140
+                  Width: =330
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  HoverBorderColor: =gTheme.Primary
+                  FocusedBorderColor: =gTheme.Primary
+                  FocusedBorderThickness: =2
+                  PaddingLeft: =10
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+                  Visible: =radWho_Grant.Selected.Value = "A group"
+            - ddAccMyGroup_Grant:
+                Control: Classic/DropDown
+                Properties:
+                  Items: =AddColumns(gMyGroups, Value, Title)
+                  Default: =""
+                  X: =340
+                  Y: =140
+                  Width: =280
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  ChevronBackground: =gTheme.Card
+                  ChevronFill: =gTheme.Muted
+                  HoverFill: =gTheme.PrimaryLight
+                  SelectionFill: =gTheme.Primary
+                  PaddingLeft: =10
+                  Tooltip: ="or pick one of your groups"
+                  AllowEmptySelection: =true
+                  Visible: =radWho_Grant.Selected.Value = "A group"
+            - hntAccGroup_Grant:
+                Control: Label
+                Properties:
+                  Text: ="Any security group can be requested. Your manager and the Entra ID team see whether you are a member of it."
+                  X: =0
+                  Y: =182
+                  Width: =Parent.Width
+                  Height: =20
+                  Size: =9
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  Visible: =radWho_Grant.Selected.Value = "A group"
+            - lblAccRole_Grant:
+                Control: Label
+                Properties:
+                  Text: ="Access *"
+                  X: =0
+                  Y: =214
+                  Width: =300
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - ddAccRole_Grant:
+                Control: Classic/DropDown
+                Properties:
+                  Items: |-
+                    =With({r: ForAll(Table(ParseJSON(Coalesce(varAccApp.RolesJson, "[]"))), {Id: Text(ThisRecord.Value.id), Value: Text(ThisRecord.Value.value)})}, If(CountRows(r) = 0, Table({Id: "00000000-0000-0000-0000-000000000000", Value: "Default Access"}), r))
+                  Default: =""
+                  X: =0
+                  Y: =236
+                  Width: =330
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  ChevronBackground: =gTheme.Card
+                  ChevronFill: =gTheme.Muted
+                  HoverFill: =gTheme.PrimaryLight
+                  SelectionFill: =gTheme.Primary
+                  PaddingLeft: =10
+                  AllowEmptySelection: =true
+            - hntAccRole_Grant:
+                Control: Label
+                Properties:
+                  Text: ="Default Access when the app has no roles; otherwise pick one of its roles."
+                  X: =340
+                  Y: =244
+                  Width: =Parent.Width - 340
+                  Height: =20
+                  Size: =9
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Muted
+                  FontWeight: =FontWeight.Normal
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - lblJust_Grant:
+                Control: Label
+                Properties:
+                  Text: ="Business justification *"
+                  X: =0
+                  Y: =Parent.Height - 140
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - txtJust_Grant:
+                Control: Classic/TextInput
+                Properties:
+                  Default: =""
+                  HintText: ="Why is this access needed?"
+                  X: =0
+                  Y: =Parent.Height - 118
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =72
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  HoverBorderColor: =gTheme.Primary
+                  FocusedBorderColor: =gTheme.Primary
+                  FocusedBorderThickness: =2
+                  PaddingLeft: =10
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+                  Mode: =TextMode.MultiLine
+            - lblTicket_Grant:
+                Control: Label
+                Properties:
+                  Text: ="Change ticket"
+                  X: =(Parent.Width + 24) / 2
+                  Y: =Parent.Height - 140
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =20
+                  Size: =10
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  FontWeight: =FontWeight.Semibold
+                  PaddingLeft: =0
+                  PaddingRight: =0
+            - txtTicket_Grant:
+                Control: Classic/TextInput
+                Properties:
+                  Default: =""
+                  HintText: ="Optional"
+                  X: =(Parent.Width + 24) / 2
+                  Y: =Parent.Height - 118
+                  Width: =(Parent.Width - 24) / 2
+                  Height: =36
+                  Size: =11
+                  Font: =Font.'Segoe UI'
+                  Color: =gTheme.Text
+                  Fill: =gTheme.Card
+                  BorderColor: =gTheme.Border
+                  BorderThickness: =1
+                  HoverBorderColor: =gTheme.Primary
+                  FocusedBorderColor: =gTheme.Primary
+                  FocusedBorderThickness: =2
+                  PaddingLeft: =10
+                  RadiusTopLeft: =4
+                  RadiusTopRight: =4
+                  RadiusBottomLeft: =4
+                  RadiusBottomRight: =4
+      - recCmd_Grant:
+          Control: Rectangle
+          Properties:
+            X: =0
+            Y: =Parent.Height - 64
+            Width: =Parent.Width
+            Height: =64
+            Fill: =gTheme.Card
+            BorderColor: =gTheme.Border
+            BorderThickness: =1
+      - btnSubmit_Grant:
+          Control: Classic/Button
+          Properties:
+            Text: ="Submit request"
+            OnSelect: |-
+              =With({err: Coalesce(
+                      If(IsBlank(varAccApp), "Search for the app first."),
+                      If(radWho_Grant.Selected.Value = "A group" && Len(Trim(txtAccGroup_Grant.Text)) < 2, "Enter the group's name or Object ID."),
+                      If(IsBlank(ddAccRole_Grant.Selected.Id), "Choose the access to give."),
+                      If(Len(Trim(txtJust_Grant.Text)) < 10, "Business justification is required (10+ characters).")
+                  )},
+                  If(!IsBlank(err),
+                      Notify(err, NotificationType.Warning),
+                      Set(varReqId, "REQ-" & Text(Now(), "yymm") & "-" & Upper(Left(Substitute(Text(GUID()), "-", ""), 6)));
+                      IfError(
+                          Patch(EntraRequests, Defaults(EntraRequests), {
+                              Title: varReqId,
+                              RequestType: {Value: "grantAccess"},
+                              Status: {Value: "Submitted"},
+                              TargetDisplayName: varAccApp.Title,
+                              TargetObjectId: varAccApp.SpId,
+                              Justification: Trim(txtJust_Grant.Text),
+                              TicketReference: Trim(txtTicket_Grant.Text),
+                              PayloadJson: JSON({servicePrincipalId: varAccApp.SpId, appId: varAccApp.AppId, appDisplayName: varAccApp.Title,
+                                  principalType: If(radWho_Grant.Selected.Value = "A group", "group", "user"), groupQuery: If(radWho_Grant.Selected.Value = "A group", Trim(txtAccGroup_Grant.Text), ""),
+                                  roleId: If(ddAccRole_Grant.Selected.Value = "Default Access", "", ddAccRole_Grant.Selected.Id), roleValue: ddAccRole_Grant.Selected.Value}, JSONFormat.Compact)
+                          }),
+                          Notify("The request could not be submitted: " & FirstError.Message, NotificationType.Error),
+                          Notify("Request " & varReqId & " submitted. Your manager and the Entra ID team approve it.", NotificationType.Success);
+                          Set(varAccApp, Blank()); Reset(txtAppId_Grant); Reset(txtAccGroup_Grant); Reset(txtJust_Grant); Reset(txtTicket_Grant); Reset(radWho_Grant);
+                          Set(varSelectedReqId, Blank()); Navigate(scrMyRequests, ScreenTransition.Fade)
+                      )
+                  )
+              )
+            X: =360
+            Y: =Parent.Height - 50
+            Width: =170
+            Height: =36
+            Size: =11
+            Font: =Font.'Segoe UI'
+            FontWeight: =FontWeight.Semibold
+            RadiusTopLeft: =4
+            RadiusTopRight: =4
+            RadiusBottomLeft: =4
+            RadiusBottomRight: =4
+            Fill: =gTheme.Primary
+            Color: =RGBA(255, 255, 255, 1)
+            HoverFill: =gTheme.PrimaryHover
+            PressedFill: =gTheme.PrimaryHover
+            BorderThickness: =0
+            HoverColor: =RGBA(255, 255, 255, 1)
+            DisplayMode: =If(IsBlank(varAccApp), DisplayMode.Disabled, DisplayMode.Edit)
+      - btnCancel_Grant:
+          Control: Classic/Button
+          Properties:
+            Text: ="Cancel"
+            OnSelect: =Set(varAccApp, Blank()); Navigate(scrHome, ScreenTransition.Fade)
+            X: =540
+            Y: =Parent.Height - 50
+            Width: =120
+            Height: =36
+            Size: =11
+            Font: =Font.'Segoe UI'
+            FontWeight: =FontWeight.Semibold
+            RadiusTopLeft: =4
+            RadiusTopRight: =4
+            RadiusBottomLeft: =4
+            RadiusBottomRight: =4
+            Fill: =RGBA(0, 0, 0, 0)
+            Color: =gTheme.Text
+            HoverFill: =gTheme.Bg
+            PressedFill: =gTheme.Bg
+            BorderColor: =gTheme.Border
+            BorderThickness: =1
+            HoverColor: =gTheme.Text
+            HoverBorderColor: =gTheme.Muted

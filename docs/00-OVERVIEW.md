@@ -37,6 +37,7 @@ What it supports:
   - redirect URIs, optional claims, app roles, Expose an API (App ID URI and scopes);
   - an enterprise app with *Assignment required* chosen in the form;
   - role assignments to existing groups.
+- **Request app access:** anyone can ask for Default Access (or a role) on any enterprise app for themselves or a group; approvers see whether the requester is a member of the group.
 - **Delete app registration:** delete (restorable 30 days), delete permanently, disable sign-in only, or delete only the enterprise app, for an app the requester owns; manager and Entra ID team approve first.
 - **Changes to existing apps:** search by the app's Application (client) ID or Object ID; only its owner can continue. Then add scopes, add app roles, assign groups to roles, or create a missing enterprise app.
 - **Ownership by tag, not by Entra owners:** an app created with an owning group is tagged `team:group\<id>` (all members may change it); without one, `team:user\<id>` (only the creator). **Owning group** hands a user-owned app to a group.
@@ -88,7 +89,7 @@ Only the flow account moves a request past *Submitted*. ER-02 runs only when the
 | Flow | Trigger | What it does | Connectors | Licence |
 |---|---|---|---|---|
 | **SP-00 Create lists** | Manual, once | Creates the 4 SharePoint lists and their columns. This is the no-script alternative to `provision.ps1`. | SharePoint | Standard |
-| **ER-01 Approvals** | A request item is created (not *onboardGroup*) | Locks the item: inheritance broken, requester Read. Snapshots the payload, then gets the manager's approval and the Entra ID team's approval. Treats a self-approval as a rejection. | SharePoint, Office 365 Users, Approvals, Outlook | Standard |
+| **ER-01 Approvals** | A request item is created (not *onboardGroup*, *lookupApp*, *tagOwnerGroup*) | Locks the item: inheritance broken, requester Read. Snapshots the payload, then gets the manager's approval and the Entra ID team's approval. Treats a self-approval as a rejection. | SharePoint, Office 365 Users, Approvals, Outlook | Standard |
 | **ER-02 Execute** | Status = Approved | Runs the guard, then one branch per request type (below). Records the result and emails the requester. On any failure the Catch branch marks the request Failed and lists what was already created. | SharePoint, HTTP with Entra ID, Outlook | Premium |
 | **ER-03 Catalog sync** | Every hour | Reads managed apps and onboarded groups from Entra, and refreshes their members and owners in the catalog lists the app uses. Read-only in Entra. | SharePoint, HTTP with Entra ID | Premium |
 | **ER-04 Onboard group** | A request item of type *onboardGroup* is created | Finds the group by name or Object ID and checks the requester is a member or owner and that it is a security group. Then adds it to the catalog. No approval; read-only in Entra. | SharePoint, HTTP with Entra ID | Premium |

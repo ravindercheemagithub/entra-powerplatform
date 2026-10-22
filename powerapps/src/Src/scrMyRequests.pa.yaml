@@ -590,7 +590,8 @@ Screens:
                     =With({r: galReq_My.Selected, j: ParseJSON(Coalesce(galReq_My.Selected.PayloadJson, "{}"))},
                         If(r.RequestType.Value = "createAppRegistration",
                             Set(varClone, {
-                                source: r.Title, payload: r.PayloadJson, appCatId: r.AppCatId, justification: r.Justification, ticket: r.TicketReference,
+                                source: r.Title, payload: r.PayloadJson, appCatId: r.AppCatId, justification: Trim(PlainText(r.Justification)), ticket: r.TicketReference,
+                                appType: Text(j.appType),
                                 env: Text(j.appEnv), bor: Text(j.borShortName), name: Text(j.nameText), description: Text(j.description),
                                 teamId: Text(j.owningGroup.id),
                                 platform: If(!IsBlank(Text(j.redirectUrisWeb)), "Web", !IsBlank(Text(j.redirectUrisSpa)), "Single-page app", "None"),
@@ -606,7 +607,7 @@ Screens:
                             Navigate(scrNewApp, ScreenTransition.Fade),
                             Set(varCloneChange, {
                                 source: r.Title, payload: r.PayloadJson, appId: Lower(Coalesce(Text(j.applicationObjectId), r.TargetObjectId)),
-                                justification: r.Justification, ticket: r.TicketReference,
+                                justification: Trim(PlainText(r.Justification)), ticket: r.TicketReference,
                                 uriTemplate: Text(j.identifierUriTemplate), assignReq: Boolean(j.appRoleAssignmentRequired)
                             });
                             Set(varOp, Switch(r.RequestType.Value, "exposeApi", "exposeApi", "addAppRoles", "addAppRoles", "assignGroupsToAppRoles", "assignGroups", "createSP"));

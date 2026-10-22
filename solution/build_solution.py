@@ -34,7 +34,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.7.0.0"
+VERSION = "1.8.0.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -325,6 +325,7 @@ SUMMARY = ("@concat('**', triggerOutputs()?['body/RequestType/Value'], '** – '
            "if(empty(body('Select_roles_text')), '', concat(join(body('Select_roles_text'), decodeUriComponent('%0A')), decodeUriComponent('%0A%0A'))), "
            "if(empty(outputs('Payload')?['graphDelegatedScopes']), '', concat('API permissions (Microsoft Graph, delegated): ', replace(outputs('Payload')?['graphDelegatedScopes'], ',', ', '), decodeUriComponent('%0A%0A'))), "
            "if(empty(outputs('Payload')?['ownerRole']), '', concat('Owner gets role: ', outputs('Payload')?['ownerRole'], decodeUriComponent('%0A%0A'))), "
+           "if(equals(triggerOutputs()?['body/RequestType/Value'], 'grantAccess'), concat('Access for: ', if(equals(outputs('Payload')?['principalType'], 'group'), concat('group ', coalesce(variables('varAccessGroup')?['displayName'], outputs('Payload')?['groupQuery'])), 'the requester'), ', role ', coalesce(outputs('Payload')?['roleValue'], 'Default Access'), decodeUriComponent('%0A%0A')), ''), "
            "if(equals(triggerOutputs()?['body/RequestType/Value'], 'deleteAppRegistration'), concat('**DELETE: ', coalesce(outputs('Payload')?['actionLabel'], outputs('Payload')?['action']), '**', decodeUriComponent('%0A%0A')), ''), "
            "'Justification: ', triggerOutputs()?['body/Justification'])")
 
@@ -347,17 +348,55 @@ def er01() -> dict:
     s.sp_http("Grant requester read", "POST", f"{item}/roleassignments/addroleassignment(principalid=@{{body('Ensure_requester')?['Id']}},roledefid=1073741826)", NOMETA)
     s.sp_get_item("Get locked item", "EntraRequests", ID)
     s.compose("Payload", "@json(body('Get_locked_item')?['PayloadJson'])")
+    s.init_var("Init varAccessGroup", "varAccessGroup", "object", {})
+    s.init_var("Init varAccessMember", "varAccessMember", "string", "")
+    # Access requests for a group: resolve the group and check whether the requester is a member, so approvers see it.
+    # Done here, by the flow account (HTTP with Entra ID), so the requester can't fake it.
+    acc = Seq()
+    acc.graph("HTTP Access requester", "GET", f"{GRAPH}/users/@{{{REQ_UPN}}}?$select=id")
+    acc.compose("Access group query", "@trim(coalesce(outputs('Payload')?['groupQuery'], ''))")
+    gsel = "$select=id,displayName,securityEnabled"
+    by_id = Seq().graph("HTTP Access group by id", "GET", f"{GRAPH}/groups/@{{toLower(outputs('Access_group_query'))}}?{gsel}", retry={"type": "none"})
+    by_id.cond("Access group found by id", eq("@outputs('HTTP_Access_group_by_id')?['statusCode']", 200),
+               yes=Seq().set_var("Set access group from id", "varAccessGroup", "@body('HTTP_Access_group_by_id')"),
+               no=fail_item(Seq(), "Fail access group id", "Stop access group id", "@concat('No group has the Object ID ', outputs('Access_group_query'), '.')", "GroupNotFound"),
+               run_after={"HTTP_Access_group_by_id": ["Succeeded", "Failed"]})
+    one_q, two_q = "'" * 4, "'" * 6
+    by_name = Seq().graph("HTTP Access group by name", "GET",
+                          f"{GRAPH}/groups?$filter=displayName eq '@{{encodeUriComponent(replace(outputs('Access_group_query'), {one_q}, {two_q}))}}'&{gsel}&$top=5")
+    by_name.cond("Access group name unique", {"and": [{"equals": ["@length(body('HTTP_Access_group_by_name')?['value'])", 1]}]},
+                 yes=Seq().set_var("Set access group from name", "varAccessGroup", "@first(body('HTTP_Access_group_by_name')?['value'])"),
+                 no=fail_item(Seq(), "Fail access group name", "Stop access group name",
+                              "@if(empty(body('HTTP_Access_group_by_name')?['value']), concat('No group named ', outputs('Access_group_query'), ' was found.'), concat(string(length(body('HTTP_Access_group_by_name')?['value'])), ' groups are named ', outputs('Access_group_query'), '; use the Object ID.'))", "GroupNotFound"))
+    acc.cond("Access query is object id", is_true("@and(equals(length(outputs('Access_group_query')), 36), equals(length(split(outputs('Access_group_query'), '-')), 5))"), yes=by_id, no=by_name)
+    acc.cond("Access group is security", eq("@variables('varAccessGroup')?['securityEnabled']", True),
+             no=fail_item(Seq(), "Fail access not security", "Stop access not security",
+                          "@concat(variables('varAccessGroup')?['displayName'], ' is not a security group; only security groups can be given access to an app.')", "NotSecurityGroup"))
+    acc.graph("HTTP Access membership", "POST", f"{GRAPH}/users/@{{body('HTTP_Access_requester')?['id']}}/checkMemberGroups",
+              "{\"groupIds\": [\"@{variables('varAccessGroup')?['id']}\"]}")
+    acc.set_var("Set access member", "varAccessMember", "@if(empty(body('HTTP_Access_membership')?['value']), 'no', 'yes')")
+    s.cond("Access for a group", is_true("@and(equals(triggerOutputs()?['body/RequestType/Value'], 'grantAccess'), equals(outputs('Payload')?['principalType'], 'group'))"), yes=acc)
+    s.compose("Approved payload", "@if(empty(variables('varAccessGroup')?['id']), body('Get_locked_item')?['PayloadJson'], string(setProperty(setProperty(setProperty(outputs('Payload'), 'principalId', variables('varAccessGroup')?['id']), 'principalDisplayName', variables('varAccessGroup')?['displayName']), 'requesterIsMember', variables('varAccessMember'))))")
     s.op("Get manager", "shared_office365users", "Manager_V2", {"id": f"@{REQ_UPN}"})
     s.compose("Manager email", "@if(equals(actions('Get_manager')?['status'], 'Succeeded'), coalesce(body('Get_manager')?['mail'], body('Get_manager')?['userPrincipalName']), body('Get_settings')?['FallbackApproverEmail'])",
               run_after={"Get_manager": ["Succeeded", "Failed"]})
     s.compose("Manager name", "@if(equals(actions('Get_manager')?['status'], 'Succeeded'), body('Get_manager')?['displayName'], 'Fallback approver')")
     s.select("Select roles text", "@coalesce(outputs('Payload')?['appRoles'], json('[]'))",
              "@concat('- App role ', item()?['value'], ' (', string(length(coalesce(item()?['assignGroups'], json('[]')))), ' group(s))')")
-    s.compose("Summary", SUMMARY)
+    s.compose("Summary core", SUMMARY)
+    # Highlights for approvers. The approval card is Markdown (no colours), so it gets bold text with red/green markers;
+    # approvers also get an HTML email with real colours whenever there is something to highlight.
+    s.compose("Highlights", "@concat(if(empty(outputs('Payload')?['graphAdditionalScopes']), '', concat('🔴 **Additional delegated permissions to review: ', replace(outputs('Payload')?['graphAdditionalScopes'], ',', ', '), '**', decodeUriComponent('%0A%0A'))), if(empty(variables('varAccessGroup')?['id']), '', if(equals(variables('varAccessMember'), 'yes'), concat('🟢 **Group ', variables('varAccessGroup')?['displayName'], ':** the requester is a member', decodeUriComponent('%0A%0A')), concat('🔴 **Group ', variables('varAccessGroup')?['displayName'], ': the requester is NOT a member of this group**', decodeUriComponent('%0A%0A')))))")
+    s.compose("Summary", "@concat(outputs('Highlights'), outputs('Summary_core'))")
+    s.compose("Highlights html", "@concat(if(empty(outputs('Payload')?['graphAdditionalScopes']), '', concat('<p style=\"color:#a4262c\"><b>Additional delegated permissions to review:</b> ', replace(outputs('Payload')?['graphAdditionalScopes'], ',', ', '), '</p>')), if(empty(variables('varAccessGroup')?['id']), '', if(equals(variables('varAccessMember'), 'yes'), concat('<p>Group: <b style=\"color:#107c10\">', variables('varAccessGroup')?['displayName'], '</b> (the requester is a member)</p>'), concat('<p>Group: <b style=\"color:#a4262c\">', variables('varAccessGroup')?['displayName'], '</b><br><span style=\"color:#a4262c\"><b>Note: the requester is not a member of this group.</b></span></p>'))))")
+    s.compose("Heads up body", "@concat('<p>Entra request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') needs your approval. Please look at these points first:</p>', outputs('Highlights_html'), '<hr>', replace(replace(outputs('Summary_core'), '**', ''), decodeUriComponent('%0A'), '<br>'), '<p>The approval request itself arrives separately in Outlook / Teams.</p><p><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a></p>')")
     s.sp_patch("Update pending manager", "EntraRequests", ID, {
         "Title": TITLE, "Status/Value": "PendingManagerApproval", "ManagerEmail": "@outputs('Manager_email')",
-        "ManagerName": "@outputs('Manager_name')", "ApprovedPayloadJson": "@body('Get_locked_item')?['PayloadJson']",
+        "ManagerName": "@outputs('Manager_name')", "ApprovedPayloadJson": "@outputs('Approved_payload')",
         "RequestSummary": "@outputs('Summary')"})
+    s.cond("Manager heads up", eq("@empty(outputs('Highlights_html'))", False),
+           yes=Seq().mail("Mail manager heads up", "@outputs('Manager_email')",
+                          "@concat('Please review before approving: Entra request ', triggerOutputs()?['body/Title'])", "@outputs('Heads_up_body')"))
     s.approval("Manager approval",
                "@concat('Entra request ', triggerOutputs()?['body/Title'], ': ', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'])",
                "@outputs('Manager_email')", "@outputs('Summary')", LINK, "@triggerOutputs()?['body/Author/Email']")
@@ -376,6 +415,9 @@ def er01() -> dict:
         "@concat('Your request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/TargetDisplayName'], ') was rejected by your manager.<br>Rejected by: ', coalesce(first(body('Manager_approval')?['responses'])?['responder']?['displayName'], ''), '<br>Comment: ', coalesce(first(body('Manager_approval')?['responses'])?['comments'], '(none)'), if(equals(body('Manager_approval')?['outcome'], 'Approve'), '<br><br>Note: a request cannot be approved by the person who raised it.', ''), '<br><br><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a>')")
 
     approved = Seq()
+    approved.cond("Entra heads up", eq("@empty(outputs('Highlights_html'))", False),
+                  yes=Seq().mail("Mail entra heads up", f"@{APPROVER_LIST}",
+                                 "@concat('Please review before approving: Entra request ', triggerOutputs()?['body/Title'])", "@outputs('Heads_up_body')"))
     approved.approval("Entra approval",
                       "@concat('Entra team approval – ', triggerOutputs()?['body/Title'], ': ', triggerOutputs()?['body/TargetDisplayName'])",
                       f"@{APPROVER_LIST}",
@@ -398,7 +440,7 @@ def er01() -> dict:
 
     trig = {"When_an_item_is_created": sp_trigger("GetOnNewItems", "EntraRequests",
                                                   "@and(equals(triggerBody()?['Status']?['Value'], 'Submitted'), not(contains(createArray('onboardGroup', 'lookupApp', 'tagOwnerGroup'), triggerBody()?['RequestType']?['Value'])))")}
-    return flow(trig, s, ["shared_sharepointonline", "shared_office365users", "shared_approvals", "shared_office365"])
+    return flow(trig, s, ["shared_sharepointonline", "shared_office365users", "shared_approvals", "shared_office365", "shared_webcontents"])
 
 
 # ---------------------------------------------------------------------------
@@ -506,6 +548,7 @@ STEP_KEYS = {
     "Log SP done": "sp", "Log SP failed": "sp", "Log SP created": "sp", "Log roles added": "roles",
     "Log assign done": ASSIGN_KEY, "Log assign failed": ASSIGN_KEY, "Log no group id": ASSIGN_KEY,
     "Log owner access": "owner", "Log owner access failed": "owner", "Log permissions done": "permissions", "Log permissions failed": "permissions",
+    "Log access done": "access", "Log access failed": "access",
     "Log delete done": "delete", "Log delete done disable": "delete", "Log delete done sp": "delete",
     "Log delete failed disable": "delete", "Log delete failed sp": "delete", "Log owner role missing": "owner", "Log purge done": "purge", "Log purge failed": "purge",
 }
@@ -564,7 +607,8 @@ def build_plan(t: "Seq") -> None:
             yes=plan_step(Seq(), "Plan purge", "purge", "Remove it from Deleted applications (no restore)"))
     t.switch("Plan by request type", "@triggerOutputs()?['body/RequestType/Value']",
              {"createAppRegistration": c1, "exposeApi": c3, "addAppRoles": c4, "assignGroupsToAppRoles": c5, "createServicePrincipal": c6,
-              "deleteAppRegistration": c7})
+              "deleteAppRegistration": c7,
+              "grantAccess": plan_step(Seq(), "Plan access", "access", f"Give @{{if(equals({P}?['principalType'], 'group'), coalesce({P}?['principalDisplayName'], {P}?['groupQuery']), 'the requester')}} @{{coalesce({P}?['roleValue'], 'Default Access')}} on @{{triggerOutputs()?['body/TargetDisplayName']}}")})
     R, G = "items('Plan_each_role')", "items('Plan_each_role_group')"
     groups = Seq().foreach("Plan each role group", f"@coalesce({R}?['assignGroups'], json('[]'))",
                            plan_step(Seq(), "Plan role group", f"assign|@{{{G}?['id']}}|@{{{R}?['value']}}",
@@ -619,7 +663,7 @@ def er02() -> dict:
                           ("varExposeOk", "string", "no"), ("varAssignOk", "string", "no"),
                           ("varTeamTag", "string", ""), ("varGroupOwner", "string", "no"),
                           ("varLog", "array", []), ("varHadErrors", "string", "no"), ("varFailMessage", "string", ""),
-                          ("varOwnerOk", "string", "no"), ("varPurgeOk", "string", "no"), ("varPlan", "array", []), ("varDone", "array", []),
+                          ("varOwnerOk", "string", "no"), ("varPurgeOk", "string", "no"), ("varAccessOk", "string", "no"), ("varPlan", "array", []), ("varDone", "array", []),
                           ("varFailed", "array", [])]:
         s.init_var(f"Init {var}", var, typ, val)
 
@@ -641,7 +685,8 @@ def er02() -> dict:
     ta.compose("Updated tags", "@union(body('Filter_kept_tags'), createArray(concat('lastUpdatedBy:', outputs('Requester')), concat('lastUpdatedTimestamp:', outputs('Now')), concat('requestId:', triggerOutputs()?['body/Title'])), if(empty(body('Filter_appcat_tag')), createArray(concat('managedBy:', body('Get_settings')?['ManagedByTag'])), json('[]')), if(and(empty(body('Filter_appcat_tag')), not(empty(triggerOutputs()?['body/AppCatId']))), createArray(concat('appCatID:', triggerOutputs()?['body/AppCatId'])), json('[]')))")
     ta.graph("HTTP Find target SP", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{body('HTTP_Get_target_app')?['appId']}}'&$select=id")
     ta.set_var("Set target SP", "varSpId", "@coalesce(first(body('HTTP_Find_target_SP')?['value'])?['id'], '')")
-    t.cond("Has target app", eq("@empty(triggerOutputs()?['body/TargetObjectId'])", False), yes=ta)
+    # grantAccess targets an enterprise app (which may have no app registration in this tenant) and needs no ownership.
+    t.cond("Has target app", is_true("@and(not(empty(triggerOutputs()?['body/TargetObjectId'])), not(equals(triggerOutputs()?['body/RequestType/Value'], 'grantAccess')))"), yes=ta)
 
     # -- createAppRegistration
     c1 = Seq()
@@ -666,7 +711,7 @@ def er02() -> dict:
     c1.select("Select access token claims", "@if(empty(outputs('Payload')?['optionalClaimsAccessToken']), json('[]'), split(outputs('Payload')?['optionalClaimsAccessToken'], ','))", {"name": "@item()", "essential": False})
     c1.filter("Filter optional tags", "@split(coalesce(outputs('Payload')?['tags'], ''), ';')", "@and(contains(item(), '='), greater(length(trim(item())), 2))")
     c1.select("Select optional tags", "@body('Filter_optional_tags')", "@concat(trim(first(split(item(), '='))), ':', trim(last(split(item(), '='))))")
-    c1.compose("App tags", "@union(outputs('Base_tags'), createArray(variables('varTeamTag'), concat('teamName:', variables('varTeamGroupName'))), if(empty(outputs('Payload')?['appEnv']), json('[]'), createArray(concat('appEnv:', outputs('Payload')?['appEnv']))), if(empty(outputs('Payload')?['borShortName']), json('[]'), createArray(concat('borShortName:', outputs('Payload')?['borShortName']))), body('Select_optional_tags'))")
+    c1.compose("App tags", "@union(outputs('Base_tags'), createArray(variables('varTeamTag'), concat('teamName:', variables('varTeamGroupName'))), if(empty(outputs('Payload')?['appEnv']), json('[]'), createArray(concat('appEnv:', outputs('Payload')?['appEnv']))), if(empty(outputs('Payload')?['borShortName']), json('[]'), createArray(concat('borShortName:', outputs('Payload')?['borShortName']))), if(empty(outputs('Payload')?['appType']), json('[]'), createArray(concat('appType:', outputs('Payload')?['appType']))), body('Select_optional_tags'))")
     # API permissions: any Microsoft Graph delegated permission, by name (openid, email, profile, User.Read are added by
     # the app by default). Names are looked up in Graph's own service principal; unknown names are logged, not added.
     # Consent is not granted here (that needs DelegatedPermissionGrant.ReadWrite.All): users consent at first sign-in,
@@ -826,9 +871,25 @@ def er02() -> dict:
     c7.set_var("Result delete", "varResult", {"applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}",
                                               "appId": "@{body('HTTP_Get_target_app')?['appId']}", "action": "@{outputs('Delete_action')}"})
 
+    # -- grantAccess: give the requester or a group (resolved and membership-checked by ER-01) access to an enterprise app
+    c8 = Seq()
+    c8.set_var("Set access SP", "varSpId", "@triggerOutputs()?['body/TargetObjectId']")
+    c8.compose("Access principal id", "@if(equals(outputs('Payload')?['principalType'], 'group'), coalesce(outputs('Payload')?['principalId'], ''), body('HTTP_Get_requester')?['id'])")
+    c8.compose("Access principal name", "@if(equals(outputs('Payload')?['principalType'], 'group'), coalesce(outputs('Payload')?['principalDisplayName'], outputs('Payload')?['groupQuery']), outputs('Requester'))")
+    c8.compose("Access role id", "@if(empty(outputs('Payload')?['roleId']), '00000000-0000-0000-0000-000000000000', outputs('Payload')?['roleId'])")
+    c8.cond("Access principal missing", is_true("@empty(outputs('Access_principal_id'))"),
+            yes=stop_try(Seq(), "no access principal", "The group was not resolved when the request was approved, so nobody was given access."))
+    graph_until_ok(c8, "HTTP Grant access", "POST", f"{GRAPH}/servicePrincipals/@{{triggerOutputs()?['body/TargetObjectId']}}/appRoleAssignedTo",
+                   body_file("HTTP_Grant_access"), 201, "varAccessOk", "", "", "",
+                   on_give_up=log_failed(Seq(), "Log access failed", "concat('Failed: ', outputs('Access_principal_name'), ' was not given ', coalesce(outputs('Payload')?['roleValue'], 'Default Access'), ' (', coalesce(body('HTTP_Grant_access')?['error']?['message'], 'no answer after 6 attempts'), ')')"))
+    c8.cond("Access granted", eq("@variables('varAccessOk')", "yes"),
+            yes=log(Seq(), "Log access done", "concat('Done: ', outputs('Access_principal_name'), ' has ', coalesce(outputs('Payload')?['roleValue'], 'Default Access'), ' on ', triggerOutputs()?['body/TargetDisplayName'])"))
+    c8.set_var("Result access", "varResult", {"servicePrincipalId": "@{triggerOutputs()?['body/TargetObjectId']}", "principalId": "@{outputs('Access_principal_id')}",
+                                              "appId": "@{outputs('Payload')?['appId']}"})
+
     cases = {}
     for name, seq in [("createAppRegistration", c1), ("exposeApi", c3), ("addAppRoles", c4),
-                      ("assignGroupsToAppRoles", c5), ("createServicePrincipal", c6), ("deleteAppRegistration", c7)]:
+                      ("assignGroupsToAppRoles", c5), ("createServicePrincipal", c6), ("deleteAppRegistration", c7), ("grantAccess", c8)]:
         cases[name] = Seq().scope(f"Do {name}", seq)
     t.switch("Request type", "@triggerOutputs()?['body/RequestType/Value']", cases)
 
@@ -897,7 +958,7 @@ def er02() -> dict:
     s.scope("Try", t)
 
     c = Seq()
-    c.filter("Failed actions", "@union(result('Do_createAppRegistration'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Do_deleteAppRegistration'), result('Try'))",
+    c.filter("Failed actions", "@union(result('Do_createAppRegistration'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Do_deleteAppRegistration'), result('Do_grantAccess'), result('Try'))",
              "@equals(item()?['status'], 'Failed')")
     # 'ActionFailed' is Power Automate's generic text for a container whose inner step failed: say so plainly.
     c.compose("Error text", "@if(empty(variables('varFailMessage')), concat(first(body('Failed_actions'))?['name'], ': ', coalesce(first(body('Failed_actions'))?['outputs']?['body']?['error']?['message'], if(equals(first(body('Failed_actions'))?['error']?['code'], 'ActionFailed'), 'a step inside it failed; the ER-02 run history shows which one and why', first(body('Failed_actions'))?['error']?['message']), 'see the ER-02 run history')), variables('varFailMessage'))")
@@ -1107,20 +1168,51 @@ def er05() -> dict:
     s.compose("App query", "@toLower(trim(coalesce(triggerOutputs()?['body/TargetDisplayName'], triggerOutputs()?['body/TargetObjectId'], '')))")
     s.init_var("Init varApp", "varApp", "object", {})
     s.init_var("Init varGroupOwner", "varGroupOwner", "string", "no")
+    s.init_var("Init varSp", "varSp", "object", {})
+    s.compose("Purpose", "@coalesce(json(coalesce(triggerOutputs()?['body/PayloadJson'], '{}'))?['purpose'], 'change')")
 
     t = Seq()
     t.cond("Query is a GUID", is_true(GUID_CHECK.format(q="outputs('App_query')")),
            no=fail_item(Seq(), "Fail not a GUID", "Stop not a GUID",
                         "Enter the app registration's Application (client) ID or Object ID, for example 00000000-0000-0000-0000-000000000000.", "NotAGuid"))
     t.graph("HTTP Get requester", "GET", f"{GRAPH}/users/@{{outputs('Requester')}}?$select=id")
-    find_app(t, "App", "outputs('App_query')", "varApp", "Fail app not found", "Stop app not found")
-    is_owner = owner_check(t, "App", "variables('varApp')?['tags']", "body('HTTP_Get_requester')?['id']", "varGroupOwner")
-    t.cond("Requester is owner", is_true(is_owner), no=fail_item(Seq(), "Fail not owner", "Stop not owner", NOT_OWNER, "NotAuthorizedOwner"))
-    t.graph("HTTP Find SP", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{variables('varApp')?['appId']}}'&$select=id")
-    t.filter("Filter appcat tag", "@coalesce(variables('varApp')?['tags'], json('[]'))", "@startsWith(item(), 'appCatID:')")
-    t.filter("Filter team name tag", "@coalesce(variables('varApp')?['tags'], json('[]'))", "@startsWith(item(), 'teamName:')")
-    t.compose("App catid", "@if(empty(body('Filter_appcat_tag')), '', substring(first(body('Filter_appcat_tag')), 9))")
-    t.compose("Result", {
+
+    # Access search (Grant access card): any enterprise app in the tenant, by client ID, enterprise app object ID or
+    # app registration object ID. No ownership check: anyone may ask for access; approvers decide.
+    Q = "outputs('App_query')"
+    ssel = "$select=id,appId,displayName,appRoles,appRoleAssignmentRequired"
+    acc = Seq().graph("HTTP SP by appId", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{{Q}}}'&{ssel}")
+    via_app = Seq().graph("HTTP App of query", "GET", f"{GRAPH}/applications?$filter=id eq '@{{{Q}}}'&$select=appId")
+    sp_of_app = Seq().graph("HTTP SP of app", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{first(body('HTTP_App_of_query')?['value'])?['appId']}}'&{ssel}")
+    sp_of_app.cond("SP of app found", eq("@empty(body('HTTP_SP_of_app')?['value'])", False),
+                   yes=Seq().set_var("Set SP from app", "varSp", "@first(body('HTTP_SP_of_app')?['value'])"),
+                   no=fail_item(Seq(), "Fail no SP", "Stop no SP", "This app registration has no enterprise application yet, so nobody can be given access. Its owner can create one with the Enterprise application card.", "NoEnterpriseApp"))
+    via_app.cond("App of query found", eq("@empty(body('HTTP_App_of_query')?['value'])", False), yes=sp_of_app,
+                 no=fail_item(Seq(), "Fail access not found", "Stop access not found", f"@concat('No enterprise application or app registration has the ID ', {Q}, '.')", "AppNotFound"))
+    by_sp_id = Seq().graph("HTTP SP by id", "GET", f"{GRAPH}/servicePrincipals?$filter=id eq '@{{{Q}}}'&{ssel}")
+    by_sp_id.cond("SP found by id", eq("@empty(body('HTTP_SP_by_id')?['value'])", False),
+                  yes=Seq().set_var("Set SP from id", "varSp", "@first(body('HTTP_SP_by_id')?['value'])"), no=via_app)
+    acc.cond("SP found by appId", eq("@empty(body('HTTP_SP_by_appId')?['value'])", False),
+             yes=Seq().set_var("Set SP from appId", "varSp", "@first(body('HTTP_SP_by_appId')?['value'])"), no=by_sp_id)
+    acc.filter("User roles", "@coalesce(variables('varSp')?['appRoles'], json('[]'))", "@and(contains(item()?['allowedMemberTypes'], 'User'), equals(item()?['isEnabled'], true))")
+    acc.select("Select user roles", "@body('User_roles')", {"id": "@item()?['id']", "value": "@item()?['value']", "displayName": "@item()?['displayName']"})
+    acc.compose("Access result", {"purpose": "access", "servicePrincipalId": "@{variables('varSp')?['id']}", "appId": "@{variables('varSp')?['appId']}",
+                                  "displayName": "@{variables('varSp')?['displayName']}", "appRolesJson": "@{string(body('Select_user_roles'))}",
+                                  "assignmentRequired": "@{variables('varSp')?['appRoleAssignmentRequired']}"})
+    acc.sp_patch("Mark access found", "EntraRequests", ID, {
+        "Title": TITLE, "Status/Value": "Completed", "CompletedAt": "@utcNow()",
+        "TargetDisplayName": "@variables('varSp')?['displayName']", "TargetObjectId": "@variables('varSp')?['id']",
+        "ResultJson": "@string(outputs('Access_result'))"})
+
+    own = Seq()  # change / delete search: app registrations the requester owns
+    find_app(own, "App", "outputs('App_query')", "varApp", "Fail app not found", "Stop app not found")
+    is_owner = owner_check(own, "App", "variables('varApp')?['tags']", "body('HTTP_Get_requester')?['id']", "varGroupOwner")
+    own.cond("Requester is owner", is_true(is_owner), no=fail_item(Seq(), "Fail not owner", "Stop not owner", NOT_OWNER, "NotAuthorizedOwner"))
+    own.graph("HTTP Find SP", "GET", f"{GRAPH}/servicePrincipals?$filter=appId eq '@{{variables('varApp')?['appId']}}'&$select=id")
+    own.filter("Filter appcat tag", "@coalesce(variables('varApp')?['tags'], json('[]'))", "@startsWith(item(), 'appCatID:')")
+    own.filter("Filter team name tag", "@coalesce(variables('varApp')?['tags'], json('[]'))", "@startsWith(item(), 'teamName:')")
+    own.compose("App catid", "@if(empty(body('Filter_appcat_tag')), '', substring(first(body('Filter_appcat_tag')), 9))")
+    own.compose("Result", {
         "objectId": "@{variables('varApp')?['id']}", "appId": "@{variables('varApp')?['appId']}",
         "displayName": "@{variables('varApp')?['displayName']}", "appCatId": "@{outputs('App_catid')}",
         "team": "@{coalesce(first(body('App_team_tags')), '')}",
@@ -1129,10 +1221,11 @@ def er05() -> dict:
         "servicePrincipalId": "@{coalesce(first(body('HTTP_Find_SP')?['value'])?['id'], '')}",
         "appRolesJson": "@{string(coalesce(variables('varApp')?['appRoles'], json('[]')))}",
         "scopesJson": "@{string(coalesce(variables('varApp')?['api']?['oauth2PermissionScopes'], json('[]')))}"})
-    t.sp_patch("Mark completed", "EntraRequests", ID, {
+    own.sp_patch("Mark completed", "EntraRequests", ID, {
         "Title": TITLE, "Status/Value": "Completed", "CompletedAt": "@utcNow()",
         "TargetDisplayName": "@variables('varApp')?['displayName']", "TargetObjectId": "@variables('varApp')?['id']",
         "AppCatId": "@outputs('App_catid')", "ResultJson": "@string(outputs('Result'))"})
+    t.cond("Lookup for access", eq("@outputs('Purpose')", "access"), yes=acc, no=own)
     s.scope("Try", t)
     instant_catch(s, "ER-05")
 

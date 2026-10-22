@@ -2,7 +2,7 @@
 
 | Flow | Trigger | Connectors | Licence |
 |---|---|---|---|
-| **ER-01 Approvals** | SharePoint: item created in EntraRequests | SharePoint, Office 365 Users, Approvals, Office 365 Outlook, Teams (optional) | Standard |
+| **ER-01 Approvals** | SharePoint: item created in EntraRequests | SharePoint, Office 365 Users, Approvals, Office 365 Outlook, HTTP with Entra ID (access requests only) | Premium since 1.8 (owner's licence) |
 | **ER-02 Execute** | SharePoint: item created or modified, `Status = Approved` | SharePoint, Outlook, plus a Graph connection: **HTTP with Microsoft Entra ID (preauthorized)** (option A) or **HTTP** + **Azure Key Vault** (option B) | Premium (owner's licence) |
 | **ER-03 Catalog sync** | Recurrence, hourly (+ run manually) | SharePoint, plus the same Graph connection | Premium (owner's licence) |
 | **ER-04 Onboard group** | SharePoint: item created, `RequestType = onboardGroup` (group looked up by name or Object ID) | SharePoint, plus the same Graph connection | Premium (owner's licence) |
@@ -172,6 +172,19 @@ concat(
 
 ---
 
+### 1.8 additions to ER-01
+
+| Action | Type | Configuration |
+|---|---|---|
+| `Init varAccessGroup` / `Init varAccessMember` | Initialize variable ×2 | Object `{}`; String empty |
+| `Access for a group` | Condition | `grantAccess` with `Payload.principalType` = `group`. **If yes:** `HTTP Access requester` (`GET /users/{upn}?$select=id`) → `Access group query` → by Object ID (`GET /groups/{id}`) or exact name (`GET /groups?$filter=displayName eq '…'`, must match exactly one) → `Access group is security` → `HTTP Access membership` (`POST /users/{id}/checkMemberGroups`) → `Set access member` (`yes` / `no`). A group that isn't found, is ambiguous or isn't a security group fails the request before any approval. |
+| `Approved payload` | Compose | the payload, plus `principalId`, `principalDisplayName`, `requesterIsMember` for a group; saved as ApprovedPayloadJson |
+| `Summary core`, `Highlights`, `Summary` | Compose ×3 | `Highlights` (Markdown, top of the approval card): `🔴 **Additional delegated permissions to review: …**` from `Payload.graphAdditionalScopes`, and for a group `🟢 **Group X:** the requester is a member` or `🔴 **Group X: the requester is NOT a member of this group**` |
+| `Highlights html`, `Heads up body` | Compose ×2 | the same in HTML with real colours (red `#a4262c`, green `#107c10`), plus the summary |
+| `Manager heads up` / `Entra heads up` | Condition + Send an email | when `Highlights html` isn't empty: an email to the manager before the manager approval, and to `EntraApproverEmails` before the Entra ID team approval, subject *Please review before approving: Entra request REQ-…* |
+
+The approval card itself supports Markdown only, so colours appear in the heads-up email; the card carries the bold 🔴 / 🟢 markers.
+
 ## ER-02 Execute (Premium)
 
 **+ Create → Automated cloud flow** → name `ER-02 Execute` → trigger **SharePoint – When an item is created or modified** → Site Address = your site, List Name = `EntraRequests`.
@@ -331,6 +344,18 @@ Step 13 `Queue new role assignment` Value (text with tokens):
 | `Set SP id sp` | Set variable | Name `varSpId`; Value `body('HTTP_Create_SP_existing')?['id']` |
 | `HTTP Patch tags sp` | Graph | `PATCH` `https://graph.microsoft.com/v1.0/applications/@{triggerOutputs()?['body/TargetObjectId']}`; Body [`HTTP_Patch_tags.json`](../powerautomate/actions/HTTP_Patch_tags.json) |
 | `Result sp` | Set variable | Name `varResult`; Value `{"applicationObjectId": "@{triggerOutputs()?['body/TargetObjectId']}", "servicePrincipalId": "@{body('HTTP_Create_SP_existing')?['id']}"}` |
+
+#### Case `grantAccess` → Scope `Do grantAccess` (1.8)
+
+`TargetObjectId` is the **enterprise app's** object id (third-party apps have no app registration here), so *Has target app* and the ownership check are skipped for this type.
+
+| Action | Type | Configuration |
+|---|---|---|
+| `Set access SP` | Set variable | `varSpId` = `triggerOutputs()?['body/TargetObjectId']` |
+| `Access principal id` / `name` | Compose ×2 | group: `Payload.principalId` / `principalDisplayName` (set by ER-01); me: the requester's object id / UPN |
+| `Access role id` | Compose | `Payload.roleId`, or `00000000-0000-0000-0000-000000000000` (Default Access) |
+| `Access principal missing` | Condition | empty principal → **Stop** (the group wasn't resolved) |
+| `HTTP Grant access` | retry pattern | `POST /servicePrincipals/{TargetObjectId}/appRoleAssignedTo`, body [`HTTP_Grant_access.json`](../powerautomate/actions/HTTP_Grant_access.json), status `201`, flag `varAccessOk` → **Log** `Done: X has <role> on <app>` / **Log failed** |
 
 #### Case `deleteAppRegistration` → Scope `Do deleteAppRegistration` (1.7)
 
@@ -578,6 +603,8 @@ With a prefix `<P>` (e.g. `App`), the tags expression `<tags>`, the requester's 
 ---
 
 ## ER-05 Find app (Premium)
+
+**Access mode (1.8).** When the lookup item's `PayloadJson` is `{"purpose": "access"}` (the *Request app access* screen), ER-05 skips the ownership check and looks for an **enterprise app**: `servicePrincipals?$filter=appId eq '<q>'`, then `id eq '<q>'`, then the app registration with object id `<q>` and its enterprise app. It returns the enterprise app's id, name, appId and its user-assignable roles (`appRolesJson`). Without an enterprise app the search fails with a message.
 
 Behind the **Search** button on the change screen. The requester types the app registration's **Application (client) ID or Object ID**; ER-05 finds the app and returns its details **only if the requester is its authorized owner** (ownership check above). Otherwise the request fails with *Not authorized owner*, which the app shows. Read-only in Entra; no approval. These `lookupApp` items are hidden from *My requests*.
 

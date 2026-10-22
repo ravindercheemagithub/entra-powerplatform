@@ -36,6 +36,15 @@
         "api": {
           "name": "shared_office365"
         }
+      },
+      "shared_webcontents": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "esp_sharedwebcontents_entra"
+        },
+        "api": {
+          "name": "shared_webcontents"
+        }
       }
     },
     "definition": {
@@ -256,6 +265,385 @@
             ]
           }
         },
+        "Init_varAccessGroup": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varAccessGroup",
+                "type": "object",
+                "value": {}
+              }
+            ]
+          },
+          "runAfter": {
+            "Payload": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Init_varAccessMember": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varAccessMember",
+                "type": "string",
+                "value": ""
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varAccessGroup": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Access_for_a_group": {
+          "type": "If",
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@and(equals(triggerOutputs()?['body/RequestType/Value'], 'grantAccess'), equals(outputs('Payload')?['principalType'], 'group'))",
+                  true
+                ]
+              }
+            ]
+          },
+          "actions": {
+            "HTTP_Access_requester": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                  "connectionName": "shared_webcontents",
+                  "operationId": "InvokeHttp"
+                },
+                "parameters": {
+                  "request/method": "GET",
+                  "request/url": "https://graph.microsoft.com/v1.0/users/@{last(split(triggerOutputs()?['body/Author/Claims'], '|'))}?$select=id"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {}
+            },
+            "Access_group_query": {
+              "type": "Compose",
+              "inputs": "@trim(coalesce(outputs('Payload')?['groupQuery'], ''))",
+              "runAfter": {
+                "HTTP_Access_requester": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Access_query_is_object_id": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@and(equals(length(outputs('Access_group_query')), 36), equals(length(split(outputs('Access_group_query'), '-')), 5))",
+                      true
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "HTTP_Access_group_by_id": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                      "connectionName": "shared_webcontents",
+                      "operationId": "InvokeHttp"
+                    },
+                    "parameters": {
+                      "request/method": "GET",
+                      "request/url": "https://graph.microsoft.com/v1.0/groups/@{toLower(outputs('Access_group_query'))}?$select=id,displayName,securityEnabled"
+                    },
+                    "authentication": "@parameters('$authentication')",
+                    "retryPolicy": {
+                      "type": "none"
+                    }
+                  },
+                  "runAfter": {}
+                },
+                "Access_group_found_by_id": {
+                  "type": "If",
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@outputs('HTTP_Access_group_by_id')?['statusCode']",
+                          200
+                        ]
+                      }
+                    ]
+                  },
+                  "actions": {
+                    "Set_access_group_from_id": {
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "varAccessGroup",
+                        "value": "@body('HTTP_Access_group_by_id')"
+                      },
+                      "runAfter": {}
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "Fail_access_group_id": {
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                            "connectionName": "shared_sharepointonline",
+                            "operationId": "PatchItem"
+                          },
+                          "parameters": {
+                            "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                            "table": "EntraRequests",
+                            "id": "@int(triggerOutputs()?['body/ID'])",
+                            "item/Title": "@triggerOutputs()?['body/Title']",
+                            "item/Status/Value": "Failed",
+                            "item/ErrorMessage": "@concat('No group has the Object ID ', outputs('Access_group_query'), '.')"
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        },
+                        "runAfter": {}
+                      },
+                      "Stop_access_group_id": {
+                        "type": "Terminate",
+                        "inputs": {
+                          "runStatus": "Failed",
+                          "runError": {
+                            "code": "GroupNotFound",
+                            "message": "@concat('No group has the Object ID ', outputs('Access_group_query'), '.')"
+                          }
+                        },
+                        "runAfter": {
+                          "Fail_access_group_id": [
+                            "Succeeded"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "HTTP_Access_group_by_id": [
+                      "Succeeded",
+                      "Failed"
+                    ]
+                  }
+                }
+              },
+              "else": {
+                "actions": {
+                  "HTTP_Access_group_by_name": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                        "connectionName": "shared_webcontents",
+                        "operationId": "InvokeHttp"
+                      },
+                      "parameters": {
+                        "request/method": "GET",
+                        "request/url": "https://graph.microsoft.com/v1.0/groups?$filter=displayName eq '@{encodeUriComponent(replace(outputs('Access_group_query'), '''', ''''''))}'&$select=id,displayName,securityEnabled&$top=5"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    },
+                    "runAfter": {}
+                  },
+                  "Access_group_name_unique": {
+                    "type": "If",
+                    "expression": {
+                      "and": [
+                        {
+                          "equals": [
+                            "@length(body('HTTP_Access_group_by_name')?['value'])",
+                            1
+                          ]
+                        }
+                      ]
+                    },
+                    "actions": {
+                      "Set_access_group_from_name": {
+                        "type": "SetVariable",
+                        "inputs": {
+                          "name": "varAccessGroup",
+                          "value": "@first(body('HTTP_Access_group_by_name')?['value'])"
+                        },
+                        "runAfter": {}
+                      }
+                    },
+                    "else": {
+                      "actions": {
+                        "Fail_access_group_name": {
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                              "connectionName": "shared_sharepointonline",
+                              "operationId": "PatchItem"
+                            },
+                            "parameters": {
+                              "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                              "table": "EntraRequests",
+                              "id": "@int(triggerOutputs()?['body/ID'])",
+                              "item/Title": "@triggerOutputs()?['body/Title']",
+                              "item/Status/Value": "Failed",
+                              "item/ErrorMessage": "@if(empty(body('HTTP_Access_group_by_name')?['value']), concat('No group named ', outputs('Access_group_query'), ' was found.'), concat(string(length(body('HTTP_Access_group_by_name')?['value'])), ' groups are named ', outputs('Access_group_query'), '; use the Object ID.'))"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          },
+                          "runAfter": {}
+                        },
+                        "Stop_access_group_name": {
+                          "type": "Terminate",
+                          "inputs": {
+                            "runStatus": "Failed",
+                            "runError": {
+                              "code": "GroupNotFound",
+                              "message": "@if(empty(body('HTTP_Access_group_by_name')?['value']), concat('No group named ', outputs('Access_group_query'), ' was found.'), concat(string(length(body('HTTP_Access_group_by_name')?['value'])), ' groups are named ', outputs('Access_group_query'), '; use the Object ID.'))"
+                            }
+                          },
+                          "runAfter": {
+                            "Fail_access_group_name": [
+                              "Succeeded"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "runAfter": {
+                      "HTTP_Access_group_by_name": [
+                        "Succeeded"
+                      ]
+                    }
+                  }
+                }
+              },
+              "runAfter": {
+                "Access_group_query": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Access_group_is_security": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@variables('varAccessGroup')?['securityEnabled']",
+                      true
+                    ]
+                  }
+                ]
+              },
+              "actions": {},
+              "else": {
+                "actions": {
+                  "Fail_access_not_security": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                        "connectionName": "shared_sharepointonline",
+                        "operationId": "PatchItem"
+                      },
+                      "parameters": {
+                        "dataset": "@parameters('SharePoint site URL (esp_SiteUrl)')",
+                        "table": "EntraRequests",
+                        "id": "@int(triggerOutputs()?['body/ID'])",
+                        "item/Title": "@triggerOutputs()?['body/Title']",
+                        "item/Status/Value": "Failed",
+                        "item/ErrorMessage": "@concat(variables('varAccessGroup')?['displayName'], ' is not a security group; only security groups can be given access to an app.')"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    },
+                    "runAfter": {}
+                  },
+                  "Stop_access_not_security": {
+                    "type": "Terminate",
+                    "inputs": {
+                      "runStatus": "Failed",
+                      "runError": {
+                        "code": "NotSecurityGroup",
+                        "message": "@concat(variables('varAccessGroup')?['displayName'], ' is not a security group; only security groups can be given access to an app.')"
+                      }
+                    },
+                    "runAfter": {
+                      "Fail_access_not_security": [
+                        "Succeeded"
+                      ]
+                    }
+                  }
+                }
+              },
+              "runAfter": {
+                "Access_query_is_object_id": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "HTTP_Access_membership": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                  "connectionName": "shared_webcontents",
+                  "operationId": "InvokeHttp"
+                },
+                "parameters": {
+                  "request/method": "POST",
+                  "request/url": "https://graph.microsoft.com/v1.0/users/@{body('HTTP_Access_requester')?['id']}/checkMemberGroups",
+                  "request/headers": {
+                    "Content-Type": "application/json"
+                  },
+                  "request/body": "{\"groupIds\": [\"@{variables('varAccessGroup')?['id']}\"]}"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {
+                "Access_group_is_security": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Set_access_member": {
+              "type": "SetVariable",
+              "inputs": {
+                "name": "varAccessMember",
+                "value": "@if(empty(body('HTTP_Access_membership')?['value']), 'no', 'yes')"
+              },
+              "runAfter": {
+                "HTTP_Access_membership": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "else": {
+            "actions": {}
+          },
+          "runAfter": {
+            "Init_varAccessMember": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Approved_payload": {
+          "type": "Compose",
+          "inputs": "@if(empty(variables('varAccessGroup')?['id']), body('Get_locked_item')?['PayloadJson'], string(setProperty(setProperty(setProperty(outputs('Payload'), 'principalId', variables('varAccessGroup')?['id']), 'principalDisplayName', variables('varAccessGroup')?['displayName']), 'requesterIsMember', variables('varAccessMember'))))",
+          "runAfter": {
+            "Access_for_a_group": [
+              "Succeeded"
+            ]
+          }
+        },
         "Get_manager": {
           "type": "OpenApiConnection",
           "inputs": {
@@ -270,7 +658,7 @@
             "authentication": "@parameters('$authentication')"
           },
           "runAfter": {
-            "Payload": [
+            "Approved_payload": [
               "Succeeded"
             ]
           }
@@ -306,11 +694,47 @@
             ]
           }
         },
-        "Summary": {
+        "Summary_core": {
           "type": "Compose",
-          "inputs": "@concat('**', triggerOutputs()?['body/RequestType/Value'], '** – ', triggerOutputs()?['body/TargetDisplayName'], decodeUriComponent('%0A%0A'), 'Request: ', triggerOutputs()?['body/Title'], ' · appCatID: ', triggerOutputs()?['body/AppCatId'], decodeUriComponent('%0A%0A'), 'Requested by: ', triggerOutputs()?['body/Author/DisplayName'], ' (', triggerOutputs()?['body/Author/Email'], ')', decodeUriComponent('%0A%0A'), if(empty(outputs('Payload')?['owningGroup']), '', concat('Owning team: ', outputs('Payload')?['owningGroup']?['displayName'], if(equals(outputs('Payload')?['owningGroup']?['mode'], 'new'), ' (new group)', ''), decodeUriComponent('%0A%0A'))), if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), concat('Expose API: ', outputs('Payload')?['exposeApi']?['identifierUriTemplate'], ', ', string(length(coalesce(outputs('Payload')?['exposeApi']?['scopes'], json('[]')))), ' scope(s)', decodeUriComponent('%0A%0A')), ''), if(empty(body('Select_roles_text')), '', concat(join(body('Select_roles_text'), decodeUriComponent('%0A')), decodeUriComponent('%0A%0A'))), if(empty(outputs('Payload')?['graphDelegatedScopes']), '', concat('API permissions (Microsoft Graph, delegated): ', replace(outputs('Payload')?['graphDelegatedScopes'], ',', ', '), decodeUriComponent('%0A%0A'))), if(empty(outputs('Payload')?['ownerRole']), '', concat('Owner gets role: ', outputs('Payload')?['ownerRole'], decodeUriComponent('%0A%0A'))), if(equals(triggerOutputs()?['body/RequestType/Value'], 'deleteAppRegistration'), concat('**DELETE: ', coalesce(outputs('Payload')?['actionLabel'], outputs('Payload')?['action']), '**', decodeUriComponent('%0A%0A')), ''), 'Justification: ', triggerOutputs()?['body/Justification'])",
+          "inputs": "@concat('**', triggerOutputs()?['body/RequestType/Value'], '** – ', triggerOutputs()?['body/TargetDisplayName'], decodeUriComponent('%0A%0A'), 'Request: ', triggerOutputs()?['body/Title'], ' · appCatID: ', triggerOutputs()?['body/AppCatId'], decodeUriComponent('%0A%0A'), 'Requested by: ', triggerOutputs()?['body/Author/DisplayName'], ' (', triggerOutputs()?['body/Author/Email'], ')', decodeUriComponent('%0A%0A'), if(empty(outputs('Payload')?['owningGroup']), '', concat('Owning team: ', outputs('Payload')?['owningGroup']?['displayName'], if(equals(outputs('Payload')?['owningGroup']?['mode'], 'new'), ' (new group)', ''), decodeUriComponent('%0A%0A'))), if(equals(outputs('Payload')?['exposeApi']?['enabled'], true), concat('Expose API: ', outputs('Payload')?['exposeApi']?['identifierUriTemplate'], ', ', string(length(coalesce(outputs('Payload')?['exposeApi']?['scopes'], json('[]')))), ' scope(s)', decodeUriComponent('%0A%0A')), ''), if(empty(body('Select_roles_text')), '', concat(join(body('Select_roles_text'), decodeUriComponent('%0A')), decodeUriComponent('%0A%0A'))), if(empty(outputs('Payload')?['graphDelegatedScopes']), '', concat('API permissions (Microsoft Graph, delegated): ', replace(outputs('Payload')?['graphDelegatedScopes'], ',', ', '), decodeUriComponent('%0A%0A'))), if(empty(outputs('Payload')?['ownerRole']), '', concat('Owner gets role: ', outputs('Payload')?['ownerRole'], decodeUriComponent('%0A%0A'))), if(equals(triggerOutputs()?['body/RequestType/Value'], 'grantAccess'), concat('Access for: ', if(equals(outputs('Payload')?['principalType'], 'group'), concat('group ', coalesce(variables('varAccessGroup')?['displayName'], outputs('Payload')?['groupQuery'])), 'the requester'), ', role ', coalesce(outputs('Payload')?['roleValue'], 'Default Access'), decodeUriComponent('%0A%0A')), ''), if(equals(triggerOutputs()?['body/RequestType/Value'], 'deleteAppRegistration'), concat('**DELETE: ', coalesce(outputs('Payload')?['actionLabel'], outputs('Payload')?['action']), '**', decodeUriComponent('%0A%0A')), ''), 'Justification: ', triggerOutputs()?['body/Justification'])",
           "runAfter": {
             "Select_roles_text": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Highlights": {
+          "type": "Compose",
+          "inputs": "@concat(if(empty(outputs('Payload')?['graphAdditionalScopes']), '', concat('🔴 **Additional delegated permissions to review: ', replace(outputs('Payload')?['graphAdditionalScopes'], ',', ', '), '**', decodeUriComponent('%0A%0A'))), if(empty(variables('varAccessGroup')?['id']), '', if(equals(variables('varAccessMember'), 'yes'), concat('🟢 **Group ', variables('varAccessGroup')?['displayName'], ':** the requester is a member', decodeUriComponent('%0A%0A')), concat('🔴 **Group ', variables('varAccessGroup')?['displayName'], ': the requester is NOT a member of this group**', decodeUriComponent('%0A%0A')))))",
+          "runAfter": {
+            "Summary_core": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Summary": {
+          "type": "Compose",
+          "inputs": "@concat(outputs('Highlights'), outputs('Summary_core'))",
+          "runAfter": {
+            "Highlights": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Highlights_html": {
+          "type": "Compose",
+          "inputs": "@concat(if(empty(outputs('Payload')?['graphAdditionalScopes']), '', concat('<p style=\"color:#a4262c\"><b>Additional delegated permissions to review:</b> ', replace(outputs('Payload')?['graphAdditionalScopes'], ',', ', '), '</p>')), if(empty(variables('varAccessGroup')?['id']), '', if(equals(variables('varAccessMember'), 'yes'), concat('<p>Group: <b style=\"color:#107c10\">', variables('varAccessGroup')?['displayName'], '</b> (the requester is a member)</p>'), concat('<p>Group: <b style=\"color:#a4262c\">', variables('varAccessGroup')?['displayName'], '</b><br><span style=\"color:#a4262c\"><b>Note: the requester is not a member of this group.</b></span></p>'))))",
+          "runAfter": {
+            "Summary": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Heads_up_body": {
+          "type": "Compose",
+          "inputs": "@concat('<p>Entra request <b>', triggerOutputs()?['body/Title'], '</b> (', triggerOutputs()?['body/RequestType/Value'], ' – ', triggerOutputs()?['body/TargetDisplayName'], ') needs your approval. Please look at these points first:</p>', outputs('Highlights_html'), '<hr>', replace(replace(outputs('Summary_core'), '**', ''), decodeUriComponent('%0A'), '<br>'), '<p>The approval request itself arrives separately in Outlook / Teams.</p><p><a href=\"', body('Get_settings')?['PowerAppUrl'], '\">Open Entra Self-Service</a></p>')",
+          "runAfter": {
+            "Highlights_html": [
               "Succeeded"
             ]
           }
@@ -331,13 +755,54 @@
               "item/Status/Value": "PendingManagerApproval",
               "item/ManagerEmail": "@outputs('Manager_email')",
               "item/ManagerName": "@outputs('Manager_name')",
-              "item/ApprovedPayloadJson": "@body('Get_locked_item')?['PayloadJson']",
+              "item/ApprovedPayloadJson": "@outputs('Approved_payload')",
               "item/RequestSummary": "@outputs('Summary')"
             },
             "authentication": "@parameters('$authentication')"
           },
           "runAfter": {
-            "Summary": [
+            "Heads_up_body": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Manager_heads_up": {
+          "type": "If",
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@empty(outputs('Highlights_html'))",
+                  false
+                ]
+              }
+            ]
+          },
+          "actions": {
+            "Mail_manager_heads_up": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "SendEmailV2"
+                },
+                "parameters": {
+                  "emailMessage/To": "@outputs('Manager_email')",
+                  "emailMessage/Subject": "@concat('Please review before approving: Entra request ', triggerOutputs()?['body/Title'])",
+                  "emailMessage/Body": "@outputs('Heads_up_body')",
+                  "emailMessage/Importance": "Normal"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {}
+            }
+          },
+          "else": {
+            "actions": {}
+          },
+          "runAfter": {
+            "Update_pending_manager": [
               "Succeeded"
             ]
           }
@@ -364,7 +829,7 @@
             "authentication": "@parameters('$authentication')"
           },
           "runAfter": {
-            "Update_pending_manager": [
+            "Manager_heads_up": [
               "Succeeded"
             ]
           }
@@ -418,6 +883,43 @@
             ]
           },
           "actions": {
+            "Entra_heads_up": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@empty(outputs('Highlights_html'))",
+                      false
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "Mail_entra_heads_up": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                      "connectionName": "shared_office365",
+                      "operationId": "SendEmailV2"
+                    },
+                    "parameters": {
+                      "emailMessage/To": "@replace(replace(body('Get_settings')?['EntraApproverEmails'], decodeUriComponent('%0D'), ''), decodeUriComponent('%0A'), ';')",
+                      "emailMessage/Subject": "@concat('Please review before approving: Entra request ', triggerOutputs()?['body/Title'])",
+                      "emailMessage/Body": "@outputs('Heads_up_body')",
+                      "emailMessage/Importance": "Normal"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "runAfter": {}
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "runAfter": {}
+            },
             "Entra_approval": {
               "type": "OpenApiConnectionWebhook",
               "inputs": {
@@ -439,7 +941,11 @@
                 },
                 "authentication": "@parameters('$authentication')"
               },
-              "runAfter": {}
+              "runAfter": {
+                "Entra_heads_up": [
+                  "Succeeded"
+                ]
+              }
             },
             "Entra_outcome": {
               "type": "Compose",

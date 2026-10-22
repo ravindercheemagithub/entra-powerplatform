@@ -481,6 +481,23 @@
             ]
           }
         },
+        "Init_varAccessOk": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varAccessOk",
+                "type": "string",
+                "value": "no"
+              }
+            ]
+          },
+          "runAfter": {
+            "Init_varPurgeOk": [
+              "Succeeded"
+            ]
+          }
+        },
         "Init_varPlan": {
           "type": "InitializeVariable",
           "inputs": {
@@ -493,7 +510,7 @@
             ]
           },
           "runAfter": {
-            "Init_varPurgeOk": [
+            "Init_varAccessOk": [
               "Succeeded"
             ]
           }
@@ -843,6 +860,22 @@
                       }
                     }
                   }
+                },
+                "Case_grantAccess": {
+                  "case": "grantAccess",
+                  "actions": {
+                    "Plan_access": {
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varPlan",
+                        "value": {
+                          "key": "access",
+                          "label": "Give @{if(equals(outputs('Payload')?['principalType'], 'group'), coalesce(outputs('Payload')?['principalDisplayName'], outputs('Payload')?['groupQuery']), 'the requester')} @{coalesce(outputs('Payload')?['roleValue'], 'Default Access')} on @{triggerOutputs()?['body/TargetDisplayName']}"
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  }
                 }
               },
               "default": {
@@ -952,8 +985,8 @@
                 "and": [
                   {
                     "equals": [
-                      "@empty(triggerOutputs()?['body/TargetObjectId'])",
-                      false
+                      "@and(not(empty(triggerOutputs()?['body/TargetObjectId'])), not(equals(triggerOutputs()?['body/RequestType/Value'], 'grantAccess')))",
+                      true
                     ]
                   }
                 ]
@@ -1510,7 +1543,7 @@
                         },
                         "App_tags": {
                           "type": "Compose",
-                          "inputs": "@union(outputs('Base_tags'), createArray(variables('varTeamTag'), concat('teamName:', variables('varTeamGroupName'))), if(empty(outputs('Payload')?['appEnv']), json('[]'), createArray(concat('appEnv:', outputs('Payload')?['appEnv']))), if(empty(outputs('Payload')?['borShortName']), json('[]'), createArray(concat('borShortName:', outputs('Payload')?['borShortName']))), body('Select_optional_tags'))",
+                          "inputs": "@union(outputs('Base_tags'), createArray(variables('varTeamTag'), concat('teamName:', variables('varTeamGroupName'))), if(empty(outputs('Payload')?['appEnv']), json('[]'), createArray(concat('appEnv:', outputs('Payload')?['appEnv']))), if(empty(outputs('Payload')?['borShortName']), json('[]'), createArray(concat('borShortName:', outputs('Payload')?['borShortName']))), if(empty(outputs('Payload')?['appType']), json('[]'), createArray(concat('appType:', outputs('Payload')?['appType']))), body('Select_optional_tags'))",
                           "runAfter": {
                             "Select_optional_tags": [
                               "Succeeded"
@@ -3602,6 +3635,311 @@
                       "runAfter": {}
                     }
                   }
+                },
+                "Case_grantAccess": {
+                  "case": "grantAccess",
+                  "actions": {
+                    "Do_grantAccess": {
+                      "type": "Scope",
+                      "actions": {
+                        "Set_access_SP": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "varSpId",
+                            "value": "@triggerOutputs()?['body/TargetObjectId']"
+                          },
+                          "runAfter": {}
+                        },
+                        "Access_principal_id": {
+                          "type": "Compose",
+                          "inputs": "@if(equals(outputs('Payload')?['principalType'], 'group'), coalesce(outputs('Payload')?['principalId'], ''), body('HTTP_Get_requester')?['id'])",
+                          "runAfter": {
+                            "Set_access_SP": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Access_principal_name": {
+                          "type": "Compose",
+                          "inputs": "@if(equals(outputs('Payload')?['principalType'], 'group'), coalesce(outputs('Payload')?['principalDisplayName'], outputs('Payload')?['groupQuery']), outputs('Requester'))",
+                          "runAfter": {
+                            "Access_principal_id": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Access_role_id": {
+                          "type": "Compose",
+                          "inputs": "@if(empty(outputs('Payload')?['roleId']), '00000000-0000-0000-0000-000000000000', outputs('Payload')?['roleId'])",
+                          "runAfter": {
+                            "Access_principal_name": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Access_principal_missing": {
+                          "type": "If",
+                          "expression": {
+                            "and": [
+                              {
+                                "equals": [
+                                  "@empty(outputs('Access_principal_id'))",
+                                  true
+                                ]
+                              }
+                            ]
+                          },
+                          "actions": {
+                            "Set_no_access_principal_message": {
+                              "type": "SetVariable",
+                              "inputs": {
+                                "name": "varFailMessage",
+                                "value": "The group was not resolved when the request was approved, so nobody was given access."
+                              },
+                              "runAfter": {}
+                            },
+                            "Log_no_access_principal": {
+                              "type": "AppendToArrayVariable",
+                              "inputs": {
+                                "name": "varLog",
+                                "value": "@concat('Failed: ', variables('varFailMessage'))"
+                              },
+                              "runAfter": {
+                                "Set_no_access_principal_message": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Throw_no_access_principal": {
+                              "type": "Compose",
+                              "inputs": "@json(concat('Stopped: ', variables('varFailMessage')))",
+                              "runAfter": {
+                                "Log_no_access_principal": [
+                                  "Succeeded"
+                                ]
+                              }
+                            }
+                          },
+                          "else": {
+                            "actions": {}
+                          },
+                          "runAfter": {
+                            "Access_role_id": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Reset_varAccessOk": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "varAccessOk",
+                            "value": "no"
+                          },
+                          "runAfter": {
+                            "Access_principal_missing": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Until_HTTP_Grant_access": {
+                          "type": "Until",
+                          "expression": "@equals(variables('varAccessOk'), 'yes')",
+                          "limit": {
+                            "count": 6,
+                            "timeout": "PT10M"
+                          },
+                          "actions": {
+                            "HTTP_Grant_access": {
+                              "type": "OpenApiConnection",
+                              "inputs": {
+                                "host": {
+                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
+                                  "connectionName": "shared_webcontents",
+                                  "operationId": "InvokeHttp"
+                                },
+                                "parameters": {
+                                  "request/method": "POST",
+                                  "request/url": "https://graph.microsoft.com/v1.0/servicePrincipals/@{triggerOutputs()?['body/TargetObjectId']}/appRoleAssignedTo",
+                                  "request/headers": {
+                                    "Content-Type": "application/json"
+                                  },
+                                  "request/body": "{\n  \"principalId\": \"@{outputs('Access_principal_id')}\",\n  \"resourceId\": \"@{triggerOutputs()?['body/TargetObjectId']}\",\n  \"appRoleId\": \"@{outputs('Access_role_id')}\"\n}"
+                                },
+                                "authentication": "@parameters('$authentication')",
+                                "retryPolicy": {
+                                  "type": "none"
+                                }
+                              },
+                              "runAfter": {}
+                            },
+                            "HTTP_Grant_access_ok": {
+                              "type": "If",
+                              "expression": {
+                                "and": [
+                                  {
+                                    "equals": [
+                                      "@or(equals(outputs('HTTP_Grant_access')?['statusCode'], 201), contains(string(outputs('HTTP_Grant_access')?['body']), 'already exist'))",
+                                      true
+                                    ]
+                                  }
+                                ]
+                              },
+                              "actions": {
+                                "Set_varAccessOk": {
+                                  "type": "SetVariable",
+                                  "inputs": {
+                                    "name": "varAccessOk",
+                                    "value": "yes"
+                                  },
+                                  "runAfter": {}
+                                }
+                              },
+                              "else": {
+                                "actions": {
+                                  "HTTP_Grant_access_retry_delay": {
+                                    "type": "Wait",
+                                    "inputs": {
+                                      "interval": {
+                                        "count": 10,
+                                        "unit": "Second"
+                                      }
+                                    },
+                                    "runAfter": {}
+                                  }
+                                }
+                              },
+                              "runAfter": {
+                                "HTTP_Grant_access": [
+                                  "Succeeded",
+                                  "Failed"
+                                ]
+                              }
+                            }
+                          },
+                          "runAfter": {
+                            "Reset_varAccessOk": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "HTTP_Grant_access_gave_up": {
+                          "type": "If",
+                          "expression": {
+                            "and": [
+                              {
+                                "equals": [
+                                  "@variables('varAccessOk')",
+                                  "no"
+                                ]
+                              }
+                            ]
+                          },
+                          "actions": {
+                            "Log_access_failed": {
+                              "type": "AppendToArrayVariable",
+                              "inputs": {
+                                "name": "varLog",
+                                "value": "@concat('Failed: ', outputs('Access_principal_name'), ' was not given ', coalesce(outputs('Payload')?['roleValue'], 'Default Access'), ' (', coalesce(body('HTTP_Grant_access')?['error']?['message'], 'no answer after 6 attempts'), ')')"
+                              },
+                              "runAfter": {}
+                            },
+                            "Log_access_failed_failed": {
+                              "type": "AppendToArrayVariable",
+                              "inputs": {
+                                "name": "varFailed",
+                                "value": "access"
+                              },
+                              "runAfter": {
+                                "Log_access_failed": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Log_access_failed_flag": {
+                              "type": "SetVariable",
+                              "inputs": {
+                                "name": "varHadErrors",
+                                "value": "yes"
+                              },
+                              "runAfter": {
+                                "Log_access_failed_failed": [
+                                  "Succeeded"
+                                ]
+                              }
+                            }
+                          },
+                          "else": {
+                            "actions": {}
+                          },
+                          "runAfter": {
+                            "Until_HTTP_Grant_access": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Access_granted": {
+                          "type": "If",
+                          "expression": {
+                            "and": [
+                              {
+                                "equals": [
+                                  "@variables('varAccessOk')",
+                                  "yes"
+                                ]
+                              }
+                            ]
+                          },
+                          "actions": {
+                            "Log_access_done": {
+                              "type": "AppendToArrayVariable",
+                              "inputs": {
+                                "name": "varLog",
+                                "value": "@concat('Done: ', outputs('Access_principal_name'), ' has ', coalesce(outputs('Payload')?['roleValue'], 'Default Access'), ' on ', triggerOutputs()?['body/TargetDisplayName'])"
+                              },
+                              "runAfter": {}
+                            },
+                            "Log_access_done_done": {
+                              "type": "AppendToArrayVariable",
+                              "inputs": {
+                                "name": "varDone",
+                                "value": "access"
+                              },
+                              "runAfter": {
+                                "Log_access_done": [
+                                  "Succeeded"
+                                ]
+                              }
+                            }
+                          },
+                          "else": {
+                            "actions": {}
+                          },
+                          "runAfter": {
+                            "HTTP_Grant_access_gave_up": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Result_access": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "varResult",
+                            "value": {
+                              "servicePrincipalId": "@{triggerOutputs()?['body/TargetObjectId']}",
+                              "principalId": "@{outputs('Access_principal_id')}",
+                              "appId": "@{outputs('Payload')?['appId']}"
+                            }
+                          },
+                          "runAfter": {
+                            "Access_granted": [
+                              "Succeeded"
+                            ]
+                          }
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  }
                 }
               },
               "default": {
@@ -4434,7 +4772,7 @@
             "Failed_actions": {
               "type": "Query",
               "inputs": {
-                "from": "@union(result('Do_createAppRegistration'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Do_deleteAppRegistration'), result('Try'))",
+                "from": "@union(result('Do_createAppRegistration'), result('Do_exposeApi'), result('Do_addAppRoles'), result('Do_assignGroupsToAppRoles'), result('Do_createServicePrincipal'), result('Do_deleteAppRegistration'), result('Do_grantAccess'), result('Try'))",
                 "where": "@equals(item()?['status'], 'Failed')"
               },
               "runAfter": {}

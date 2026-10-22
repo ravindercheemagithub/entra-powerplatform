@@ -69,7 +69,7 @@ if ($CheckOnly) { Write-Host "CHECK ONLY: nothing will be changed." -ForegroundC
 # Expected schema
 #   Type: Text | Note | Choice | DateTime
 # ---------------------------------------------------------------------------
-$types    = "createAppRegistration","exposeApi","addAppRoles","assignGroupsToAppRoles","createServicePrincipal","onboardGroup","lookupApp","tagOwnerGroup","deleteAppRegistration"
+$types    = "createAppRegistration","exposeApi","addAppRoles","assignGroupsToAppRoles","createServicePrincipal","onboardGroup","lookupApp","tagOwnerGroup","deleteAppRegistration","grantAccess"
 $statuses = "Submitted","PendingManagerApproval","PendingEntraApproval","Approved","InProgress","Completed","Failed","Rejected"
 $decision = "Pending","Approved","Rejected"
 

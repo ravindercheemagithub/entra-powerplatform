@@ -1,0 +1,5 @@
+{
+  "principalId": "@{outputs('Access_principal_id')}",
+  "resourceId": "@{triggerOutputs()?['body/TargetObjectId']}",
+  "appRoleId": "@{outputs('Access_role_id')}"
+}
