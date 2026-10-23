@@ -103,6 +103,9 @@ for f in sorted(glob.glob('src/Workflows/*.json')):
                 errors.append(f"{flow}: {k}: '@{{{e[:60]}...}}' inserts a boolean into text: it renders as True/False, which is not JSON; use 'true' / 'false' strings")
             if re.search(r"createArray\(\s*\)", e):
                 errors.append(f"{flow}: {k}: createArray() needs at least one argument; use json('[]') for an empty array")
+            bare = re.sub(r"'(?:[^']|'')*'", "S", e)   # string literals out of the way
+            if re.search(r",\s*\)|\(\s*,|,\s*,", bare):
+                errors.append(f"{flow}: {k}: empty function argument (a comma next to a bracket or another comma): {e[:120]}")
             b = balance(e)
             if b: errors.append(f"{flow}: {k}: {b}: {e[:100]}")
             for fn, ref in re.findall(r"\b(body|outputs|actions|result|items)\('([^']+)'\)", e):

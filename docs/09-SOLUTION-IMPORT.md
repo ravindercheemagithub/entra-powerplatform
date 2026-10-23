@@ -1,6 +1,6 @@
 # 9. Import the flows as a solution
 
-Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_8_0_0.zip`](../solution/dist/EntraSelfService_1_8_0_0.zip) (version 1.8) is an **unmanaged** solution containing:
+Instead of building the flows by hand from doc 04, import them. [`solution/dist/EntraSelfService_1_8_1_0.zip`](../solution/dist/EntraSelfService_1_8_1_0.zip) (version 1.8.1) is an **unmanaged** solution containing:
 
 | Component | What it is |
 |---|---|
@@ -38,7 +38,7 @@ Import **as the account that should own the flows** (your account while testing,
 
 ## 9.2 Download the zip
 
-On GitHub open [`solution/dist/EntraSelfService_1_8_0_0.zip`](../solution/dist/EntraSelfService_1_8_0_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
+On GitHub open [`solution/dist/EntraSelfService_1_8_1_0.zip`](../solution/dist/EntraSelfService_1_8_1_0.zip) → **Download raw file** (the download icon at the top right). Don't unzip it.
 
 ## 9.3 Import
 
@@ -90,6 +90,8 @@ Open each flow once in the designer and check it has no errors before turning it
 | SharePoint actions fail with *List not found* | The site URL variable is wrong, or SP-00 hasn't created the lists yet |
 
 ## 9.6 Updating
+
+**1.8.1:** fixes *TemplateValidationError … Unable to parse template language expression 'concat('Done: app registration ' … expected token 'Identifier' and actual 'RightParenthesis'* (ER-02 imported but could not be turned on). A stray comma in ER-02's *Log app created* step. Import over 1.8 and turn ER-02 on. The app is unchanged.
 
 **1.8:** app type, simpler permissions, highlights for approvers, and a new *Request app access* card.
 - **App type** on Basics: *Client*, *API* or *Others*. *Client* adds `-client` to the name and disables Expose an API and access-token claims; *API* adds `-api`, ticks Expose an API, and disables ID-token claims and redirect URIs. ER-02 tags the app `appType:client|api|other`.

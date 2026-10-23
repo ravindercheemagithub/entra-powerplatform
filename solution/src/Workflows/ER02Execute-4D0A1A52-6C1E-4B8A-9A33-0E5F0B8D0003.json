@@ -1713,7 +1713,7 @@
                           "type": "AppendToArrayVariable",
                           "inputs": {
                             "name": "varLog",
-                            "value": "@concat('Done: app registration ', body('HTTP_Create_application')?['displayName'], ' created (client ID ', body('HTTP_Create_application')?['appId'], ', object ID ', body('HTTP_Create_application')?['id'], '), owner tag ', variables('varTeamTag'), if(greater(length(body('Select_app_roles')), 0), concat(', ', string(length(body('Select_app_roles'))), ' app role(s)'), ''), )"
+                            "value": "@concat('Done: app registration ', body('HTTP_Create_application')?['displayName'], ' created (client ID ', body('HTTP_Create_application')?['appId'], ', object ID ', body('HTTP_Create_application')?['id'], '), owner tag ', variables('varTeamTag'), if(greater(length(body('Select_app_roles')), 0), concat(', ', string(length(body('Select_app_roles'))), ' app role(s)'), ''))"
                           },
                           "runAfter": {
                             "Result_create_app": [

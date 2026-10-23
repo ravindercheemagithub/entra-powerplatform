@@ -34,7 +34,7 @@ DIST = HERE / "dist"
 
 SOLUTION = "EntraSelfService"
 SOLUTION_LABEL = "Entra Self-Service"
-VERSION = "1.8.0.0"
+VERSION = "1.8.1.0"
 PREFIX = "esp"
 PUBLISHER = "EntraSelfService"
 
@@ -732,7 +732,7 @@ def er02() -> dict:
         "appId": "@{body('HTTP_Create_application')?['appId']}",
         "identifierUri": "",
         "servicePrincipalId": "", "teamGroupId": "@{variables('varTeamGroupId')}", "team": "@{variables('varTeamTag')}"})
-    log(c1, "Log app created", "concat('Done: app registration ', body('HTTP_Create_application')?['displayName'], ' created (client ID ', body('HTTP_Create_application')?['appId'], ', object ID ', body('HTTP_Create_application')?['id'], '), owner tag ', variables('varTeamTag'), if(greater(length(body('Select_app_roles')), 0), concat(', ', string(length(body('Select_app_roles'))), ' app role(s)'), ''), )")
+    log(c1, "Log app created", "concat('Done: app registration ', body('HTTP_Create_application')?['displayName'], ' created (client ID ', body('HTTP_Create_application')?['appId'], ', object ID ', body('HTTP_Create_application')?['id'], '), owner tag ', variables('varTeamTag'), if(greater(length(body('Select_app_roles')), 0), concat(', ', string(length(body('Select_app_roles'))), ' app role(s)'), ''))")
     perms = Seq()
     perms.cond("All permissions known", eq("@empty(body('Unknown_graph_scopes'))", True),
                yes=log(Seq(), "Log permissions done", "concat('Done: API permissions (Microsoft Graph, delegated): ', join(body('Known_scope_names'), ', '))"),
