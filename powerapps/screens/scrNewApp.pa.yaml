@@ -1844,7 +1844,7 @@
                 Control: Classic/DropDown
                 Properties:
                   Items: =Filter(colRoles, !IsBlank(Value) && Members <> "Applications")
-                  Default: =Coalesce(varClone.ownerRole, LookUp(colRoles, EndsWith(Value, ".Admin")).Value, First(colRoles).Value)
+                  Default: =Coalesce(varClone.ownerRole, LookUp(colRoles, EndsWith(Value, ".Admin") && Members <> "Applications").Value, First(Filter(colRoles, !IsBlank(Value) && Members <> "Applications")).Value)
                   X: =530
                   Y: =60
                   Width: =260
@@ -1864,11 +1864,11 @@
             - hntOwnerRole_NewApp:
                 Control: Label
                 Properties:
-                  Text: ="The owner (owning group, or you) gets this role."
+                  Text: =If(CountRows(Filter(colRoles, !IsBlank(Value) && Members <> "Applications")) = 0, "Type a role value below (and tab out) to choose it here.", "The owner (owning group, or you) gets this role.")
                   X: =800
-                  Y: =66
+                  Y: =62
                   Width: =Parent.Width - 800
-                  Height: =20
+                  Height: =40
                   Size: =9
                   Font: =Font.'Segoe UI'
                   Color: =gTheme.Muted
@@ -1876,6 +1876,7 @@
                   PaddingLeft: =0
                   PaddingRight: =0
                   Visible: =CountRows(colRoles) > 0
+                  Wrap: =true
             - lblRoleColValue_NewApp:
                 Control: Label
                 Properties:

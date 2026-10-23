@@ -376,9 +376,10 @@ def new_app() -> None:
                'Collect(colRoles, {Key: Text(GUID()), Value: "", DisplayName: "", Description: "", Members: "Users/Groups"})', 240, 60, 150, 34, kind="subtle"),
         label(f"lblOwnerRole_{s}", q("Owner's role:"), 420, 60, 110, 34, size=11, bold=True, Visible="CountRows(colRoles) > 0"),
         dropdown(f"ddOwnerRole_{s}", 'Filter(colRoles, !IsBlank(Value) && Members <> "Applications")',
-                 'Coalesce(varClone.ownerRole, LookUp(colRoles, EndsWith(Value, ".Admin")).Value, First(colRoles).Value)', 530, 60, 260, 34,
+                 'Coalesce(varClone.ownerRole, LookUp(colRoles, EndsWith(Value, ".Admin") && Members <> "Applications").Value, First(Filter(colRoles, !IsBlank(Value) && Members <> "Applications")).Value)', 530, 60, 260, 34,
                  Visible="CountRows(colRoles) > 0"),
-        hint(f"hntOwnerRole_{s}", q("The owner (owning group, or you) gets this role."), 800, 66, "Parent.Width - 800", Visible="CountRows(colRoles) > 0"),
+        hint(f"hntOwnerRole_{s}", 'If(CountRows(Filter(colRoles, !IsBlank(Value) && Members <> "Applications")) = 0, "Type a role value below (and tab out) to choose it here.", "The owner (owning group, or you) gets this role.")',
+             800, 62, "Parent.Width - 800", Visible="CountRows(colRoles) > 0", Wrap="true", Height=40),
         *roles_editor(s, 108),
         # No roles: the owner gets Default Access; others can be given Default Access too.
         label(f"lblNoRoles_{s}", q("No app roles: the owner (owning group, or you) gets Default Access so they can sign in. Add anyone else who should be able to sign in, or add roles above."),
